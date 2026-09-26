@@ -8,14 +8,14 @@ on:
 jobs:
   backend:
     name: Backend (compile + tests)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
       # Minimal set the backend test modules import. mlx/mflux stay out: the
-      # generator guards those imports, so the suite runs on ubuntu-latest.
+      # generator guards those imports, so the suite runs on the CI image.
       - name: Install test dependencies
         run: |
           python -m pip install --disable-pip-version-check \
@@ -44,13 +44,13 @@ jobs:
 
   frontend:
     name: Frontend (lint + build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -61,8 +61,8 @@ jobs:
 
   license-check:
     name: Licence data sanity
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Verify licence data parses
         run: node -e "const s=require('fs').readFileSync('frontend/src/data/licences.js','utf8'); if(!s.includes('LICENCE_SECTIONS')) throw Error('missing'); console.log('licences.js OK');"
