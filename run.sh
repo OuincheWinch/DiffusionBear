@@ -24,6 +24,15 @@ PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 
+# Private DEV convenience: reuse the sibling working copy's model/SDXL/LoRA store
+# so DEV never re-downloads weights. Never published to the public repo.
+if [ -z "${MLX_DIFFUSION_ASSET_DIR:-}" ]; then
+    SHARED_ASSET_DIR="$PROJECT_DIR/../MLX-DIFFUSION OpenCode/backend/data"
+    if [ -d "$SHARED_ASSET_DIR/models" ]; then
+        export MLX_DIFFUSION_ASSET_DIR="$SHARED_ASSET_DIR"
+    fi
+fi
+
 # Locate a usable Python venv (prefer repo venv, then venv-sdxl isn't one for the API).
 # NOTE: use venv/bin/python (not the venv/bin/uvicorn console script) — console-script
 # shebangs can point at a stale no-space venv path after a folder rename, silently
