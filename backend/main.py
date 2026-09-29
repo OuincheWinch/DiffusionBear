@@ -2,10 +2,12 @@ from contextlib import asynccontextmanager
 import hmac
 import ipaddress
 import os
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 try:
@@ -33,7 +35,24 @@ _DEV_FALLBACK = any(
     for name in ("MLX_DIFFUSION_API_DEV_FALLBACK", "MLX_DIFFUSION_DEV_FALLBACK", "MLX_ALLOW_DEV_NO_TOKEN")
 )
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
-_ALLOWED_ORIGINS = {"http://localhost:5174", "http://127.0.0.1:5174"}
+# The two Vite dev ports, plus the app's own port. The standalone build serves the
+# SPA from this same origin, so its fetch() calls are same-origin and need no CORS
+# grant at all -- these entries only matter if a browser context ever presents that
+# Origin explicitly. Both are loopback-only, which LocalHostMiddleware already enforces.
+_ALLOWED_ORIGINS = {
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:8001",
+    "http://127.0.0.1:8001",
+}
+# Built SPA, served by the backend in production so the standalone app is one
+# process and one port instead of uvicorn + a Vite dev server. Absent in dev, where
+# Vite serves the SPA on :5174 and proxies /api here -- the routes below simply
+# do not register, so dev behaviour is unchanged.
+_SPA_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+# Paths that must keep returning their own response instead of index.html, so an
+# unknown API route stays a JSON 404 rather than silently becoming the SPA shell.
+_SPA_RESERVED = ("api", "docs", "redoc", "openapi.json")
 _MAX_API_BODY_BYTES = 8 * 1024 * 1024
 
 
@@ -159,7 +178,10 @@ app.include_router(downloads.router)
 app.include_router(settings_router.router)
 
 
-@app.get("/api/version")
+# GET and HEAD both, deliberately: this is the launcher's readiness probe target, and
+# FastAPI registers only GET for a plain @app.get, so a HEAD request would 405 and
+# the app would time out even though the backend was serving normally.
+@app.api_route("/api/version", methods=["GET", "HEAD"])
 def api_version():
     return {
         "name": app_version.APP_NAME,
@@ -170,3 +192,38 @@ def api_version():
         "repo": app_version.APP_REPO,
         "ai_credits": app_version.AI_CREDITS,
     }
+
+
+if _SPA_DIR.is_dir():
+    # Hashed asset filenames, so they can be cached hard and never revalidated.
+    app.mount(
+        "/assets",
+        StaticFiles(directory=_SPA_DIR / "assets" if (_SPA_DIR / "assets").is_dir() else _SPA_DIR),
+        name="assets",
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa(full_path: str):
+        """Serve the built SPA, falling back to index.html for client-side routes."""
+        head = full_path.split("/", 1)[0]
+        if head in _SPA_RESERVED:
+            raise HTTPException(status_code=404, detail="not found")
+        if full_path:
+            candidate = (_SPA_DIR / full_path).resolve()
+            # resolve() collapses ../ so a crafted path cannot escape dist/
+            if candidate.is_file() and candidate.is_relative_to(_SPA_DIR.resolve()):
+                return FileResponse(candidate)
+        return FileResponse(_SPA_DIR / "index.html")
+
+else:  # no build present -- dev mode, Vite owns the UI
+
+    @app.get("/")
+    def dev_hint():
+        return JSONResponse(
+            {
+                "detail": "No production build found. Run `npm run build` in frontend/, "
+                "or use the Vite dev server on http://localhost:5174.",
+                "spa_dir": str(_SPA_DIR),
+            },
+            status_code=503,
+        )

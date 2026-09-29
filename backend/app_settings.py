@@ -13,17 +13,33 @@ import tempfile
 import threading
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+def _abs_from_env(name: str) -> Path | None:
+    configured = os.environ.get(name, "").strip()
+    if not configured:
+        return None
+    path = Path(configured).expanduser()
+    if not path.is_absolute():
+        raise ValueError(f"{name} must be an absolute path")
+    return path.resolve()
+
+
+# Where the app's own mutable state lives: settings.json, the gallery, the LoRA
+# registry, uploads, queue files and the engine pid files.
+#
+# Defaults to backend/data, which is what a source checkout wants. MLX_DIFFUSION_ASSET_DIR
+# is deliberately NOT reused for this: the dev workflow points it at a shared model
+# store while the working copy keeps its own gallery, and collapsing the two would
+# change that. But in the standalone .app the checkout *is* the bundle, so writing
+# here would drop the gallery and settings inside the signed app -- growing without
+# bound and invalidating the bundle's own code signature on the next launch. The
+# shell therefore sets MLX_DIFFUSION_DATA_DIR alongside MLX_DIFFUSION_ASSET_DIR.
+DATA_DIR = _abs_from_env("MLX_DIFFUSION_DATA_DIR") or (
+    Path(__file__).resolve().parent / "data"
+)
 
 
 def _resolve_asset_dir() -> Path:
-    configured = os.environ.get("MLX_DIFFUSION_ASSET_DIR", "").strip()
-    if not configured:
-        return DATA_DIR
-    path = Path(configured).expanduser()
-    if not path.is_absolute():
-        raise ValueError("MLX_DIFFUSION_ASSET_DIR must be an absolute path")
-    return path.resolve()
+    return _abs_from_env("MLX_DIFFUSION_ASSET_DIR") or DATA_DIR
 
 
 ASSET_DIR = _resolve_asset_dir()
