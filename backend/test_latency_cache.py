@@ -910,19 +910,47 @@ class QwenGuardrailTests(unittest.TestCase):
 
 
 class WiredBudgetTests(unittest.TestCase):
-    """The generic wired budget is 9GB, matching krea2 (owner decision).
+    """The generic budget is 9GB; krea2 is unbounded by default.
 
-    FLUX.2-klein, FLUX.2-klein-9b, Z-Image and SDXL all shared a 7GB budget while
-    krea2 and qwen sat on 9GB, and AGENTS.md records the krea2 raise as ~18%
-    faster for identical output. Both paths now share one helper and one memory
-    fraction so the two cannot drift apart again.
+    krea2 used to be pinned to 9GB on the strength of an AGENTS.md claim that the
+    pin was ~18% faster for identical output. The 2026-09-29 A/B (test/wired_budget/)
+    could not reproduce any speed difference -- exact permutation p=1.00 over 6
+    interleaved runs per arm, with the arms fully interleaved -- while all 12
+    renders came out pixel-identical. So the pin was reverted to the pre-existing
+    unbounded behaviour rather than kept on an unproven claim.
+
+    qwen-image-2.1 deliberately stays on the generic 9GB budget: its q4 pipeline is
+    ~10.5GB resident, and a too-low cap starves the load. That is a memory-safety
+    decision, not a measured speedup, so it is asserted separately below.
     """
 
     def test_generic_budget_is_nine_gib(self):
         self.assertAlmostEqual(generator._wired_limit_bytes() / (1 << 30), 9.0, places=1)
 
-    def test_krea_budget_is_unchanged(self):
-        self.assertAlmostEqual(generator._krea_wired_limit_bytes() / (1 << 30), 9.0, places=1)
+    def test_krea_is_unbounded_by_default(self):
+        # Reverting the unproven 9GB pin. Set MLX_KREA_WIRED_LIMIT_GB=9 to re-pin.
+        self.assertEqual(generator._krea_wired_limit_bytes(), 0)
+
+    def test_krea_does_not_fall_back_to_the_generic_nine_gib(self):
+        # The failure mode this guards: someone "simplifies" the dispatch so krea2
+        # silently picks up the generic budget again, reintroducing the unproven pin.
+        self.assertNotAlmostEqual(
+            generator._krea_wired_limit_bytes() / (1 << 30), 9.0, places=1)
+
+    def test_qwen_keeps_a_bounded_budget(self):
+        # qwen must NOT be on krea2's unbounded default. Its ~10.5GB resident
+        # pipeline needs the allowance, and AGENTS.md records a confirmed OOM.
+        # Inspect only the dispatch block: everything between where the previous
+        # wired limit is stashed and where the new one is applied.
+        import inspect
+        src = inspect.getsource(generator)
+        start = src.index("prev_wired = None")
+        dispatch = src[start:src.index("if limit > 0:", start)]
+        # the old combined branch would have put qwen on krea2's budget
+        self.assertNotIn('model == "krea2-turbo" or model == "qwen-image-2.1"', dispatch)
+        self.assertIn('if model == "krea2-turbo":', dispatch)
+        # and qwen falls through to the bounded generic helper
+        self.assertIn("limit = _wired_limit_bytes()", dispatch)
 
     def test_sdxl_still_gets_its_own_lower_cap(self):
         # _generate_sdxl clamps to 6.5GB independently, so the generic raise
@@ -945,6 +973,8 @@ class WiredBudgetTests(unittest.TestCase):
         if mem:
             ceiling = int(mem * generator._WIRED_MEMORY_FRACTION)
             for value in (generator._wired_limit_bytes(), generator._krea_wired_limit_bytes()):
+                if value == 0:
+                    continue  # 0 = unbounded, so the ceiling does not apply to it
                 self.assertLessEqual(value, ceiling)
 
     def test_zero_disables_the_budget(self):

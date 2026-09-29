@@ -422,10 +422,9 @@ _WIRED_MEMORY_FRACTION = 0.68
 # Wired memory hint (bytes) used during generation to keep Metal from swapping on
 # 16GB machines. Set MLX_WIRED_LIMIT_GB=0 to disable.
 #
-# Raised from 7 to 9 GB on 2026-09-28 (user decision) so FLUX.2-klein, Z-Image
-# and SDXL share krea2's 9 GB budget. They previously sat on the lower one while
-# krea2 got the raise that AGENTS.md records as ~18% faster for identical output.
-# SDXL is unaffected: _generate_sdxl caps it at 6.5GB independently.
+# This is the generic budget: FLUX.2-klein, Z-Image, SDXL and qwen-image-2.1.
+# qwen is here because its q4 pipeline is ~10.5GB resident and needs the larger
+# allowance; it is NOT here because of any measured speedup.
 try:
     _WIRED_LIMIT_GB = int(os.environ.get("MLX_WIRED_LIMIT_GB", "9"))
 except ValueError:
@@ -433,13 +432,20 @@ except ValueError:
     _WIRED_LIMIT_GB = 9
 _WIRED_LIMIT_GB *= (1 << 30)
 
-# krea2 (13B q4) shares the same 9 GB budget and the same 68% ceiling as the
-# generic path. MLX_KREA_WIRED_LIMIT_GB=0 restores the legacy unbounded behavior.
+# krea2 (13B q4) is UNBOUNDED by default again.
+#
+# It used to carry a 9 GB pin, justified by an AGENTS.md note claiming ~18%
+# faster for identical output. Measured on 2026-09-29 (test/wired_budget/,
+# 6 runs per arm, interleaved): the arms are statistically indistinguishable
+# (exact permutation p=1.00, 150-239s bounded vs 139-198s unbounded, fully
+# interleaved) while all 12 renders are pixel-identical. The 18% never
+# reproduced, so the pin had no measured benefit and is reverted to the
+# pre-existing unbounded behaviour. Set MLX_KREA_WIRED_LIMIT_GB=9 to re-pin.
 try:
-    _KREA_WIRED_LIMIT_GB = int(os.environ.get("MLX_KREA_WIRED_LIMIT_GB", "9"))
+    _KREA_WIRED_LIMIT_GB = int(os.environ.get("MLX_KREA_WIRED_LIMIT_GB", "0"))
 except ValueError:
-    print("[generator] invalid MLX_KREA_WIRED_LIMIT_GB, using default 9", flush=True)
-    _KREA_WIRED_LIMIT_GB = 9
+    print("[generator] invalid MLX_KREA_WIRED_LIMIT_GB, using default 0", flush=True)
+    _KREA_WIRED_LIMIT_GB = 0
 _KREA_WIRED_LIMIT_GB *= (1 << 30)
 
 
@@ -494,10 +500,12 @@ def _wired_limit_bytes() -> int:
 
 
 def _krea_wired_limit_bytes() -> int:
-    """Wired budget for krea2 (13B q4) and qwen: the same 9GB / 68% ceiling as
-    the generic path. krea2 originally needed a larger allowance than the generic
-    45% cap to avoid the historical starved-decode hang; the generic budget has
-    since been raised to match, so the two now share one helper."""
+    """Wired budget for krea2 (13B q4) only. Defaults to 0 = unbounded, which is
+    what the 2026-09-29 A/B measured: no speed difference (p=1.00) and a
+    pixel-identical result, so there is nothing to buy with a pin. qwen does NOT
+    use this helper -- it uses the generic 9 GB budget, because its pipeline is
+    ~10.5GB resident and a too-low cap starves the load.
+    """
     return _wired_budget_bytes(int(_krea_wired_limit_gb() * (1 << 30)), 9)
 
 _lock = threading.Lock()
@@ -2235,11 +2243,14 @@ def generate(
         prev_wired = None
         restore_callbacks = []
         try:
-            if model == "krea2-turbo" or model == "qwen-image-2.1":
-                # qwen21 shares krea2's bigger 68% wired budget: its q4 pipeline is
-                # ~10.5GB resident and the generic 45% cap starves the load.
+            if model == "krea2-turbo":
+                # krea2 only. Unbounded by default: its 9 GB pin showed no speed
+                # benefit and a pixel-identical result (see the A/B note above).
                 limit = _krea_wired_limit_bytes()
             else:
+                # FLUX.2-klein, Z-Image, SDXL and qwen-image-2.1. qwen is on the
+                # generic budget rather than krea2's because its q4 pipeline is
+                # ~10.5GB resident and a too-low cap starves the load.
                 limit = _wired_limit_bytes()
             if limit > 0:
                 try:
