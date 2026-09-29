@@ -1,4 +1,4 @@
-// MLX-Diffusion native shell.
+// DiffusionBear native shell.
 //
 // A thin Swift/WKWebView window around the FastAPI backend, so the app is one
 // click: no Terminal, no Vite dev server, no Node. The backend serves the
@@ -24,7 +24,11 @@ import WebKit
 // MARK: - Configuration
 
 private let backendPort = 8001
-private let startupTimeout: TimeInterval = 120
+// Generous on purpose. A cold start imports mflux, MLX and torch from inside a
+// 1.8 GB bundle, and on a busy 16 GB machine that measured ~95s -- uncomfortably
+// close to a 120s ceiling, which produced a spurious "backend did not start" while
+// the server was mid-import. The window shows progress, so waiting costs nothing.
+private let startupTimeout: TimeInterval = 300
 private let pollInterval: TimeInterval = 0.4
 
 private struct Paths {
@@ -56,9 +60,25 @@ private struct Paths {
     static var sdxlPython: URL { sdxl.appendingPathComponent("bin/python") }
 
     /// External, user-owned store. Not bundled, never copied.
+    ///
+    /// Renamed from "MLX-Diffusion" to "DiffusionBear", but the model store can be
+    /// tens of gigabytes and lives on an external volume, so it is never moved or
+    /// recreated. If the new directory does not exist but the old one does, use the
+    /// old one and say so in the log. Copying would waste the user 28 GB of disk to
+    /// rename an app.
+    static let supportNames = ["DiffusionBear", "MLX-Diffusion"]
     static var support: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("MLX-Diffusion", isDirectory: true)
+        for name in supportNames {
+            let candidate = base.appendingPathComponent(name, isDirectory: true)
+            if FileManager.default.fileExists(atPath: candidate.appendingPathComponent("data").path) {
+                if name != supportNames[0] {
+                    NSLog("DiffusionBear: reusing existing data at %@", candidate.path)
+                }
+                return candidate
+            }
+        }
+        return base.appendingPathComponent(supportNames[0], isDirectory: true)
     }
     static var assetDir: URL { support.appendingPathComponent("data", isDirectory: true) }
     static var logFile: URL {
@@ -118,7 +138,7 @@ final class BackendProcess {
             return
         }
         if !FileManager.default.isExecutableFile(atPath: Paths.sdxlPython.path) {
-            NSLog("MLX-Diffusion: SDXL runtime missing at %@ -- that engine will be unavailable",
+            NSLog("DiffusionBear: SDXL runtime missing at %@ -- that engine will be unavailable",
                   Paths.sdxlPython.path)
         }
 
@@ -166,7 +186,7 @@ final class BackendProcess {
             return
         }
         process = p
-        NSLog("MLX-Diffusion: backend pid %d, cwd %@", p.processIdentifier, Paths.backend.path)
+        NSLog("DiffusionBear: backend pid %d, cwd %@", p.processIdentifier, Paths.backend.path)
 
         let started = Date()
         pollTimer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] timer in
@@ -276,7 +296,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
             NSApp.activate(ignoringOtherApps: true)
         }
         backend.onFailure = { [weak self] message in
-            self?.showBlockingError(title: "MLX-Diffusion could not start", message: message)
+            self?.showBlockingError(title: "DiffusionBear could not start", message: message)
         }
         backend.start()
     }
@@ -319,7 +339,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
             contentRect: NSRect(x: 0, y: 0, width: 1280, height: 840),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered, defer: false)
-        window.title = "MLX-Diffusion"
+        window.title = "DiffusionBear"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false

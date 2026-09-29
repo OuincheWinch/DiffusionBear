@@ -19,9 +19,9 @@ HERE="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd -P "$HERE/.." && pwd)"
 STAGE="${1:-$HERE/build}"
 DIST="${2:-$HERE/dist}"
-APP_NAME="MLX-Diffusion"
+APP_NAME="DiffusionBear"
 APP="$DIST/$APP_NAME.app"
-BUNDLE_ID="com.ouinchewinch.mlx-diffusion"
+BUNDLE_ID="com.ouinchewinch.diffusionbear"
 VERSION="$(cat "$REPO/backend/app_version.py" 2>/dev/null | sed -n 's/^APP_VERSION *= *"\([^"]*\)".*/\1/p' | head -1)"
 VERSION="${VERSION:-0.0.0}"
 
@@ -159,9 +159,10 @@ swiftc -O -wmo \
 
 # ---------------------------------------------------------------- plist
 say "writing Info.plist"
+# No XML DOCTYPE: it is a legacy prolog that macOS does not need, and its
+# apple.com DTD URL trips test_outbound_hosts_are_allowlisted for no benefit.
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>                  <string>$APP_NAME</string>

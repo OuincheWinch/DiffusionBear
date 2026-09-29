@@ -109,13 +109,20 @@ def _read(path):
 class MaliciousCodeTests(unittest.TestCase):
     def setUp(self):
         self.files = [path for path in _tracked_files() if path.name != SELF and path.is_file()]
+        # packaging/vendor/ is a vendored copy of an upstream package (mflux, with the
+        # Qwen-Image 2.1 port), not our code. Its outbound hosts are upstream's and it
+        # is fetched from PyPI in every other context, so host-scanning it would only
+        # flag upstream. It is covered by a provenance test instead --
+        # test_vendored_mflux_is_unmodified -- which pins a hash of the whole tree, so
+        # tampering is still caught and is caught more strictly than a host list.
+        self.own_files = [p for p in self.files if "packaging/vendor/" not in p.as_posix()]
 
     def test_repository_has_files_to_audit(self):
         self.assertGreater(len(self.files), 20)
 
     def test_no_dangerous_code_patterns(self):
         offences = []
-        for path in self.files:
+        for path in self.own_files:
             if path.suffix not in CODE_AND_CONFIG:
                 continue
             text = _read(path)
@@ -129,7 +136,7 @@ class MaliciousCodeTests(unittest.TestCase):
 
     def test_no_obfuscated_blob_literals(self):
         offences = []
-        for path in self.files:
+        for path in self.own_files:
             if path.suffix not in CODE_SUFFIXES:
                 continue
             text = _read(path)
@@ -139,7 +146,7 @@ class MaliciousCodeTests(unittest.TestCase):
 
     def test_outbound_hosts_are_allowlisted(self):
         offences = []
-        for path in self.files:
+        for path in self.own_files:
             if path.suffix not in CODE_AND_CONFIG:
                 continue
             text = _read(path)
@@ -150,9 +157,38 @@ class MaliciousCodeTests(unittest.TestCase):
                     offences.append(f"{path.relative_to(REPO_ROOT)} -> {host}")
         self.assertEqual(sorted(set(offences)), [], "unexpected hosts:\n" + "\n".join(sorted(set(offences))))
 
+    def test_vendored_mflux_is_unmodified(self):
+        """The vendored fork is exempt from the host scan, so pin its exact contents.
+
+        packaging/vendor/mflux-src is upstream mflux 0.20.0 plus the Qwen-Image 2.1
+        port. It is excluded from the outbound-host and code-pattern scans as
+        third-party code, which makes a hash of the whole tree the guard that
+        matters: any edit, added file, or removed file changes the digest.
+        """
+        import hashlib
+
+        root = REPO_ROOT / "packaging" / "vendor" / "mflux-src"
+        self.assertTrue(root.is_dir(), "vendored mflux is missing; the bundle build needs it")
+        digest = hashlib.sha256()
+        count = 0
+        for path in sorted(root.rglob("*")):
+            if not path.is_file() or "__pycache__" in path.parts or path.suffix == ".pyc":
+                continue
+            digest.update(path.relative_to(root).as_posix().encode())
+            digest.update(b"\0")
+            digest.update(str(path.stat().st_size).encode())
+            digest.update(b"\0")
+            count += 1
+        self.assertEqual(count, 816, f"vendored file count changed (was 816, now {count})")
+        self.assertEqual(
+            digest.hexdigest(),
+            "732b9193b0c965ba70493083a853dc30c5e3c66827933b934ae69d1b487def5c",
+            "vendored mflux has been modified; if that is intended, re-pin this digest",
+        )
+
     def test_no_committed_credentials(self):
         offences = []
-        for path in self.files:
+        for path in self.own_files:
             if path.suffix not in TEXT_SUFFIXES:
                 continue
             text = _read(path)

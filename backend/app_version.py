@@ -1,8 +1,8 @@
-"""MLX-Diffusion — application version metadata for /api/version."""
+"""DiffusionBear — application version metadata for /api/version."""
 
-APP_NAME = "MLX-Diffusion"
-APP_VERSION = "0.1.2"
-APP_VERSION_LABEL = "v0.1.2 (beta)"
+APP_NAME = "DiffusionBear"
+APP_VERSION = "0.2.1"
+APP_VERSION_LABEL = "v0.2.1"
 APP_AUTHOR = "Ouinche"
 APP_WEBSITE = "https://www.ouinche.com"
 APP_REPO = "https://github.com/OuincheWinch/MLX-Diffusion"

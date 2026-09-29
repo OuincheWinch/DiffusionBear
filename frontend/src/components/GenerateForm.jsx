@@ -566,11 +566,50 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
     }
   }
 
+  async function importDroppedPath(path) {
+    // WKWebView (the standalone app's window) cannot hand a page a File. A Finder
+    // drop arrives as a text/plain path instead, so dataTransfer.files is empty and
+    // WebKit drops the path into the focused text field. Hand the path to the
+    // backend, which copies it in. A real browser never takes this branch because
+    // it populates files, so localhost behaviour is unchanged.
+    const trimmed = decodeURIComponent(String(path || "").trim().replace(/^file:\/\//, ""));
+    if (!trimmed.startsWith("/")) return false;
+    try {
+      const res = await api("/api/import-path", { method: "POST", body: JSON.stringify({ path: trimmed }) });
+      if (trimmed.toLowerCase().endsWith(".safetensors")) {
+        // The backend already upserted the registry entry; the LoRA list picks it up.
+        setError("");
+        return true;
+      }
+      if (res?.name) {
+        const previewUrl = res.url ? `${API_BASE}${res.url}` : "";
+        setRefImages((previous) => {
+          if (previous.length >= maxRefImages) {
+            setError(`This model accepts at most ${maxRefImages} reference image${maxRefImages === 1 ? "" : "s"}.`);
+            return previous;
+          }
+          return [...previous, { id: crypto.randomUUID(), path: res.path, preview: previewUrl, name: res.name }];
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      setError(`Could not import ${trimmed}: ${err.message || err}`);
+      return false;
+    }
+  }
+
   async function handleDrop(e) {
     e.preventDefault();
     setDragOver(false);
     const files = Array.from(e.dataTransfer?.files || []);
-    if (!files.length) return;
+    if (!files.length) {
+      const raw =
+        e.dataTransfer?.getData?.("text/uri-list") || e.dataTransfer?.getData?.("text/plain") || "";
+      const first = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
+      if (first) await importDroppedPath(first);
+      return;
+    }
     const loraFile = files.find((f) => f.name.endsWith(".safetensors"));
     if (loraFile) {
       await uploadLoraFile(loraFile);
