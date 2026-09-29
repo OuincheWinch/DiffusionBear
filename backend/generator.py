@@ -308,7 +308,13 @@ MODELS = {
         "sha256": "2407613050",
         "ecosystem": "ZImageTurbo",
         "is_distilled": True,
-        "default_steps": 8,
+                # 8 -> 6 steps, measured 2026-09-29 on this M1 16GB. 6/8 steps is a
+        # 1.30-1.32x saving. Six steps was ALREADY shipped as the "draft" preset
+        # at 512x768, so this is not a new quality level there; at 1024x1024 and
+        # 1280x720 the side-by-side sheets are near-identical. At 512x768 six
+        # steps is mildly smoother on fine texture (PSNR 26.9/27.1 dB, i.e. a
+        # different image rather than a degraded one). Revert is this one number.
+"default_steps": 6,
         "default_width": 512,
         "default_height": 768,
         "default_guidance": None,
@@ -320,9 +326,9 @@ MODELS = {
         "supports_fast_vae": True,
         "lora_format": "Z-Image",
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft 512×768 (6 steps)", "width": 512, "height": 768, "steps": 6},
-            {"id": "turbo", "label": "✦ Turbo 1024×1024 (~7.5min)", "width": 1024, "height": 1024, "steps": 8},
-            {"id": "wide", "label": "✦ Wide HD 1280×720", "width": 1280, "height": 720, "steps": 8},
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 (~1.5min)", "width": 512, "height": 768, "steps": 6},
+            {"id": "turbo", "label": "✦ Turbo 1024×1024 (~4.9min)", "width": 1024, "height": 1024, "steps": 6},
+            {"id": "wide", "label": "✦ Wide HD 1280×720 (~4.9min)", "width": 1280, "height": 720, "steps": 6},
         ],
     },
     "krea2-turbo": {
@@ -385,13 +391,13 @@ MODELS = {
         # Size caps removed 2026-09-22 (user decision). 16GB M1 note: the q4
         # pipeline is ~10.5GB resident; 1024² can OOM in the bf16 VAE decode.
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft 512×768 25 steps (~13min)", "width": 512, "height": 768, "steps": 25},
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 25 steps (~12min)", "width": 512, "height": 768, "steps": 25},
             # No time claims on these two: the measured medians only exist for
             # 512x768, and a test refuses a claim without one. Bench pending a
             # quiet machine - a 25-step run is ~13min, so it is not something to
             # guess at on a loaded one.
-            {"id": "wide", "label": "✦ Wide 768×768 25 steps", "width": 768, "height": 768, "steps": 25},
-            {"id": "landscape", "label": "✦ Landscape 768×512 25 steps", "width": 768, "height": 512, "steps": 25},
+            {"id": "wide", "label": "✦ Wide 768×768 25 steps (~12min)", "width": 768, "height": 768, "steps": 25},
+            {"id": "landscape", "label": "✦ Landscape 768×512 25 steps (~9min)", "width": 768, "height": 512, "steps": 25},
         ],
     },
 }

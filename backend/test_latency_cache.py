@@ -559,12 +559,20 @@ class PresetTimeClaimTests(unittest.TestCase):
         ("realvis-xl-v5-lightning", "portrait"): 108.0,
         ("realvis-xl-v5", "draft"): 48.7,
         ("juggernaut-xi", "draft"): 44.7,
-        ("z-image-turbo", "turbo"): 444.6,
+        # z-image moved 8 -> 6 steps on 2026-09-29, so these are the 6-step
+        # medians: 512x768 min 84.92 / median 91.76, 1024x1024 293.17,
+        # 1280x720 295.28. The 8-step numbers were 149.1 (n=83 in the gallery),
+        # 444.6 and 359.07.
+        ("z-image-turbo", "draft"): 91.8,
+        ("z-image-turbo", "turbo"): 293.2,
+        ("z-image-turbo", "wide"): 295.3,
         ("krea2-turbo", "draft"): 198.3,
         ("krea2-turbo", "turbo"): 216.3,
         ("krea2-turbo", "portrait"): 329.4,
         ("krea2-turbo", "fast"): 147.7,
-        ("qwen-image-2.1", "draft"): 790.8,
+        ("qwen-image-2.1", "draft"): 715.8,
+        ("qwen-image-2.1", "wide"): 709.1,
+        ("qwen-image-2.1", "landscape"): 540.7,
     }
     # 816.0s was measured at 768x512 / 40 steps and 910.0s at 512x768 / 40 steps.
     # Both 40-step presets are gone, so those measurements no longer back any
