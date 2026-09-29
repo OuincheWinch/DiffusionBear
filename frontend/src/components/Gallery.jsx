@@ -19,6 +19,20 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
 
   const abortRef = useRef(null);
 
+  // Typing in the search boxes used to re-run the full gallery query per
+  // keystroke, and each run copies + filters + sorts the whole index server-side
+  // (~1469 entries) for a result that is thrown away a few ms later. The inputs
+  // stay instant; only the request is debounced.
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [debouncedTags, setDebouncedTags] = useState(tags);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+      setDebouncedTags(tags);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query, tags]);
+
   useEffect(() => {
     api("/api/models").then(setModels).catch(() => {});
   }, []);
@@ -57,8 +71,8 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
     abortRef.current = controller;
     try {
       const params = new URLSearchParams({
-        query: query.trim(),
-        tags,
+        query: debouncedQuery.trim(),
+        tags: debouncedTags,
         sort,
         page,
         limit,
@@ -75,7 +89,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
         /* keep previous items on transient failures */
       }
     }
-  }, [query, tags, sort, page, model, lora]);
+  }, [debouncedQuery, debouncedTags, sort, page, model, lora]);
 
   // Load immediately on tab switch, refreshKey or filter changes
   useEffect(() => {
@@ -86,9 +100,10 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
     };
   }, [load, refreshKey, activeTab]);
 
-  async function openDetail(item) {
+  // The list rows are the full sidecar dicts, so opening one needs no extra
+  // round-trip to /api/images/{id}.
+  function openDetail(item) {
     setSelected(item);
-    api(`/api/images/${item.id}`).then(setSelected).catch(() => {});
   }
 
   const selectedIndex = selected
@@ -101,7 +116,6 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
       const next = items[selectedIndex + delta];
       if (!next) return;
       setSelected(next);
-      api(`/api/images/${next.id}`).then(setSelected).catch(() => {});
     },
     [selectedIndex, items]
   );

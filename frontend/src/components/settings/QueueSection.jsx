@@ -37,8 +37,26 @@ export default function QueueSection({ onNavigate }) {
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 4000);
-    return () => clearInterval(t);
+    let timer = null;
+    const tick = () => {
+      const hidden = typeof document !== "undefined" && document.hidden;
+      timer = setTimeout(async () => {
+        await refresh();
+        tick();
+      }, hidden ? 20000 : 4000);
+    };
+    tick();
+    const onVisibility = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        clearTimeout(timer);
+        tick();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      clearTimeout(timer);
+    };
   }, [refresh]);
 
   async function cancelJob(id) {

@@ -88,6 +88,7 @@ DEFAULTS = {
     "memory_krea_wired_limit_gb": None,
     "idle_kill_s_mflux": None,
     "idle_kill_s_sdxl": None,
+    "idle_kill_s_qwen": None,
 }
 
 # Engine keys used by prompt_enhancer.ENGINE_PROFILES.
@@ -144,6 +145,7 @@ _VALIDATORS = {
     "memory_krea_wired_limit_gb": lambda v: v is None or (_is_number(v) and 0 <= v <= 128),
     "idle_kill_s_mflux": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),
     "idle_kill_s_sdxl": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),
+    "idle_kill_s_qwen": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),
 }
 
 
@@ -157,14 +159,42 @@ def _deep_merge(base: dict, updates: dict) -> dict:
     return out
 
 
+def _settings_signature():
+    """Identity of the on-disk settings file: (mtime_ns, size, resolved path).
+
+    The resolved path is part of the signature so that swapping settings.json
+    for a symlink pointing outside DATA_DIR still busts the cache and gets the
+    containment check re-run.
+    """
+    try:
+        st = SETTINGS_FILE.stat()
+    except OSError:
+        return None
+    try:
+        resolved = str(SETTINGS_FILE.resolve())
+    except OSError:
+        resolved = ""
+    return (st.st_mtime_ns, st.st_size, resolved)
+
+
+# (signature, validated settings) for the last successful _load(). Every _load()
+# caller already holds _lock, so no extra locking is needed here.
+_load_cache: dict = {}
+
+
 def _load() -> dict:
+    signature = _settings_signature()
+    cached = _load_cache.get("settings")
+    if cached is not None and _load_cache.get("signature") == signature:
+        return json.loads(json.dumps(cached))
+
     settings = json.loads(json.dumps(DEFAULTS))
     try:
         raw = (
             json.loads(SETTINGS_FILE.read_text("utf-8"))
-            if SETTINGS_FILE.exists()
+            if signature is not None
             and SETTINGS_FILE.resolve().is_relative_to(DATA_DIR.resolve())
-            and SETTINGS_FILE.stat().st_size <= _MAX_SETTINGS_BYTES
+            and signature[1] <= _MAX_SETTINGS_BYTES
             else {}
         )
     except (OSError, UnicodeError, json.JSONDecodeError) as e:
@@ -197,7 +227,9 @@ def _load() -> dict:
             settings[key] = clean_prompts
         else:
             settings[key] = value
-    return settings
+    _load_cache["signature"] = signature
+    _load_cache["settings"] = settings
+    return json.loads(json.dumps(settings))
 
 
 def _save(settings: dict):
@@ -219,6 +251,7 @@ def _save(settings: dict):
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, SETTINGS_FILE)
+        _load_cache.clear()
         try:
             dir_fd = os.open(str(SETTINGS_FILE.parent), os.O_RDONLY)
             try:

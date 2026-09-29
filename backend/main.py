@@ -122,11 +122,14 @@ async def lifespan(app: FastAPI):
     generator.cleanup_orphan_artifacts()
     if not generator._cleanup_stale_sdxl_daemon():
         raise RuntimeError("could not verify the previous SDXL daemon")
+    if not generator._cleanup_stale_qwen_daemon():
+        raise RuntimeError("could not verify the previous Qwen daemon")
     _init_gallery_index()
     threading.Thread(target=_discover_local_loras, daemon=True).start()
     yield
     try:
         generator._kill_sdxl_daemon()
+        generator._kill_qwen_process()
         generator._drop_mflux_pipeline()
     except Exception:
         pass

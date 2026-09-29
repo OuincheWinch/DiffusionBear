@@ -29,6 +29,16 @@ from state import (
 
 router = APIRouter(tags=["gallery"])
 
+# Image bytes are written once under a unique id and never mutated, but
+# delete_image() unlinks them permanently. A long `immutable` window would keep a
+# deleted image visible in any browser that already fetched it, so this trades a
+# little staleness for the refetch win: fresh for an hour (covers all tab
+# switching and reloads), then served stale while revalidating, so a delete
+# surfaces within about an hour instead of never.
+_IMAGE_BYTES_HEADERS = {
+    "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+}
+
 
 def _matches_lora_filter(item: dict, lora_filter: str) -> bool:
     if not lora_filter or lora_filter.strip().lower() in ("", "all", "*"):
@@ -178,29 +188,57 @@ def image_meta(image_id: str):
 @router.get("/api/images/{image_id}/file")
 def image_file(image_id: str, thumb: bool = False):
     _validate_image_id(image_id)
-    with _IMAGE_MUTATION_LOCK:
-        if _image_is_deleted(image_id):
-            raise HTTPException(404, "not found")
-        generated_root = GENERATED_DIR.resolve()
-        if thumb:
-            try:
-                thumbnail = generator.thumbnail_path(image_id).resolve()
-                if thumbnail.is_relative_to(generated_root) and thumbnail.is_file():
-                    return FileResponse(
-                        thumbnail,
-                        media_type="image/png",
-                        headers={"Content-Disposition": f'inline; filename="{image_id}_thumb.png"', "Access-Control-Expose-Headers": "Content-Disposition"},
-                    )
-            except (OSError, ValueError):
-                pass
+    if _image_is_deleted(image_id):
+        raise HTTPException(404, "not found")
+    generated_root = GENERATED_DIR.resolve()
+
+    if thumb:
+        # Fast path: the thumb is already on disk, so no mutation lock is needed.
+        # A 24-cell gallery page used to serialize here on the global RLock.
+        cached_thumb = GENERATED_DIR / f"{image_id}_thumb.png"
+        if not cached_thumb.is_file():
+            with _IMAGE_MUTATION_LOCK:
+                if _image_is_deleted(image_id):
+                    raise HTTPException(404, "not found")
+                try:
+                    cached_thumb = generator.thumbnail_path(image_id)
+                except (OSError, ValueError):
+                    cached_thumb = None
+        if cached_thumb is not None:
+            thumbnail = cached_thumb.resolve()
+            if thumbnail.is_relative_to(generated_root) and thumbnail.is_file():
+                return FileResponse(
+                    thumbnail,
+                    media_type="image/png",
+                    headers=_IMAGE_BYTES_HEADERS | {
+                        "Content-Disposition": f'inline; filename="{image_id}_thumb.png"',
+                        "Access-Control-Expose-Headers": "Content-Disposition",
+                    },
+                )
         for suffix, media_type in ((".png", "image/png"), (".jpeg", "image/jpeg"), (".jpg", "image/jpeg")):
             path = (GENERATED_DIR / f"{image_id}{suffix}").resolve()
             if path.is_relative_to(generated_root) and path.is_file():
                 return FileResponse(
                     path,
                     media_type=media_type,
-                    headers={"Content-Disposition": f'inline; filename="{path.name}"', "Access-Control-Expose-Headers": "Content-Disposition"},
+                    headers=_IMAGE_BYTES_HEADERS | {
+                        "Content-Disposition": f'inline; filename="{path.name}"',
+                        "Access-Control-Expose-Headers": "Content-Disposition",
+                    },
                 )
+        raise HTTPException(404, "not found")
+
+    for suffix, media_type in ((".png", "image/png"), (".jpeg", "image/jpeg"), (".jpg", "image/jpeg")):
+        path = (GENERATED_DIR / f"{image_id}{suffix}").resolve()
+        if path.is_relative_to(generated_root) and path.is_file():
+            return FileResponse(
+                path,
+                media_type=media_type,
+                headers=_IMAGE_BYTES_HEADERS | {
+                    "Content-Disposition": f'inline; filename="{path.name}"',
+                    "Access-Control-Expose-Headers": "Content-Disposition",
+                },
+            )
     raise HTTPException(404, "not found")
 
 

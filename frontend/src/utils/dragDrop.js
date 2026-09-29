@@ -112,6 +112,13 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
   const rawUrl = imageUrl(id, false); // false = full resolution, NOT thumb
   const fullUrl = typeof window !== "undefined" ? new URL(rawUrl, window.location.href).href : rawUrl;
 
+  // Hover deliberately does NOT swap src or pre-fetch. Doing it on pointerenter
+  // replaced every 265KB thumbnail in the DOM with its 689KB original (with no
+  // mouseleave to restore it), so sweeping the mouse across a 24-cell gallery
+  // page pulled ~16MB and forced a full-resolution PNG decode per cell. The
+  // macOS drag requirement is satisfied at pointerdown, which is what the
+  // browser inspects, and the loopback pre-fetch has the whole press-to-drag
+  // gesture to land before dragstart.
   const handleInteraction = (e) => {
     ensureFullResolutionImage(e, id);
     preloadFullImageFile(image);
@@ -120,11 +127,9 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
   return {
     draggable: true,
     onPointerEnter: (e) => {
-      handleInteraction(e);
       extraHandlers.onPointerEnter?.(e);
     },
     onMouseEnter: (e) => {
-      handleInteraction(e);
       extraHandlers.onMouseEnter?.(e);
     },
     onPointerDown: (e) => {

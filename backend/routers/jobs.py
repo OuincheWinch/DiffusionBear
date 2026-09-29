@@ -40,6 +40,10 @@ def _prepare_request(value: GenerateRequest | dict) -> GenerateRequest:
     if info is None:
         raise HTTPException(400, f"unknown model: {req.model}")
     req.model = info["id"]
+    if req.width is None:
+        req.width = int(info.get("default_width") or 512)
+    if req.height is None:
+        req.height = int(info.get("default_height") or 768)
     if not info.get("supports_fast_vae"):
         req.fast_vae = False
     if len(req.loras) > MAX_LORAS:
@@ -79,8 +83,19 @@ def _prepare_request(value: GenerateRequest | dict) -> GenerateRequest:
         req.reference_images = _validate_reference_images(req.reference_images)
     elif req.reference_strength is not None:
         raise HTTPException(400, "reference_strength requires a reference image")
-    if info.get("id") == "qwen-image-2.1" and req.width * req.height > 589824:
-        raise HTTPException(400, "qwen-image-2.1 requests are limited to 589824 pixels")
+    if info.get("id") == "qwen-image-2.1":
+        if req.width * req.height > 589824:
+            raise HTTPException(400, "qwen-image-2.1 requests are limited to 589824 pixels")
+        # Refused here rather than in the worker, so a 40-step request is a clean
+        # 400 at submit time instead of a queued job that fails a second later.
+        steps = req.steps if req.steps is not None else int(info.get("default_steps") or 25)
+        if steps > generator._QWEN_MAX_STEPS:
+            raise HTTPException(
+                400,
+                f"qwen-image-2.1 is limited to {generator._QWEN_MAX_STEPS} steps on this machine "
+                f"(measured median 790.8s at 25 steps vs 910s at 40). Requested {steps}. "
+                f"Change the per-model default in Parameters > Defaults if it is set there.",
+            )
     return req
 
 

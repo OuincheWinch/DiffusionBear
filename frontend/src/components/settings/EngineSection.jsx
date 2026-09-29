@@ -51,6 +51,7 @@ export default function EngineSection() {
     kreaGb: "",
     mfluxIdle: "",
     sdxlIdle: "",
+    qwenIdle: "",
   }));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -62,6 +63,7 @@ export default function EngineSection() {
       kreaGb: String(s.wired?.krea_limit_gb ?? ""),
       mfluxIdle: String(s.mflux?.idle_kill_s ?? ""),
       sdxlIdle: String(s.sdxl?.idle_kill_s ?? ""),
+      qwenIdle: String(s.qwen?.idle_kill_s ?? ""),
     });
   };
 
@@ -79,11 +81,23 @@ export default function EngineSection() {
       } catch (e) {
         if (alive) setErr(e.message || String(e));
       }
-      if (alive) refreshTimer = setTimeout(poll, 5000);
+      if (!alive) return;
+      // The storage counters are TTL-cached server-side; polling this panel
+      // every 5s is only worth it while the window is actually being watched.
+      const hidden = typeof document !== "undefined" && document.hidden;
+      refreshTimer = setTimeout(poll, hidden ? 30000 : 5000);
+    }
+    function handleVisibility() {
+      if (alive && typeof document !== "undefined" && !document.hidden) {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(poll, 0);
+      }
     }
     refreshTimer = setTimeout(poll, 0);
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       alive = false;
+      document.removeEventListener("visibilitychange", handleVisibility);
       clearTimeout(refreshTimer);
     };
   }, [dirty]);
@@ -95,11 +109,12 @@ export default function EngineSection() {
     const kreaGb = normalizeNum(draft.kreaGb);
     const mfluxIdle = normalizeNum(draft.mfluxIdle);
     const sdxlIdle = normalizeNum(draft.sdxlIdle);
-    if (wiredGb == null || kreaGb == null || mfluxIdle == null || sdxlIdle == null) {
+    const qwenIdle = normalizeNum(draft.qwenIdle);
+    if (wiredGb == null || kreaGb == null || mfluxIdle == null || sdxlIdle == null || qwenIdle == null) {
       setErr("All tuning values must be numbers (0 disables).");
       return;
     }
-    if (wiredGb < 0 || kreaGb < 0 || mfluxIdle < 0 || sdxlIdle < 0) {
+    if (wiredGb < 0 || kreaGb < 0 || mfluxIdle < 0 || sdxlIdle < 0 || qwenIdle < 0) {
       setErr("Values must be ≥ 0.");
       return;
     }
@@ -107,6 +122,7 @@ export default function EngineSection() {
     payload.memory_krea_wired_limit_gb = kreaGb;
     payload.idle_kill_s_mflux = Math.round(mfluxIdle);
     payload.idle_kill_s_sdxl = Math.round(sdxlIdle);
+    payload.idle_kill_s_qwen = Math.round(qwenIdle);
     setSaving(true);
     setErr(null);
     try {
@@ -267,6 +283,15 @@ export default function EngineSection() {
               step="5"
               max={86400}
               title="Idle seconds before the SDXL daemon is killed. 0 = keep alive."
+            />
+            <TuneInput
+              label="qwen idle"
+              unit="s"
+              value={draft.qwenIdle}
+              onChange={(v) => { setDraft((d) => ({ ...d, qwenIdle: v })); setDirty(true); }}
+              step="5"
+              max={86400}
+              title="Idle seconds before the Qwen daemon is killed. 0 = keep alive."
             />
             <div className="engine-tune-actions">
               <button type="submit" className="btn-mini" disabled={saving || !dirty}>

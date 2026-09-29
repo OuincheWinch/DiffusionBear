@@ -55,6 +55,7 @@ class EngineConfigRequest(BaseModel):
     memory_krea_wired_limit_gb: float | None = Field(default=None, ge=0, le=128)
     idle_kill_s_mflux: int | None = Field(default=None, ge=0, le=86400)
     idle_kill_s_sdxl: int | None = Field(default=None, ge=0, le=86400)
+    idle_kill_s_qwen: int | None = Field(default=None, ge=0, le=86400)
 
 
 @router.post("/api/engine/config")

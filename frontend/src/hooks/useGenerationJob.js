@@ -4,6 +4,16 @@ import { api } from "../api";
 const ACTIVE_STATUSES = new Set(["generating", "queued"]);
 const POLL_DELAY_MS = 500;
 const IDLE_DELAY_MS = 1500;
+// Backoff used while the browser window is in the background. A generation can
+// run for minutes, and a 500ms poll is ~800 requests per run competing for the
+// same CPU that MLX needs. Polling never stops, so a job started from another
+// tab is still discovered; returning to the window triggers an immediate poll.
+const HIDDEN_POLL_DELAY_MS = 5000;
+const HIDDEN_IDLE_DELAY_MS = 10000;
+
+function isWindowHidden() {
+  return typeof document !== "undefined" && document.hidden;
+}
 
 function isAbortError(error) {
   return error?.name === "AbortError";
@@ -188,7 +198,9 @@ export function useGenerationJob({ onGenerated, onImageSaved }) {
 
     const isCurrent = () => !stopped && sequence === sequenceRef.current && jobIdRef.current === jobId;
     const schedule = (delay = POLL_DELAY_MS) => {
-      if (isCurrent()) timer = window.setTimeout(poll, delay);
+      if (!isCurrent()) return;
+      const base = delay === POLL_DELAY_MS && isWindowHidden() ? HIDDEN_POLL_DELAY_MS : delay;
+      timer = window.setTimeout(poll, base);
     };
 
     async function poll() {
@@ -270,8 +282,16 @@ export function useGenerationJob({ onGenerated, onImageSaved }) {
     }
 
     schedule(0);
+    function handleVisibility() {
+      if (!isWindowHidden() && isCurrent() && timer != null) {
+        window.clearTimeout(timer);
+        schedule(0);
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       stopped = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
       if (timer != null) window.clearTimeout(timer);
       if (pollAbortRef.current === controller) pollAbortRef.current = null;
       controller.abort();
@@ -313,11 +333,19 @@ export function useGenerationJob({ onGenerated, onImageSaved }) {
       } catch (err) {
          if (!isAbortError(err) && !stopped) setPollingError(err.message || String(err));
       }
-      if (!stopped) timer = window.setTimeout(poll, IDLE_DELAY_MS);
+      if (!stopped) timer = window.setTimeout(poll, isWindowHidden() ? HIDDEN_IDLE_DELAY_MS : IDLE_DELAY_MS);
     };
     timer = window.setTimeout(poll, 0);
+    function handleVisibility() {
+      if (!stopped && !isWindowHidden() && timer != null) {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(poll, 0);
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       stopped = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
       if (timer != null) window.clearTimeout(timer);
       controller.abort();
     };
