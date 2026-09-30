@@ -176,6 +176,26 @@ input[type="checkbox"].settings-checkbox:indeterminate::after {
   background: #ffffff;
 }
 
+/* --- row -------------------------------------------------------------------
+   A labelled group of fields. Restored here after being dropped during the
+   extraction from App.css, which removed the vertical rhythm for every section
+   in the tab: a title span and its hint span are both inline-level, so with no
+   flex column and no gap they rendered as one run-on line --
+   "Global fallbacksApplied only when a model has no explicit per-model
+   override." That was a regression from this file, not a pre-existing bug. */
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+/* A title followed by its hint is two lines, never one. The hint is the
+   explanation of the title, so it is set apart rather than run into it. */
+.settings-row > .settings-field-title + .settings-hint {
+  margin-top: -0.3rem;
+}
+
 /* --- grid + row geometry --------------------------------------------------
    `minmax(220px, 1fr)` on its own gave every cell a different content width,
    which is why the select and the checkbox ended up unrelated sizes. The
@@ -191,6 +211,17 @@ input[type="checkbox"].settings-checkbox:indeterminate::after {
 
 .settings-grid-3 {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+/* A boolean living in a grid of labelled fields. The label slot above the box
+   aligns it with its neighbours; the box itself then sits on the same line as
+   their controls. */
+.settings-field--check {
+  justify-content: flex-end;
+}
+.settings-field--check > .settings-check {
+  min-height: 0;
+  padding: 0.5rem 0;
 }
 
 .settings-grid > div,
@@ -231,14 +262,22 @@ input[type="checkbox"].settings-checkbox:indeterminate::after {
   min-width: 0;
 }
 
-/* The boolean keeps its intrinsic width and aligns to the control's box, not
-   the text baseline. `end` on a control of fixed height is what removes the
-   3px vertical offset visible in the screenshot. */
+/* The boolean keeps its intrinsic width and sits level with the CONTROL it shares
+   a row with, not with the control's label.
+
+   The previous version used `padding-bottom: 0.5rem` to fake that alignment. It
+   did not work: the label above the select occupies the top of the cell, the
+   checkbox had no such label, and the padding moved the box further up, so it
+   floated above the select and read as a stray square. The row height is the
+   select (label + control), so centring the boolean on the whole row lands it on
+   the control. */
 .settings-inline--split > .settings-check {
   flex: 0 0 auto;
-  align-self: end;
-  padding-bottom: 0.5rem;
+  align-self: center;
   min-height: 0;
+  /* Same vertical space a control occupies, so the row's baseline is unambiguous
+     and a click anywhere in the band toggles it. */
+  padding: 0.5rem 0;
 }
 
 /* --- actions --------------------------------------------------------------

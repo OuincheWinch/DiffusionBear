@@ -268,14 +268,21 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
                   }
                 />
               </label>
-              <label className="settings-check">
-                <input
-                  type="checkbox"
-                  className="settings-checkbox"
-                  checked={!!draft.fast_vae}
-                  onChange={(e) => setDraft({ ...draft, fast_vae: e.target.checked })}
-                />
-                <span>{t("settings.defaults.fastVaeShort")}</span>
+              <label className="settings-field settings-field--check">
+                {/* An empty label slot. The other cells in this row carry a label
+                    above their control; without one this checkbox sat a full line
+                    higher than its neighbours and read as a stray box. The slot is
+                    aria-hidden because the real label is the text beside the box. */}
+                <span className="settings-label" aria-hidden="true" />
+                <span className="settings-check">
+                  <input
+                    type="checkbox"
+                    className="settings-checkbox"
+                    checked={!!draft.fast_vae}
+                    onChange={(e) => setDraft({ ...draft, fast_vae: e.target.checked })}
+                  />
+                  <span>{t("settings.defaults.fastVaeShort")}</span>
+                </span>
               </label>
               <label className="settings-field">
                 <span>{t("settings.defaults.width")}</span>
