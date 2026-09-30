@@ -238,6 +238,33 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
+# ---------------------------------------------------------------- bytecode
+# Remove every .pyc and __pycache__ BEFORE signing, and leave PYTHONDONTWRITEBYTECODE
+# set at runtime so none come back. Both halves are required.
+#
+# This was the cause of an intermittent 100s+ startup stall that looked like a macOS
+# permission problem and was chased as one for hours. The backend imports fine in 10s
+# from a shell, and hangs as a child of the GUI app. The real mechanism:
+#
+#   1. The app runs, CPython writes __pycache__/*.pyc INTO the signed bundle.
+#   2. Those are new files inside a sealed resource, so the bundle's signature is now
+#      invalid: "a sealed resource is missing or invalid" on the next `codesign
+#      --verify`.
+#   3. macOS then re-validates all 52,215 files in the bundle before letting the child
+#      exec. That takes far longer than the launcher's 100s timeout, so the child is
+#      killed mid-import, retried three times, and the app never appears to start. The
+#      log is empty because Python had not yet reached uvicorn's first print.
+#
+# A stale build stage ships 11,895 .pyc files before the backend even runs, and the
+# backend adds ~1,300 more on first import. Stripping only at build time is not enough
+# if anything ever imports from the bundle, hence the env var below as well.
+say "stripping bytecode from the bundle"
+find "$APP/Contents/Resources" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
+find "$APP/Contents/Resources" -name '*.pyc' -type f -delete 2>/dev/null || true
+remaining=$(find "$APP/Contents/Resources" -name '*.pyc' -o -name '__pycache__' -type d 2>/dev/null | wc -l | tr -d ' ')
+[ "$remaining" = "0" ] || { echo "bytecode survived the strip ($remaining left); refusing to sign a self-invalidating bundle" >&2; exit 1; }
+echo "  clean: no .pyc or __pycache__ before signing"
+
 # ---------------------------------------------------------------- sign
 # No Developer ID: ad-hoc only. A locally built bundle is not quarantined, so
 # Gatekeeper does not intervene; moving it to another Mac would need a right-click

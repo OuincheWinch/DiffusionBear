@@ -87,7 +87,8 @@ private struct Paths {
     }
 }
 
-private var backendURL: URL { URL(string: "http://127.0.0.1:\(backendPort)")! }
+private var backendURL: URL { portURL(backendPort) }
+private func portURL(_ port: Int) -> URL { URL(string: "http://127.0.0.1:\(port)")! }
 
 /// True when the app itself lives on a mounted volume rather than the system disk.
 ///
@@ -169,6 +170,49 @@ final class BackendProcess {
         catch { return false }
     }
 
+    /// Kills a backend child left behind by a previous launch.
+    ///
+    /// When the launcher is killed (pkill, a crash, a force quit) its uvicorn keeps
+    /// running and keeps the port bound. The next launch then cannot bind, and every
+    /// probe answers from the *old* process, which looks exactly like a hung backend
+    /// and hides the real state. That happened repeatedly during testing: two strays
+    /// survived five clean launch cycles, and one of them made a healthy backend
+    /// report a 100s timeout.
+    ///
+    /// Only processes that are genuinely ours are touched: the exact interpreter path
+    /// inside this bundle, matching our own arguments. An unrelated `python` is never
+    /// a candidate.
+    static func reapStrayBackends() {
+        let pattern = "^\(Paths.python.path).* -m uvicorn main:app"
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        task.arguments = ["-f", pattern]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = FileHandle.nullDevice
+        guard (try? task.run()) != nil else { return }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+
+        let myPid = ProcessInfo.processInfo.processIdentifier
+        let strays = String(decoding: data, as: UTF8.self)
+            .split(separator: "\n")
+            .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { $0 != myPid }
+        guard !strays.isEmpty else { return }
+        for pid in strays {
+            trace("killing stray backend pid \(pid) from a previous launch")
+            kill(pid, SIGTERM)
+        }
+        // Give SIGTERM a moment; anything still alive gets SIGKILL rather than being
+        // left to hold the port.
+        Thread.sleep(forTimeInterval: 0.6)
+        for pid in strays where kill(pid, 0) == 0 {
+            trace("stray backend pid \(pid) ignored SIGTERM; sending SIGKILL")
+            kill(pid, SIGKILL)
+        }
+    }
+
     /// Explains a stall that left an empty log, which is otherwise undiagnosable.
     ///
     /// The symptom is brutal: the child sits at 0% CPU, never writes a single byte
@@ -186,6 +230,15 @@ final class BackendProcess {
         let dataReachable = FileManager.default.isReadableFile(atPath: data.path)
         let volumeName = data.deletingLastPathComponent().lastPathComponent
 
+        // The loudest false diagnosis available is "the log is empty, so it never
+        // started". That is not sound: the log is opened by the launcher and shared
+        // with the child, and an *earlier* child can hold both the port and the log,
+        // in which case the new one is blocked on bind and never writes a thing.
+        // Check whether something is serving the port before blaming startup.
+        if Self.isPortAnswering(backendPort) {
+            return "\n\nAnother DiffusionBear backend is already running and still owns "
+                + "port \(backendPort). Quit the other copy of the app, then launch again."
+        }
         if logIsEmpty && !dataReachable {
             return "\n\nThe log is empty and the data directory is not readable. "
                 + "macOS is withholding access to \(volumeName) instead of prompting. "
@@ -260,6 +313,12 @@ final class BackendProcess {
         // spawned as grandchildren with their own interpreters. The venvs are
         // invoked as `-m uvicorn`, so no PYTHONPATH is needed either.
         env.removeValue(forKey: "PYTHONHOME")
+        // Never write .pyc into the bundle. A new file inside a sealed resource
+        // invalidates the signature, and macOS then re-validates all ~52k files
+        // before the child may exec -- which took longer than the 100s startup
+        // timeout and looked like a hung backend with an empty log. See the bytecode
+        // section in build_app.sh for the full mechanism.
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
         p.environment = env
 
         p.standardOutput = logHandle
@@ -343,8 +402,16 @@ final class BackendProcess {
         }
     }
 
+    private static func isPortAnswering(_ port: Int) -> Bool {
+        answers(path: "/api/version", port: port)
+    }
+
     private static func answers(path: String) -> Bool {
-        var request = URLRequest(url: backendURL.appendingPathComponent(path))
+        answers(path: path, port: backendPort)
+    }
+
+    private static func answers(path: String, port: Int) -> Bool {
+        var request = URLRequest(url: portURL(port).appendingPathComponent(path))
         request.httpMethod = "GET"
         request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         request.timeoutInterval = pollInterval + 0.5
@@ -553,6 +620,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         installMainMenu()
+        // Before anything can bind the port. A stray from a previous launch holds
+        // 8001, the new child cannot bind, and the old one answers every probe --
+        // indistinguishable from a backend that refuses to start.
+        BackendProcess.reapStrayBackends()
         purgeInterfaceCache()
         // Hold a user-initiated activity for the app's whole life. Without this,
         // macOS is free to App-Nap this process (and its backend child) whenever
