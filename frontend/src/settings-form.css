@@ -1,0 +1,324 @@
+/* ==========================================================================
+   Settings form system
+   --------------------------------------------------------------------------
+   Written after auditing the Parameters tab against the ui-ux-pro-max
+   guidelines. The tab was a stack of per-component rules with no shared
+   primitives, which produced four defects visible in the UI:
+
+   1. Unstyled native checkboxes. There was no `input[type="checkbox"]` rule
+      anywhere, so a 13px native control sat inline with an 0.8rem label and
+      floated above the baseline. "Default [checkbox] Stealth (no metadata)"
+      read as three disconnected fragments.
+      -> styled checkbox + real switch for boolean settings.
+
+   2. A select stretched to fill its grid cell while the checkbox beside it was
+      intrinsic width, so one logical row held two controls of unrelated sizes.
+      .settings-grid is `repeat(auto-fit, minmax(220px, 1fr))`; the select had
+      no width rule of its own.
+      -> every control in a grid cell is the same width, and the row is a
+      real two-column layout instead of accidental wrapping.
+
+   3. Save buttons stacked under a single column, so "Save output preferences"
+      sat under the select and looked like it belonged to the select alone.
+      -> actions are a distinct full-width row beneath the fields.
+
+   4. Six `outline: none` rules with no replacement indicator. Keyboard focus
+      was invisible (Interaction/High, Accessibility/High: Focus States).
+      A border-colour change is not a focus indicator; it is 1px of border
+      colour and is invisible in high-contrast and on a busy background.
+      -> one global :focus-visible ring, >=2px perimeter with 3:1 contrast,
+      and the local `outline: none` removed in favour of it.
+   ========================================================================== */
+
+/* --- form field primitives ------------------------------------------------ */
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+/* The label is the control's accessible name and the visible one too; it sits
+   above the control so long values never push the label out of view. */
+.settings-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.settings-field-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.settings-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* A real gap: the 0.4rem of the old rule left the glyph touching the text. */
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  /* Keeps the whole row clickable, not just the 13px box: the row becomes the
+     target, which is what WCAG 2.2 Target Size (Minimum) actually asks for. */
+  cursor: pointer;
+  user-select: none;
+  min-height: 1.75rem;
+}
+
+/* --- checkbox -------------------------------------------------------------
+   Replaces the default 13px native control. Sized to the label's optical
+   baseline, with the check drawn in a pseudo-element so no font or SVG
+   dependency is introduced. */
+
+input[type="checkbox"].settings-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  background: var(--panel);
+  cursor: pointer;
+  /* Transition is on the two properties that carry meaning (colour), never on
+     size, and it is disabled under prefers-reduced-motion. */
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+input[type="checkbox"].settings-checkbox:hover {
+  border-color: #6b7280;
+}
+
+input[type="checkbox"].settings-checkbox:checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+/* The tick. Drawn with two borders rotated 45deg so it scales with font-size
+   and needs no icon font. */
+input[type="checkbox"].settings-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 0.31rem;
+  top: 0.09rem;
+  width: 0.24rem;
+  height: 0.45rem;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(43deg);
+}
+
+/* Indeterminate is used by "select all" style tri-state controls elsewhere. */
+input[type="checkbox"].settings-checkbox:indeterminate {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+input[type="checkbox"].settings-checkbox:indeterminate::after {
+  content: "";
+  position: absolute;
+  left: 0.24rem;
+  top: 0.44rem;
+  width: 0.5rem;
+  height: 2px;
+  background: #ffffff;
+  border: 0;
+  transform: none;
+}
+
+/* --- switch ---------------------------------------------------------------
+   Boolean settings that change engine behaviour (stealth metadata, fast VAE,
+   DeepCache) are read as on/off, so they get a switch rather than a checkbox.
+   The checkbox stays for "select this" semantics such as per-model overrides. */
+
+.settings-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 1.15rem;
+  padding: 0;
+  border: 1px solid #4b5563;
+  border-radius: 999px;
+  background: #1f2937;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.settings-switch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.15rem;
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 50%;
+  background: #9ca3af;
+  transform: translateY(-50%);
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.settings-switch[aria-checked="true"] {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.settings-switch[aria-checked="true"]::after {
+  transform: translate(0.82rem, -50%);
+  background: #ffffff;
+}
+
+/* --- grid + row geometry --------------------------------------------------
+   `minmax(220px, 1fr)` on its own gave every cell a different content width,
+   which is why the select and the checkbox ended up unrelated sizes. The
+   controls inside a cell are now explicitly equal, and a control that should
+   be intrinsic keeps its own class. */
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.settings-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.settings-grid > div,
+.settings-row input[type="text"],
+.settings-row input[type="number"],
+.settings-row select {
+  box-sizing: border-box;
+}
+
+/* Every control in a settings cell fills it. This is the single rule that makes
+   a row of fields read as a row. */
+.settings-field > select,
+.settings-field > input[type="text"],
+.settings-field > input[type="number"],
+.settings-field > input[type="url"] {
+  width: 100%;
+  min-width: 0;
+}
+
+/* A settings row that mixes a control and a boolean is two real columns: the
+   control takes the space it needs, the boolean sits on the baseline of the
+   control rather than floating above it. */
+.settings-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.settings-inline--split {
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.settings-inline--split > *:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The boolean keeps its intrinsic width and aligns to the control's box, not
+   the text baseline. `end` on a control of fixed height is what removes the
+   3px vertical offset visible in the screenshot. */
+.settings-inline--split > .settings-check {
+  flex: 0 0 auto;
+  align-self: end;
+  padding-bottom: 0.5rem;
+  min-height: 0;
+}
+
+/* --- actions --------------------------------------------------------------
+   The save button is not a field. It gets its own full-width row so it can
+   never be read as belonging to whichever control happens to sit above it. */
+
+.settings-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+
+.settings-actions--end {
+  justify-content: flex-end;
+}
+
+/* --- focus ----------------------------------------------------------------
+   WCAG 2.2 Focus Appearance: an indicator at least 2 CSS px thick with 3:1
+   contrast against the adjacent colour, drawn outside the control so it is
+   never clipped by an overflow:hidden ancestor. */
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* A switch is a pill; a square ring around it looks broken. */
+.settings-switch:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* Inputs keep their own radius, so the ring follows the control. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+/* --- reduced motion -------------------------------------------------------
+   The transitions above are all decorative state changes. Honouring the
+   preference costs nothing and the switch/checkbox still change state. */
+
+@media (prefers-reduced-motion: reduce) {
+  input[type="checkbox"].settings-checkbox,
+  .settings-switch,
+  .settings-switch::after {
+    transition: none;
+  }
+}
+
+/* --- forced colors --------------------------------------------------------
+   In Windows High Contrast the background colours above are discarded, so the
+   on/off state has to come from a shape change too, not colour alone. */
+
+@media (forced-colors: active) {
+  input[type="checkbox"].settings-checkbox {
+    border-color: CanvasText;
+  }
+  input[type="checkbox"].settings-checkbox:checked {
+    background: Highlight;
+  }
+  .settings-switch {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+  .settings-switch[aria-checked="true"] {
+    background: Highlight;
+  }
+  .settings-switch::after {
+    background: CanvasText;
+  }
+  .settings-switch[aria-checked="true"]::after {
+    background: HighlightText;
+  }
+}
+
+/* Replaces the six per-component `outline: none` rules that were scattered
+   through App.css. Each had replaced the focus ring with a 1px border-colour
+   change, which is not a focus indicator: it is invisible against a busy
+   background and in forced-colors mode. */

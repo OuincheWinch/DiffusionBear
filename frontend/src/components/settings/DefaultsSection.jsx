@@ -103,9 +103,9 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
           </div>
         </label>
 
-        <div className="settings-grid">
+        <div className="settings-inline settings-inline--split">
           <label className="settings-field">
-            <span>{t("settings.defaults.outputFormat")}</span>
+            <span className="settings-label">{t("settings.defaults.outputFormat")}</span>
             <select
               value={outputFormat}
               onChange={(e) => setOutputFormat(e.target.value)}
@@ -114,9 +114,16 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
               <option value="jpeg">{t("settings.defaults.formatJpeg")}</option>
             </select>
           </label>
-          <label className="settings-field settings-check">
+          {/* role="switch" rather than a bare checkbox: stealth metadata is an
+              on/off engine behaviour and should be announced as one. The label
+              wraps both, so the whole row is the pointer target rather than a
+              1rem box. */}
+          <label className="settings-check">
             <input
               type="checkbox"
+              className="settings-checkbox"
+              role="switch"
+              className="settings-checkbox"
               checked={stealth}
               onChange={(e) => setStealth(e.target.checked)}
             />
@@ -165,9 +172,10 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
               onChange={(e) => setCacheInterval(Number(e.target.value))}
             />
           </label>
-          <label className="settings-field settings-check">
+          <label className="settings-check">
             <input
               type="checkbox"
+              className="settings-checkbox"
               checked={fastVae}
               onChange={(e) => setFastVae(e.target.checked)}
             />
@@ -260,9 +268,10 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
                   }
                 />
               </label>
-              <label className="settings-field settings-check">
+              <label className="settings-check">
                 <input
                   type="checkbox"
+                  className="settings-checkbox"
                   checked={!!draft.fast_vae}
                   onChange={(e) => setDraft({ ...draft, fast_vae: e.target.checked })}
                 />
