@@ -127,9 +127,63 @@ class StorageScanTests(unittest.TestCase):
         ]), encoding="utf-8")
         (self.data / "lora_files/present.safetensors").write_bytes(b"c" * 32)
         report = self._report()
-        self.assertEqual(report["loras"]["files"], 1)
+        self.assertEqual(report["loras"]["files"], 1, f"dirs={report['loras']['directories']}")
         self.assertEqual(report["loras"]["missing_entries"], 1)
         self.assertEqual(report["loras"]["missing_names"], ["gone"])
+
+    def test_identical_files_in_two_directories_are_reported_as_duplicates(self):
+        """Two copies of the same file in different directories are wasted space,
+        and that is the single most useful thing this report can say."""
+        legacy = self.root / "legacy"
+        (legacy / "lora_files").mkdir(parents=True)
+        (legacy / "SDXL").mkdir(parents=True)
+        payload = b"Q" * (2 * 1024 * 1024)
+        # same name, same bytes, different directories
+        (self.data / "lora_files" / "style.safetensors").write_bytes(payload)
+        (legacy / "lora_files" / "style.safetensors").write_bytes(payload)
+        (self.data / "loras.json").write_text(json.dumps([
+            {"name": "style", "path": str(self.data / "lora_files/style.safetensors")},
+            {"name": "style-legacy", "path": str(legacy / "lora_files/style.safetensors")},
+        ]), encoding="utf-8")
+        report = self._report()
+        dupes = report["loras"]["duplicates"]
+        self.assertEqual(len(dupes), 1, f"expected one duplicate group, got {dupes}")
+        self.assertEqual(dupes[0]["name"], "style.safetensors")
+        self.assertEqual(dupes[0]["copies"], 2)
+        self.assertEqual(dupes[0]["wasted_bytes"], len(payload))
+        self.assertEqual(report["loras"]["duplicate_wasted_bytes"], len(payload))
+
+    def test_files_differing_beyond_the_fingerprint_are_not_duplicates(self):
+        legacy = self.root / "legacy"
+        (legacy / "lora_files").mkdir(parents=True)
+        a = self.data / "lora_files" / "x.safetensors"
+        a.write_bytes(b"A" * (2 * 1024 * 1024))
+        # identical head, identical size, different tail
+        b = legacy / "lora_files" / "x.safetensors"
+        b.write_bytes(b"A" * (2 * 1024 * 1024 - 1) + b"Z")
+        (self.data / "loras.json").write_text(json.dumps([
+            {"name": "x", "path": str(a)},
+            {"name": "x-legacy", "path": str(b)},
+        ]), encoding="utf-8")
+        report = self._report()
+        names = {d["name"] for d in report["loras"]["duplicates"]}
+        self.assertNotIn("x.safetensors", names,
+                         "a differing tail must not be reported as a duplicate")
+
+    def test_loras_are_counted_where_the_registry_points(self):
+        """The registry can point at directories other than the configured ones;
+        scanning only LORA_FILES_DIR invented orphans and undercounted files."""
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir()
+        (elsewhere / "remote-style.safetensors").write_bytes(b"R" * 4096)
+        (self.data / "loras.json").write_text(json.dumps([
+            {"name": "remote-style", "path": str(elsewhere / "remote-style.safetensors")},
+        ]), encoding="utf-8")
+        report = self._report()
+        self.assertEqual(report["loras"]["files"], 1)
+        self.assertIn(str(elsewhere.resolve()), report["loras"]["directories"])
+        self.assertEqual(report["loras"]["missing_entries"], 0)
+        self.assertEqual(report["loras"]["orphans"], [])
 
     def test_walk_is_bounded(self):
         # A runaway tree must not hang the scan.

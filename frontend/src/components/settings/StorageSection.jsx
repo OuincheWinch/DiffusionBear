@@ -52,6 +52,8 @@ export default function StorageSection({ onFeedback }) {
   const { totals, models, loras, gallery, uploads, secrets, config, unrecognised, roots } = report;
   const missing = loras.missing_entries || 0;
   const unseen = unrecognised.length;
+  const wasted = loras.duplicate_wasted_bytes || 0;
+  const dupes = loras.duplicates || [];
 
   return (
     <div className="settings-section">
@@ -72,7 +74,11 @@ export default function StorageSection({ onFeedback }) {
       <table className="storage-table">
         <tbody>
           <Row label="Models" bytes={totals.by_category.models} detail={`${models.length} directories`} />
-          <Row label="LoRAs" bytes={totals.by_category.loras} detail={`${loras.files} file(s) on disk`} />
+          <Row
+            label="LoRAs"
+            bytes={totals.by_category.loras}
+            detail={`${loras.files} file(s) across ${(loras.directories || []).length} director${(loras.directories || []).length === 1 ? "y" : "ies"}`}
+          />
           <Row
             label="Generated images"
             bytes={totals.by_category.gallery}
@@ -81,6 +87,15 @@ export default function StorageSection({ onFeedback }) {
           <Row label="Uploads" bytes={totals.by_category.uploads} detail={`${uploads.files} file(s)`} />
         </tbody>
       </table>
+
+      {wasted > 0 && (
+        <p className="warning">
+          <strong>{formatBytes(wasted)} is stored more than once.</strong> {dupes.length} probable duplicate file
+          {dupes.length === 1 ? "" : "s"} exist as identical copies in different directories —
+          usually a leftover from an older install alongside the current one. Nothing has been
+          removed; this is only telling you the space is there.
+        </p>
+      )}
 
       {missing > 0 && (
         <p className="warning">
@@ -103,6 +118,32 @@ export default function StorageSection({ onFeedback }) {
           That is not a verdict — a model placed by hand, or one a different build supports, looks
           the same. Worth a look, not an instruction. Nothing here is ever marked reclaimable.
         </p>
+      )}
+
+      {wasted > 0 && (
+        <details>
+          <summary>Duplicated files</summary>
+          <table className="storage-table">
+            <thead>
+              <tr>
+                <th>File</th>
+                <th className="num">Each</th>
+                <th className="num">Copies</th>
+                <th className="num">Wasted</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dupes.map((d) => (
+                <tr key={d.name + d.copies}>
+                  <td title={d.paths.join("\n")}>{d.name}</td>
+                  <td className="num">{formatBytes(d.bytes_each)}</td>
+                  <td className="num">{d.copies}</td>
+                  <td className="num">{formatBytes(d.wasted_bytes)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
       )}
 
       <details>

@@ -20,6 +20,7 @@ Design notes that matter:
 
 from __future__ import annotations
 
+import hashlib
 import os
 import threading
 import time
@@ -33,6 +34,8 @@ from state import LORA_FILES_DIR, LORAS_FILE, SDXL_LORA_DIR, UPLOADS_DIR
 
 CACHE_TTL_SECONDS = 60.0
 MAX_FILES_PER_DIR = 20000
+# Bytes read from the head of a file to fingerprint a suspected duplicate.
+DUP_FINGERPRINT_BYTES = 1 << 20
 
 # Reported by name/size only. Never read.
 SECRET_FILES = ("hf_token.txt", "civitai_token.txt")
@@ -197,30 +200,80 @@ def _scan_models(models_root: Path) -> tuple[list[Entry], list[Entry]]:
     return entries, unrecognised
 
 
+def _fingerprint(path: Path, size: int) -> str | None:
+    """sha256 over the head and tail of a file, plus its size.
+
+    Deliberately not a full hash: this runs over every file in every scanned
+    directory on a path the UI polls. See the duplicate-detection comment for the
+    trade-off this makes.
+    """
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(DUP_FINGERPRINT_BYTES)
+            if size > DUP_FINGERPRINT_BYTES:
+                fh.seek(max(0, size - DUP_FINGERPRINT_BYTES))
+                tail = fh.read(DUP_FINGERPRINT_BYTES)
+            else:
+                tail = b""
+    except OSError:
+        return None
+    return hashlib.sha256(head + b"\0" + tail + str(size).encode()).hexdigest()
+
+
 def _scan_loras() -> dict:
-    """LoRA files, and the ones no registry entry references."""
+    """LoRA files, counted where they actually live.
+
+    The registry does not keep every LoRA in one directory. Entries point at the
+    configured LORA_FILES_DIR, at SDXL_LORA_DIR, and -- in a shared-store install --
+    at an entirely different data directory. The first version of this scan only
+    looked at the configured LORA_FILES_DIR, so it reported "1 file on disk"
+    against 36 registered entries and invented a pile of orphans. The set of
+    directories to scan is therefore derived from the registry itself.
+    """
     try:
         from state import _read_loras  # local import: avoids a cycle at import time
-        registry = _read_loras()
+        registry = _read_loras() or []
     except Exception:
         registry = []
+
     referenced: set[Path] = set()
-    for entry in registry or []:
-        raw = entry.get("path") if isinstance(entry, dict) else None
+    registry_dirs: set[Path] = set()
+    for entry in registry:
+        if not isinstance(entry, dict):
+            continue
+        raw = entry.get("path")
         if not isinstance(raw, str) or not raw:
             continue
         try:
-            referenced.add(Path(raw).expanduser().resolve())
+            resolved = Path(raw).expanduser().resolve()
         except (OSError, RuntimeError):
             continue
+        referenced.add(resolved)
+        registry_dirs.add(resolved.parent)
+
+    # Always include the configured locations, so a file placed there but not yet
+    # registered still shows up as an orphan rather than being invisible.
+    #
+    # Everything is resolved before deduping. On macOS /var is a symlink to
+    # /private/var, so an unresolved configured path and a resolved registry path can
+    # be the same directory under two names -- which scanned it twice, double-counted
+    # every file in it, and manufactured duplicate groups out of one real copy.
+    candidates = set(registry_dirs)
+    candidates.update({Path(LORA_FILES_DIR), Path(SDXL_LORA_DIR)})
+    scan_dirs: set[Path] = set()
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+        except (OSError, RuntimeError):
+            resolved = candidate
+        if resolved.is_dir():
+            scan_dirs.add(resolved)
 
     orphans: list[Entry] = []
     total_bytes = 0
     total_files = 0
     present: set[Path] = set()
-    for root in (LORA_FILES_DIR, SDXL_LORA_DIR):
-        if not root.is_dir():
-            continue
+    for root in sorted(scan_dirs):
         try:
             children = list(os.scandir(root))
         except (OSError, PermissionError):
@@ -241,16 +294,64 @@ def _scan_loras() -> dict:
                 resolved = path
             present.add(resolved)
             if resolved not in referenced and not entry.name.startswith("."):
-                orphans.append(Entry(name=entry.name, path=str(path), bytes=size, files=1))
+                orphans.append(Entry(name=entry.name, path=str(path), bytes=size, files=1,
+                                     detail={"directory": str(root)}))
     orphans.sort(key=lambda e: e.bytes, reverse=True)
 
-    # Registered entries whose file is gone. The app surfaces this nowhere, so a LoRA
-    # can sit in the picker as a permanent silent failure. Counted here so the storage
-    # view can say so out loud.
-    missing_names: list[str] = []
-    for entry in registry or []:
-        if not isinstance(entry, dict):
+    # Duplicates. A shared-store install can leave the same LoRA sitting in both the
+    # current data directory and a legacy one, and 21 files / 10.6 GB of exact copies
+    # were found that way.
+    #
+    # This fingerprints rather than fully hashes: it reads DUP_FINGERPRINT_BYTES from
+    # the head AND the tail, plus the size. A full hash of 20 GB would take minutes
+    # and contend with generation. The consequence is honest and stated: these are
+    # *probable* duplicates, not proven ones. Two files with an identical head, an
+    # identical tail and an identical size but different middles would be missed,
+    # which is why nothing here is ever deleted automatically.
+    fingerprints: dict[tuple, list[Path]] = {}
+    for root in sorted(scan_dirs):
+        try:
+            children = list(os.scandir(root))
+        except (OSError, PermissionError):
             continue
+        for entry in children:
+            if not entry.is_file(follow_symlinks=False) or entry.name.startswith("."):
+                continue
+            try:
+                size = entry.stat(follow_symlinks=False).st_size
+            except (OSError, PermissionError):
+                continue
+            if size <= 0:
+                continue
+            fingerprints.setdefault((entry.name, size), []).append(Path(entry.path))
+
+    duplicates: list[dict] = []
+    wasted = 0
+    for (name, size), group in fingerprints.items():
+        if len(group) < 2:
+            continue
+        matches = []
+        for path in group:
+            digest = _fingerprint(path, size)
+            if digest and digest == _fingerprint(group[0], size):
+                matches.append(str(path))
+        if len(matches) < 2:
+            continue
+        wasted += size * (len(matches) - 1)
+        duplicates.append({
+            "name": name,
+            "bytes_each": size,
+            "copies": len(matches),
+            "wasted_bytes": size * (len(matches) - 1),
+            "paths": matches,
+            "confidence": "probable",
+        })
+    duplicates.sort(key=lambda d: d["wasted_bytes"], reverse=True)
+
+    # Registered entries whose file is gone. Counted so the storage view can say so,
+    # but it is expected to be zero in a healthy install.
+    missing_names: list[str] = []
+    for entry in registry:
         raw = entry.get("path")
         if not isinstance(raw, str) or not raw:
             continue
@@ -262,10 +363,13 @@ def _scan_loras() -> dict:
             missing_names.append(str(entry.get("name") or Path(raw).name))
 
     return {
-        "entries": len(registry or []),
+        "entries": len(registry),
         "bytes": total_bytes,
         "files": total_files,
+        "directories": sorted(str(d) for d in scan_dirs),
         "orphans": [o.to_dict() for o in orphans],
+        "duplicates": duplicates,
+        "duplicate_wasted_bytes": wasted,
         "missing_entries": len(missing_names),
         "missing_names": sorted(missing_names)[:50],
     }
