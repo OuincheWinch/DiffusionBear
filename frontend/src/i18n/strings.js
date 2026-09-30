@@ -276,6 +276,7 @@ import { licencesStrings } from "./parts/licences.js";
 import { installerStrings } from "./parts/installer.js";
 import { tokensStrings } from "./parts/tokens.js";
 import { appStrings } from "./parts/app.js";
+import { fillStrings } from "./parts/fill.js";
 
 // A duplicate key means two files claim the same string, which makes the
 // translation silently depend on import order. test_i18n.py fails on collisions.
@@ -292,6 +293,7 @@ for (const part of [
   licencesStrings,
   tokensStrings,
   appStrings,
+  fillStrings,
 ]) {
   for (const [key, value] of Object.entries(part)) {
     if (key in STRINGS) {

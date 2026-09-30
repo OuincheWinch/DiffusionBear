@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, imageUrl } from "../api";
 import { bindFullImageDrag, copyFullImageToClipboard, revealImageInFinder } from "../utils/dragDrop";
 import LazyGalleryImage from "./LazyGalleryImage";
+import FillBrush from "./FillBrush";
 import { useI18n } from "../i18n/I18nContext";
 
 export default function Gallery({ refreshKey, onReuse, activeTab = "browser", newImage = null }) {
@@ -157,6 +158,9 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   const [promptCopied, setPromptCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  // The image being filled, or null. Null means the brush is closed.
+  const [fillTarget, setFillTarget] = useState(null);
+  const [fillResult, setFillResult] = useState(null);
   const [cardCopiedId, setCardCopiedId] = useState(null);
   const [upscaling, setUpscaling] = useState(false);
 
@@ -232,6 +236,28 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
 
   return (
     <div className="gallery">
+      {fillTarget && (
+        <FillBrush
+          image={fillTarget}
+          imageUrl={imageUrl(fillTarget.id)}
+          onClose={() => setFillTarget(null)}
+          onComplete={(result) => {
+            setFillTarget(null);
+            setFillResult(result);
+            // The new image has to reach the grid, not just the backend: a fill
+            // writes a sidecar and the index, but this view renders from `items`.
+            load();
+          }}
+        />
+      )}
+      {fillResult && (
+        <div className="fill-done-banner" role="status">
+          {t("fill.doneBanner")}
+          <button type="button" className="btn-mini" onClick={() => setFillResult(null)}>
+            {t("app.dismiss")}
+          </button>
+        </div>
+      )}
       <div className="gallery-controls">
         <input
           className="search"
@@ -405,6 +431,23 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                   }}
                 >
                   📂
+                </button>
+                {/* Fill is deliberately NOT inside .cell-quick-actions. Those are
+                    opacity:0 until hover, which suits copy and reveal but not an
+                    action you have to see in order to start. A fill also needs the
+                    full-resolution image under the brush -- a thumbnail would make
+                    the user judge the result at thumbnail resolution. */}
+                <button
+                  type="button"
+                  className="cell-fill-btn"
+                  title={t("fill.cardButton")}
+                  aria-label={`${t("fill.cardButton")} — ${labelFor(item.model)}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFillTarget(item);
+                  }}
+                >
+                  🖌
                 </button>
               </div>
               <span className="cell-model-badge">{labelFor(item.model)}</span>

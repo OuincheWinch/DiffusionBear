@@ -3799,3 +3799,249 @@ p.warning {
     margin-bottom: 0;
   }
 }
+
+/* ==========================================================================
+   Generative fill brush
+   --------------------------------------------------------------------------
+   The canvas backing store is the image's NATIVE size; only its display box is
+   scaled by CSS. That is deliberate: the mask is uploaded at native resolution, so
+   no scaling ever touches a mask edge. The backend's 12px feather assumes the
+   mask matches the image pixel-for-pixel, and a scaled mask turns a soft edge into
+   a visible cut.
+   ========================================================================== */
+
+.fill-brush {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(9, 9, 14, 0.94);
+  backdrop-filter: blur(3px);
+}
+
+.fill-brush-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.fill-brush-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* The stage sizes to the image and centres it, so the canvas and the <img> below
+   it share one box exactly. They are stacked by grid rather than absolute
+   positioning so the canvas cannot drift out of alignment when the image loads. */
+.fill-brush-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0b0b12;
+  touch-action: none;   /* pointer events, not scroll gestures, on touch */
+}
+
+.fill-brush-image,
+.fill-brush-canvas {
+  grid-area: 1 / 1;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  /* Intrinsic ratio preserved; the canvas matches because both are sized by the
+     same natural dimensions and constrained the same way. */
+  object-fit: contain;
+  user-select: none;
+}
+
+.fill-brush-canvas {
+  cursor: crosshair;
+  /* A translucent wash so it is obvious which region will be regenerated without
+     hiding the pixels being judged. */
+  background: rgba(59, 130, 246, 0.28);
+  mix-blend-mode: screen;
+}
+
+.fill-brush-canvas.mode-erase {
+  cursor: cell;
+}
+
+.fill-brush-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+}
+
+.fill-brush-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fill-brush-prompt textarea {
+  min-height: 2.75rem;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.fill-brush-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fill-brush-tools {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.fill-tool {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.fill-tool.active {
+  border-color: var(--primary);
+  color: #cfe0ff;
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.fill-tool:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fill-brush-size,
+.fill-brush-engine {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fill-brush-size input[type="range"] {
+  width: 160px;
+  accent-color: var(--primary);
+}
+
+.fill-brush-size-value {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.fill-brush-coverage {
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding-bottom: 0.5rem;
+}
+
+.fill-brush-error {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
+.fill-brush-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fill-brush-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  flex: 1 1 20rem;
+}
+
+.fill-brush-actions .btn-primary {
+  min-height: 2.25rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 6px;
+  border: 0;
+  background: var(--primary);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fill-brush-actions .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The fill button sits outside .cell-quick-actions, whose buttons are opacity:0
+   until hover. Fill has to be visible before it can be chosen. */
+.cell-fill-btn {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  z-index: 6;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(18, 18, 26, 0.82);
+  color: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+.cell-fill-btn:hover {
+  opacity: 1;
+  border-color: var(--primary);
+}
+.cell-fill-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.fill-done-banner {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success);
+  font-size: 0.82rem;
+}
