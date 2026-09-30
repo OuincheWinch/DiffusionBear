@@ -290,6 +290,12 @@ class UpscaleRequest(BaseModel):
     scale: int = Field(default=2, ge=2, le=4)
 
 
+def _default_fill_engine() -> str:
+    """Resolved lazily so importing this router does not import the engine registry."""
+    import fill as fill_mod
+    return fill_mod.DEFAULT_FILL_ENGINE
+
+
 class FillRequest(BaseModel):
     """A generative fill: regenerate the masked region of an existing image.
 
@@ -303,7 +309,11 @@ class FillRequest(BaseModel):
     # White = regenerate. Sent by the browser as a PNG data URL.
     mask: str = Field(min_length=16, max_length=24 * 1024 * 1024)
     prompt: str = Field(min_length=1, max_length=4000)
-    model: str = Field(default="z-image-turbo", max_length=80)
+    # The default comes from fill.DEFAULT_FILL_ENGINE, not a literal. It used to be
+    # hardcoded to "z-image-turbo" here, which is an engine that accepts references
+    # but cannot spatially fill -- so a request that omitted `model` failed with a
+    # 400 about an engine the caller never asked for.
+    model: str = Field(default_factory=_default_fill_engine, max_length=80)
     seed: int | None = None
     steps: int | None = Field(default=None, ge=1, le=50)
     width: int | None = Field(default=None, ge=64, le=4096)

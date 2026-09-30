@@ -263,19 +263,45 @@ class EnginePolicyTests(unittest.TestCase):
                     f"fill would have no reference to condition on",
                 )
 
-    def test_every_ref_capable_engine_is_allowed(self):
-        """The allowlist must not silently omit an engine that would work."""
+    def test_every_allowed_engine_is_ref_capable(self):
+        """Necessary condition: an allowed engine must at least accept a reference."""
         import generator
-        capable = {k for k, v in generator.MODELS.items() if v.get("supports_ref")}
-        self.assertEqual(
-            fill.FILL_ENGINES,
-            capable,
-            "FILL_ENGINES and the registry's supports_ref set have diverged; one of "
-            "them needs updating",
-        )
+        for engine in fill.FILL_ENGINES:
+            with self.subTest(engine=engine):
+                self.assertTrue(generator.MODELS[engine].get("supports_ref"))
+
+    def test_only_in_context_engines_are_allowed(self):
+        """The condition that actually matters, and it is stricter than supports_ref.
+
+        Measured on the bear image: with z-image-turbo, "pink sunglasses" painted
+        across the eyes returned altered eyes and no sunglasses, and a grey reference
+        came back as a grey rectangle. generator.py:2338 passes a non-FLUX2 engine a
+        single `image_path`, which mflux uses for style conditioning with no spatial
+        correspondence -- so there is no region to fill. Only the FLUX2 `edit` variant
+        (generator.py:2327, `image_paths=[...]`) attends to reference AND prompt
+        together.
+
+        If this test fails after adding an engine, that engine must be checked for real
+        spatial conditioning first, not just supports_ref.
+        """
+        import generator
+        for engine in fill.FILL_ENGINES:
+            with self.subTest(engine=engine):
+                self.assertTrue(
+                    engine.startswith("flux2"),
+                    f"{engine} is offered for fill but is not an FLUX2 in-context "
+                    f"engine; it will copy the painted region through instead of "
+                    f"filling it",
+                )
 
     def test_default_engine_can_actually_fill(self):
-        self.assertIn(fill.DEFAULT_FILL_ENGINE, fill.FILL_ENGINES)
+        self.assertIn(fill.DEFAULT_FILL_ENGINE, fill.FILL_CAPABLE_ENGINES)
+
+    def test_z_image_is_refused_because_it_cannot_fill(self):
+        """The exact failure the user hit. Pinned so it cannot come back quietly."""
+        with self.assertRaises(fill.FillError) as ctx:
+            fill.fill_image("x" * 32, "unused", "pink sunglasses", model="z-image-turbo")
+        self.assertIn("spatial", str(ctx.exception).lower())
 
 
 class FillImageTests(unittest.TestCase):
@@ -333,19 +359,72 @@ class FillImageTests(unittest.TestCase):
         self.assertIn("fill", meta["tags"])
         self.assertIn("kept", meta["tags"], "parent tags must survive")
 
-    def test_the_source_image_is_passed_as_the_reference(self):
+    def test_the_engine_receives_a_mask_burnt_reference(self):
+        """Not the original. This is the whole trick.
+
+        Handing the engine the untouched source plus "pink sunglasses" gives it no
+        idea where the user painted, so it regenerates the whole image and the
+        composite keeps whatever happened to land in the box -- altered eyes, no
+        sunglasses. The reference must have the painted area burnt out so the engine
+        has both the intent and the location.
+        """
+        self._seed_source(colour=(200, 30, 40))
+        gen = self._fake_generate()
+        mask = mask_image((48, 48), (12, 12, 36, 36))
+
+        captured = {}
+
+        def spy(**kwargs):
+            from PIL import Image as _I
+            ref = kwargs["reference_images"][0]
+            with _I.open(ref) as im:
+                captured["pixels"] = im.convert("RGB").copy()   # .copy(): the file is closed after
+            return gen(**kwargs)
+
+        fill.fill_image(self.src_id, b64_png(mask), "pink sunglasses", generate_fn=spy)
+
+        ref_path = gen.calls["reference_images"][0]
+        self.assertNotEqual(
+            ref_path, str(self.root / f"{self.src_id}.png"),
+            "the untouched source must not be handed to the engine",
+        )
+        ref = captured["pixels"]
+        px = ref.load()          # .load() gives the pixel accessor; the Image is not subscriptable
+        inside = [px[x, y] for y in range(14, 34) for x in range(14, 34)]  # full mask interior
+        tones = {c for pix in inside for c in pix}
+        self.assertGreater(
+            len(tones), 12,
+            "the hole is flat: a uniform region is reproduced faithfully by the "
+            "engine, which is what produced a grey box instead of a fill",
+        )
+        self.assertEqual(px[2, 2], (200, 30, 40), "unmasked area was altered")
+
+    def test_the_burnt_reference_is_deleted_afterwards(self):
+        """A scratch artifact must never end up in the user's library."""
         self._seed_source()
         gen = self._fake_generate()
         mask = mask_image((48, 48), (12, 12, 36, 36))
 
         fill.fill_image(self.src_id, b64_png(mask), "add a hat", generate_fn=gen)
 
-        refs = gen.calls["reference_images"]
-        self.assertEqual(len(refs), 1)
-        self.assertTrue(refs[0].endswith(f"{self.src_id}.png"))
+        leftover = [p.name for p in (self.root / "uploads").glob(".fill-ref-*.png")]
+        self.assertEqual(leftover, [], f"burnt reference left behind: {leftover}")
 
-    def test_the_mask_is_not_sent_to_the_engine(self):
-        """It is a region, not a subject. Passing it would ask the model to draw it."""
+    def test_the_burnt_reference_is_removed_even_when_generation_fails(self):
+        self._seed_source()
+        mask = mask_image((48, 48), (12, 12, 36, 36))
+
+        def boom(**kwargs):
+            raise RuntimeError("engine died")
+
+        with self.assertRaises(RuntimeError):
+            fill.fill_image(self.src_id, b64_png(mask), "add a hat", generate_fn=boom)
+        self.assertEqual(list((self.root / "uploads").glob(".fill-ref-*.png")), [])
+
+    def test_the_mask_is_not_sent_as_a_second_reference(self):
+        """The region reaches the engine burnt into the image, not as a separate
+        reference. Passing it as its own reference would ask the model to DRAW the
+        mask rather than fill the region."""
         self._seed_source()
         gen = self._fake_generate()
         mask = mask_image((48, 48), (12, 12, 36, 36))

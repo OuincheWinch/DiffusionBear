@@ -15,6 +15,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pathlib
+
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -63,6 +65,8 @@ class FillRouteTests(unittest.TestCase):
 
         def fake_generate(**kwargs):
             self.calls.append(kwargs)
+            # The reference is a real file, so exercise that too rather than trusting
+            # it: a path that does not exist would 500 later in production only.
             new_id = "d" * 32
             Image.new("RGB", (32, 32), (10, 220, 90)).save(self.root / f"{new_id}.png")
             (self.root / f"{new_id}.json").write_text('{"id": "%s"}' % new_id, encoding="utf-8")
@@ -114,27 +118,70 @@ class FillRouteTests(unittest.TestCase):
     def test_fill_honours_an_explicit_engine(self):
         r = self.client.post(
             f"/api/images/{self.image_id}/fill",
-            json={"mask": mask_data_url(), "prompt": "add a hat", "model": "krea2-turbo"},
+            json={"mask": mask_data_url(), "prompt": "add a hat", "model": "flux2-klein-9b"},
         )
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(self.calls[0]["model"], "krea2-turbo")
+        self.assertEqual(self.calls[0]["model"], "flux2-klein-9b")
 
-    def test_the_source_image_is_the_reference(self):
-        self.client.post(
-            f"/api/images/{self.image_id}/fill",
-            json={"mask": mask_data_url(), "prompt": "add a hat"},
+    def test_the_engine_gets_a_burnt_reference_not_the_original(self):
+        """Route-level check on the fix: the reference is a scratch file with the
+        painted area greyed out, never the untouched gallery image.
+
+        The file is read DURING the call, from inside the fake engine. Reading it
+        afterwards fails with FileNotFoundError, because the handler deletes the
+        burnt reference in a `finally` the moment generate() returns -- which is the
+        behaviour we want, and also why this test has to look at it mid-flight.
+        """
+        import generator
+        captured = {}
+
+        original_gen = generator.generate
+
+        def spy(**kwargs):
+            ref = kwargs["reference_images"][0]
+            captured["path"] = ref
+            with Image.open(ref) as im:
+                captured["ref"] = im.convert("RGB").copy()
+            captured["px"] = captured["ref"].load()
+            return original_gen(**kwargs)
+
+        generator.generate = spy
+        try:
+            self.client.post(
+                f"/api/images/{self.image_id}/fill",
+                json={"mask": mask_data_url(), "prompt": "add a hat"},
+            )
+        finally:
+            generator.generate = original_gen
+
+        self.assertEqual(len(self.calls[0]["reference_images"]), 1)
+        self.assertNotEqual(captured["path"], str(self.root / f"{self.image_id}.png"))
+        w, h = captured["ref"].size
+        inside = [
+            captured["px"][x, y]
+            for y in range(h // 5, (h * 4) // 5)
+            for x in range(w // 5, (w * 4) // 5)
+        ]
+        self.assertGreater(
+            len({c for pix in inside for c in pix}), 12,
+            "the hole must not be flat, or the engine reproduces it verbatim",
         )
-        refs = self.calls[0]["reference_images"]
-        self.assertEqual(len(refs), 1)
-        self.assertTrue(refs[0].endswith(f"{self.image_id}.png"))
+        self.assertEqual(captured["px"][2, 2], (200, 30, 40), "outside must be untouched")
+        self.assertFalse(
+            pathlib.Path(captured["path"]).exists(),
+            "the burnt reference must be deleted once generation returns",
+        )
 
     # --- rejections, with the right status --------------------------------
 
-    def test_an_engine_without_ref_support_is_422_not_500(self):
-        """Rejected by the validator before anything is loaded."""
+    def test_a_ref_capable_but_non_fill_capable_engine_is_refused(self):
+        """krea2 accepts references but cannot fill: no spatial correspondence.
+
+        Rejected by the request validator before the engine is loaded.
+        """
         r = self.client.post(
             f"/api/images/{self.image_id}/fill",
-            json={"mask": mask_data_url(), "prompt": "x", "model": "juggernaut-xl-lightning"},
+            json={"mask": mask_data_url(), "prompt": "x", "model": "krea2-turbo"},
         )
         self.assertEqual(r.status_code, 422, r.text)
         self.assertEqual(self.calls, [], "the engine must not have been called")

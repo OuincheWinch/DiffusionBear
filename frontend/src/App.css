@@ -3862,7 +3862,13 @@ p.warning {
 }
 
 .fill-brush-canvas {
+  /* A visible brush ring even before anything is painted. The cursor alone was not
+     enough: on a light image a white cursor outline disappears, and a user who
+     cannot see the cursor cannot tell the brush is live. */
   cursor: crosshair;
+  /* Redrawn as a border so it is always present, painted or not. */
+  outline: 1px dashed rgba(147, 197, 253, 0.55);
+  outline-offset: -1px;
   /* Translucency lives HERE, not in the canvas pixels and not as a blend mode.
      The canvas holds opaque white where painted (so erase works -- see the note in
      FillBrush.jsx) and `opacity` on the element makes the whole overlay a wash, so

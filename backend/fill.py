@@ -62,21 +62,50 @@ MAX_MASK_PIXELS = 64 * 1024 * 1024
 # with supports_ref, i.e. something to drive. test_fill asserts the set equals the
 # registry's supports_ref set, so adding a ref-capable engine without deciding here
 # fails the build rather than silently widening the surface.
+#
+# supports_ref is necessary but NOT sufficient, and that distinction cost two
+# wasted attempts on this feature. See FILL_CAPABLE below for the real requirement.
 #   z-image-turbo, flux2-klein-4b  -> fast items (DEFAULT is z-image)
 #   krea2-turbo                   -> structured heavy work
 #   flux2-klein-9b                -> opt-in: costs more than 4B for the same job
 #   qwen-image-2.1                -> opt-in and experimental; OOMs above 768^2, so
 #                                    only reachable when the source is small
 # Deliberately absent: every SDXL/RealVis/Juggernaut XI engine (supports_ref False).
-FILL_ENGINES = {
-    "z-image-turbo",
-    "flux2-klein-4b",
-    "flux2-klein-9b",
-    "krea2-turbo",
-    "qwen-image-2.1",
-}
+# --- what actually makes a fill work --------------------------------------
+#
+# Measured, not assumed, after two failed attempts on the bear image (prompt: "pink
+# sunglasses", painted across the eyes; the fill returned altered eyes and no
+# sunglasses, then a flat grey rectangle).
+#
+# The reason is in generator.generate(). A reference image reaches an engine in one
+# of two ways:
+#
+#   * FLUX.2 (generator.py:2327): `image_paths=[...]` on the `edit` variant, which is
+#     an in-context model. It attends to the reference AND the prompt together, so a
+#     region of the reference can be re-generated to match the prompt.
+#
+#   * everything else (generator.py:2338): a single `image_path=ref_paths[0]`, which
+#     mflux uses for image-to-image / style conditioning. There is no spatial
+#     correspondence: the engine takes global style cues from the reference and lays
+#     out a new image from the prompt. It is not told WHERE anything goes.
+#
+# So for every non-FLUX2 engine a burnt reference is copied through, not filled --
+# the hole reads as a solid grey or dark shape and survives into the composite. Both
+# failures looked like "the fill did nothing", and neither was fixable by changing
+# the prompt, the mask, the feather or the hole's appearance.
+#
+# FLUX.2-klein is therefore the ONLY engine that can do a real fill. It is 4B and
+# 4 steps, so it is also the fast option, which is the right default.
+FILL_CAPABLE_ENGINES = {"flux2-klein-4b", "flux2-klein-9b"}
 
-DEFAULT_FILL_ENGINE = "z-image-turbo"
+# What the UI is allowed to offer. Identical to FILL_CAPABLE today; keeping a
+# separate name makes the intent explicit and leaves room to widen it if another
+# engine gains real spatial conditioning.
+FILL_ENGINES = set(FILL_CAPABLE_ENGINES)
+
+# 4B over 9B as the default: same in-context behaviour, a quarter of the time. And
+# FLUX.2 rather than z-image because only FLUX.2 has spatial conditioning.
+DEFAULT_FILL_ENGINE = "flux2-klein-4b"
 
 # One fill at a time. A fill loads a pipeline, renders, then composites, and
 # concurrent fills would fight over the same resident weights. Mirrors the
@@ -201,8 +230,14 @@ def fill_image(
     the engine, and it means a fill is a normal generation with a composite applied
     afterwards rather than a second code path through the sampler.
     """
-    if model not in FILL_ENGINES:
-        raise FillError(f"{model} cannot be used for fill; pick one of {sorted(FILL_ENGINES)}")
+    if model not in FILL_CAPABLE_ENGINES:
+        raise FillError(
+            f"{model} cannot be used for fill. Only the FLUX.2 in-context engines "
+            f"can regenerate a region of a reference; the others treat a reference "
+            f"as a global style cue with no spatial correspondence, so the "
+            f"painted area is reproduced instead of filled. "
+            f"Available: {', '.join(sorted(FILL_CAPABLE_ENGINES))}"
+        )
     prompt = (prompt or "").strip()
     if not prompt:
         raise FillError("a prompt describing what to add is required")
@@ -224,23 +259,47 @@ def fill_image(
         import generator
         generate_fn = generator.generate
 
-    # The source image is the reference. The mask is deliberately not passed: it is
-    # a region, not a subject.
+    # --- the reference the engine sees -------------------------------------
+    # This is the whole trick, and getting it wrong makes the feature useless.
+    #
+    # Handing the engine the UNTOUCHED source plus "pink sunglasses" gives it no
+    # idea where the user painted. It regenerates a whole image from the prompt and
+    # the composite then keeps whatever happened to land in the painted box -- so you
+    # get subtly altered eyes and no sunglasses, which is exactly the bug reported
+    # on the bear image. The prompt's content never reaches the region.
+    #
+    # So the reference is the source with the painted area burnt out to mid-grey.
+    # Grey rather than black or white because it reads as "nothing here yet" to a
+    # model trained on natural images, and it keeps the luminance statistics close
+    # to the original so the untouched parts do not shift. The engine then has both
+    # the intent AND the location, and fills the hole.
+    #
+    # The burnt reference is written to a temp file because the engine takes a path.
+    # It is deleted immediately after generate() returns.
     t0 = time.time()
-    result = generate_fn(
-        prompt=prompt,
-        model=model,
-        reference_images=[str(src_path)],
-        seed=seed,
-        steps=steps,
-        width=width or source_size[0],
-        height=height or source_size[1],
-        guidance=guidance,
-        loras=loras,
-        progress_cb=progress_cb,
-        phase_cb=phase_cb,
-        cancel_event=cancel_event,
-    )
+    burnt_path = _write_burnt_reference(original, mask)
+    try:
+        result = generate_fn(
+            prompt=prompt,
+            model=model,
+            reference_images=[str(burnt_path)],
+            seed=seed,
+            steps=steps,
+            width=width or source_size[0],
+            height=height or source_size[1],
+            guidance=guidance,
+            loras=loras,
+            progress_cb=progress_cb,
+            phase_cb=phase_cb,
+            cancel_event=cancel_event,
+        )
+    finally:
+        # The burnt reference is a scratch artifact, never a gallery image. Leaving
+        # it behind would put an image with a grey hole in the user's library.
+        try:
+            burnt_path.unlink()
+        except OSError:
+            pass
 
     generated_path = GENERATED_DIR / f"{result['id']}.{result.get('format', 'png')}"
     with Image.open(generated_path) as gen_img:
@@ -268,6 +327,127 @@ def fill_image(
         elapsed=round(time.time() - t0, 2),
         interim_id=result.get("id"),
     )
+
+
+def _synthesise_hole(original: Image.Image, mask: Image.Image) -> Image.Image:
+    """Build the "unfinished region" the engine is asked to complete.
+
+    Mean colour of the surrounding pixels, plus grain, plus a soft central shadow.
+    Every component is derived from the image, so this is deterministic: the same
+    image and mask always yield the same reference and therefore a reproducible fill.
+    """
+    w, h = original.size
+    base = original.convert("RGB")
+
+    # Mean of the pixels the user did NOT paint, i.e. the surrounding context. This
+    # is the tone the hole should start from.
+    px = base.load()
+    box = mask.getbbox()
+    totals = [0, 0, 0]
+    count = 0
+    if box:
+        step = max(1, min(w, h) // 128)   # sampled; a full scan is needless work
+        for y in range(box[1], box[3], step):
+            for x in range(box[0], box[2], step):
+                if mask.getpixel((x, y)) <= 8:
+                    r, g, b = px[x, y]
+                    totals[0] += r; totals[1] += g; totals[2] += b
+                    count += 1
+    if count == 0:
+        # The mask covers everything, so there is no context to sample.
+        r, g, b = base.resize((1, 1)).getpixel((0, 0))
+    else:
+        r, g, b = (t // count for t in totals)
+
+    # Grain at a fixed ±6 amplitude. Enough to break the flatness that made the grey
+    # box reproducible; small enough not to look like noise to the model.
+    grain = Image.effect_noise((w, h), 12).convert("L")
+    hole = Image.merge(
+        "RGB",
+        [
+            Image.new("L", (w, h), max(0, min(255, r + 6))).point(lambda v: v),
+            Image.new("L", (w, h), max(0, min(255, g + 6))),
+            Image.new("L", (w, h), max(0, min(255, b + 6))),
+        ],
+    )
+    hole = Image.blend(hole, Image.merge("RGB", [grain.point(lambda v: r), grain.point(lambda v: g), grain.point(lambda v: b)]), 0.5)
+
+    # A soft central darkening, suggesting a form shadow where an object would sit.
+    # Only applied within the mask so the rest of the reference is untouched.
+    if box:
+        cx, cy = (box[0] + box[2]) // 2, (box[1] + box[3]) // 2
+        rx = max(1, (box[2] - box[0]) // 2)
+        ry = max(1, (box[3] - box[1]) // 2)
+        shadow = Image.new("L", (w, h), 0)
+        sp = shadow.load()
+        for y in range(box[1], box[3]):
+            for x in range(box[0], box[2]):
+                nx = (x - cx) / rx
+                ny = (y - cy) / ry
+                d = (nx * nx + ny * ny) ** 0.5
+                sp[x, y] = int(max(0.0, 1.0 - d) * 46)   # up to ~18% darkening
+        hole = Image.composite(
+            Image.blend(hole, Image.new("RGB", (w, h), (max(0, r - 40), max(0, g - 40), max(0, b - 40))), 1.0),
+            hole,
+            shadow,
+        )
+        # The shadow must not leak outside the mask.
+        hole = Image.composite(hole, base, mask)
+    return hole
+
+
+def _write_burnt_reference(original: Image.Image, mask: Image.Image) -> Path:
+    """Render the source with the masked region replaced by flat mid-grey.
+
+    This is the reference the engine actually sees. Without it the prompt's content
+    has no connection to the painted region and the fill silently produces a
+    generically different image instead of the thing that was asked for.
+
+    Grey (128) rather than black or white on purpose:
+      * black reads as a shadow and the model paints it as shadow;
+      * white reads as a highlight and the model paints it as specular;
+      * mid-grey is the flattest, least "already an object" signal, and it keeps the
+        reference's mean luminance near the original so the preserved area does not
+        visibly shift in exposure after the composite.
+
+    Written into DATA_DIR/uploads, not the gallery and not the data root. The
+    engine refuses a reference from anywhere except GENERATED_DIR or uploads
+    (generator._resolve_reference_path), and that guard is worth keeping -- it is
+    what stops a caller from feeding the model an arbitrary file on disk. Placing
+    the scratch file in uploads satisfies it without weakening anything, and keeps
+    the burnt reference out of the gallery, where an indexed sidecar would surface
+    an image with a grey hole in it.
+    """
+    # The hole must look like something the model will want to REPLACE, not
+    # something it will faithfully reproduce.
+    #
+    # Flat uniform grey was tried first and it failed in the most embarrassing way
+    # possible: the engine copied the grey rectangle through untouched and the fill
+    # produced a grey box where the eyes should have been. A perfectly uniform
+    # region is a thing an image model reproduces faithfully -- it is the easiest
+    # possible content to match. What signals "incomplete" instead is a region that
+    # has the right tone and grain but no structure: it reads as an area the model
+    # believes was never finished.
+    #
+    # So the hole is built from the source's own statistics rather than a constant:
+    #   * the mean colour of the surrounding unmasked pixels, so the fill starts from
+    #     the right tone and the untouched area does not shift in exposure;
+    #   * fine grain matching that mean, because flatness is the thing that made the
+    #     grey box reproducible;
+    #   * a soft dark vignette toward the middle, hinting at a form shadow where an
+    #     object would sit.
+    #
+    # Deterministic: the grain is derived from the image itself, so two fills of the
+    # same image and mask produce the same reference and therefore the same result.
+    # A random seed here would make fills irreproducible for no benefit.
+    base = original.convert("RGB")
+    hole = _synthesise_hole(base, mask)
+    composite = Image.composite(hole, base, mask)
+    uploads = DATA_DIR / "uploads"
+    uploads.mkdir(parents=True, exist_ok=True, mode=0o700)
+    tmp = uploads / f".fill-ref-{uuid.uuid4().hex}.png"
+    composite.save(tmp, format="PNG")
+    return tmp
 
 
 def _find_source(image_id: str) -> Path:

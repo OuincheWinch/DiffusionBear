@@ -113,22 +113,62 @@ export default function FillBrush({
     // Opaque in the store, translucent on screen: the only combination where both
     // paint and erase work and the pixels being judged stay visible.
     ctx.globalCompositeOperation = mode === "erase" ? "destination-out" : "source-over";
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    if (last) {
-      // Interpolate between pointer events: a fast drag skips frames, and without
-      // this the stroke is dotted rather than continuous.
-      const steps = Math.ceil(Math.hypot(point.x - last.x, point.y - last.y) / Math.max(1, radius / 3));
-      for (let i = 1; i <= steps; i += 1) {
-        const x = last.x + ((point.x - last.x) * i) / steps;
-        const y = last.y + ((point.y - last.y) * i) / steps;
-        ctx.moveTo(x + radius, y);
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
+
+    // Build the dab path once, then stroke it twice: a wide dark halo and a narrower
+    // white core. The halo is what makes the selection visible on a WHITE or very
+    // light image, where a white stroke on its own is invisible -- the user could
+    // not see what they had painted. The core is what the eye reads as "this region
+    // is selected", and it keeps the mask value pure white for the backend.
+    //
+    // The halo is only drawn in paint mode. Painting a dark ring while erasing would
+    // deposit colour into a region the user is trying to clear.
+    const dabPath = () => {
+      ctx.beginPath();
+      if (last) {
+        // Interpolate between pointer events: a fast drag skips frames, and without
+        // this the stroke is dotted rather than continuous.
+        const steps = Math.ceil(
+          Math.hypot(point.x - last.x, point.y - last.y) / Math.max(1, radius / 3)
+        );
+        for (let i = 1; i <= steps; i += 1) {
+          const x = last.x + ((point.x - last.x) * i) / steps;
+          const y = last.y + ((point.y - last.y) * i) / steps;
+          ctx.moveTo(x + radius, y);
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+        }
+      } else {
+        ctx.moveTo(point.x + radius, point.y);
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
       }
-    } else {
-      ctx.moveTo(point.x + radius, point.y);
-      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    };
+
+    if (mode === "paint") {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
+      ctx.lineWidth = 0;
+      const halo = radius * 1.16;
+      // Redraw at the larger radius by scaling the path via a temp context is
+      // overkill; instead stroke the same geometry with a wide line.
+      ctx.beginPath();
+      const r0 = radius;
+      const steps = last
+        ? Math.ceil(Math.hypot(point.x - last.x, point.y - last.y) / Math.max(1, r0 / 3))
+        : 1;
+      if (last) {
+        for (let i = 1; i <= steps; i += 1) {
+          const x = last.x + ((point.x - last.x) * i) / steps;
+          const y = last.y + ((point.y - last.y) * i) / steps;
+          ctx.moveTo(x + halo, y);
+          ctx.arc(x, y, halo, 0, Math.PI * 2);
+        }
+      } else {
+        ctx.moveTo(point.x + halo, point.y);
+        ctx.arc(point.x, point.y, halo, 0, Math.PI * 2);
+      }
+      ctx.fill();
     }
+
+    ctx.fillStyle = "#ffffff";
+    dabPath();
     ctx.fill();
     ctx.globalCompositeOperation = "source-over";
     lastPointRef.current = point;
