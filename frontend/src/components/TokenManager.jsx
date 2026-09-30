@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-
-const CIVITAI_LABEL = "Civitai API Key";
-const HF_LABEL = "Hugging Face Token";
+import { useI18n } from "../i18n/I18nContext";
 
 function TokenRow({
   provider,
@@ -16,15 +14,21 @@ function TokenRow({
   onSave,
   saving,
   feedback,
+  t,
 }) {
   return (
     <div className={`token-manager-row token-manager-${provider}`}>
       <div className="token-status-group">
         <span className="civitai-token-status">
-          {configured ? "🔑 " : "🔓 "}{label}: {configured ? "Configured" : "Not set"}
+          {configured ? "🔑 " : "🔓 "}{label}:{" "}
+          {configured ? t("tokens.configured") : t("tokens.notSet")}
         </span>
         <button type="button" className="btn-token-toggle" onClick={onToggle}>
-          {showInput ? "Cancel" : configured ? "Edit" : `+ Set ${label}`}
+          {showInput
+            ? t("app.cancel")
+            : configured
+              ? t("tokens.editBtn")
+              : t("tokens.setBtn", { label })}
         </button>
       </div>
       {showInput && (
@@ -42,7 +46,11 @@ function TokenRow({
             onClick={onSave}
             disabled={saving}
           >
-            {saving ? "Saving…" : value.trim() ? `Save ${label}` : "Clear"}
+            {saving
+              ? t("tokens.savingBtn")
+              : value.trim()
+                ? t("tokens.saveBtn", { label })
+                : t("tokens.clearBtn")}
           </button>
         </div>
       )}
@@ -58,6 +66,7 @@ export default function TokenManager({
   onTokenSaved = null,
   className = "",
 }) {
+  const { t } = useI18n();
   const [civitaiToken, setCivitaiToken] = useState("");
   const [civitaiConfigured, setCivitaiConfigured] = useState(false);
   const [showCivitai, setShowCivitai] = useState(false);
@@ -102,12 +111,14 @@ export default function TokenManager({
       }
       setFeedback({
         type: "success",
-        text: res.configured ? `${label} saved securely (local file, never sent to clients).` : `${label} cleared.`,
+        text: res.configured
+          ? t("tokens.savedFeedback", { label })
+          : t("tokens.clearedFeedback", { label }),
       });
       onTokenSaved?.({ provider, configured: Boolean(res.configured) });
       setTimeout(() => setFeedback(null), 3500);
     } catch (e) {
-      setFeedback({ type: "error", text: `Failed to save ${label}: ${e.message}` });
+      setFeedback({ type: "error", text: t("tokens.saveFailed", { label, error: e.message }) });
     } finally {
       setSaving(null);
     }
@@ -118,28 +129,30 @@ export default function TokenManager({
       <TokenRow
         provider="civitai"
         label="Civitai"
-        placeholder="Civitai API Key (from civitai.red/?ref_code=88C8VEBA)"
+        placeholder={t("tokens.civitaiPlaceholder")}
         configured={civitaiConfigured}
         showInput={showCivitai}
         value={civitaiToken}
         setValue={setCivitaiToken}
         onToggle={() => setShowCivitai((v) => !v)}
-        onSave={() => save("civitai", CIVITAI_LABEL)}
+        onSave={() => save("civitai", t("tokens.labelCivitai"))}
         saving={saving === "civitai"}
         feedback={null}
+        t={t}
       />
       <TokenRow
         provider="hf"
         label="Hugging Face"
-        placeholder="Hugging Face Token (from huggingface.co/settings/tokens)"
+        placeholder={t("tokens.hfPlaceholder")}
         configured={hfConfigured}
         showInput={showHf}
         value={hfToken}
         setValue={setHfToken}
         onToggle={() => setShowHf((v) => !v)}
-        onSave={() => save("hf", HF_LABEL)}
+        onSave={() => save("hf", t("tokens.labelHf"))}
         saving={saving === "hf"}
         feedback={null}
+        t={t}
       />
       {feedback && <p className={`civitai-feedback ${feedback.type}`}>{feedback.text}</p>}
     </div>

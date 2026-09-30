@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api";
 import { findLoraEntry, isKreaDistillLora } from "../utils/loraUtils";
+import { useI18n } from "../i18n/I18nContext";
 
 export default function LoraManagerDrawer({
   loras,
@@ -14,22 +15,23 @@ export default function LoraManagerDrawer({
   onFeedback,
   children,
 }) {
+  const { t } = useI18n();
   const [showAllLoras, setShowAllLoras] = useState(false);
   const [syncingCivitai, setSyncingCivitai] = useState(false);
 
   async function handleSyncCivitai() {
     setSyncingCivitai(true);
-    onFeedback?.({ type: "info", text: "Hashing & syncing all local LoRAs with Civitai…" });
+    onFeedback?.({ type: "info", text: t("lora.syncingInfo") });
     try {
       const res = await api("/api/loras/sync-civitai", { method: "POST" });
       onFeedback?.({
         type: "success",
-        text: `Civitai sync complete: ${res.updated || 0} updated out of ${res.total || 0} LoRAs.`,
+        text: t("lora.syncComplete", { updated: res.updated || 0, total: res.total || 0 }),
       });
       const updated = await api("/api/loras");
       setLoraRegistry(updated);
     } catch (e) {
-      onFeedback?.({ type: "error", text: `Sync failed: ${e.message}` });
+      onFeedback?.({ type: "error", text: t("lora.syncFailed", { message: e.message }) });
     } finally {
       setSyncingCivitai(false);
     }
@@ -37,7 +39,7 @@ export default function LoraManagerDrawer({
 
   function addLoraFromRegistry(name) {
     if (loras.length >= 16) {
-      onFeedback?.({ type: "error", text: "Maximum of 16 active LoRAs allowed per image generation." });
+      onFeedback?.({ type: "error", text: t("lora.maxActive") });
       return;
     }
     const reg = loraRegistry.find((r) => r.name === name);
@@ -63,16 +65,16 @@ export default function LoraManagerDrawer({
   async function handleDeleteRegisteredLora(name) {
     const reg = loraRegistry.find((r) => r.name === name);
     if (!reg) return;
-    if (!window.confirm(`Permanently delete "${name}" from disk and registry?`)) {
+    if (!window.confirm(t("lora.deleteConfirm", { name }))) {
       return;
     }
     try {
       await api(`/api/loras/${encodeURIComponent(name)}`, { method: "DELETE" });
       setLoraRegistry((prev) => prev.filter((r) => r.name !== name));
       setLoras((prev) => prev.filter((l) => l.path !== reg.path && l.name !== name));
-      onFeedback?.({ type: "info", text: `Deleted "${name}" successfully.` });
+      onFeedback?.({ type: "info", text: t("lora.deleteSuccess", { name }) });
     } catch (e) {
-      onFeedback?.({ type: "error", text: `Failed to delete: ${e.message}` });
+      onFeedback?.({ type: "error", text: t("lora.deleteFailed", { message: e.message }) });
     }
   }
 
@@ -83,15 +85,15 @@ export default function LoraManagerDrawer({
   return (
     <fieldset className="lora-section">
       <legend className="lora-legend">
-        <span>Active LoRAs ({loras.length}/16 max)</span>
+        <span>{t("lora.activeLegend", { count: loras.length })}</span>
         <button
           type="button"
           className="btn-sync-civitai"
           onClick={handleSyncCivitai}
           disabled={syncingCivitai}
-          title="Scan local LoRAs and fetch official Civitai IDs & triggers"
+          title={t("lora.syncTitle")}
         >
-          {syncingCivitai ? "⏳ Syncing…" : "🔄 Sync Civitai"}
+          {syncingCivitai ? t("lora.syncing") : t("lora.syncBtn")}
         </button>
       </legend>
 
@@ -110,8 +112,8 @@ export default function LoraManagerDrawer({
                 {displayName}
               </span>
               {isDistill && (
-                <span className="distill-tag" title="Distillation adapter for ≤4 steps">
-                  ⚡ Distill
+                <span className="distill-tag" title={t("lora.distillTitle")}>
+                  {t("lora.distillTag")}
                 </span>
               )}
               {civitaiId && (
@@ -120,7 +122,7 @@ export default function LoraManagerDrawer({
                   target="_blank"
                   rel="noreferrer"
                   className="civitai-badge"
-                  title={`Civitai ID: ${civitaiId} (${regEntry?.civitai_version_name || ""})`}
+                  title={t("lora.civitaiIdTitle", { id: civitaiId, version: regEntry?.civitai_version_name || "" })}
                 >
                   #{civitaiId} ↗
                 </a>
@@ -142,7 +144,7 @@ export default function LoraManagerDrawer({
               <button
                 type="button"
                 className="btn-mini"
-                title="-0.05"
+                title={t("lora.scaleDecreaseTitle")}
                 onClick={() => {
                   const next = [...loras];
                   const cur = Number(l.scale ?? 1.0);
@@ -156,7 +158,7 @@ export default function LoraManagerDrawer({
               <button
                 type="button"
                 className="btn-mini"
-                title="+0.05"
+                title={t("lora.scaleIncreaseTitle")}
                 onClick={() => {
                   const next = [...loras];
                   const cur = Number(l.scale ?? 1.0);
@@ -185,24 +187,24 @@ export default function LoraManagerDrawer({
       >
         <option value="">
           {compatibleLoras.length === 0
-            ? `No ${modelInfo.lora_format} LoRAs in registry`
-            : "+ Add LoRA..."}
+            ? t("lora.registryEmpty", { format: modelInfo.lora_format })
+            : t("lora.addOption")}
         </option>
         {compatibleLoras.map((r) => (
           <option key={r.name} value={r.name}>
-            {r.name} {r.civitai_version_id ? `[Civitai #${r.civitai_version_id}]` : ""}
+            {r.name} {r.civitai_version_id ? t("lora.civitaiTagSuffix", { id: r.civitai_version_id }) : ""}
           </option>
         ))}
       </select>
 
       {compatibleLoras.length > 0 && (
         <div className="lora-registry-chips">
-          <span className="lora-registry-title">Installed:</span>
+          <span className="lora-registry-title">{t("lora.installedPrefix")}</span>
           {compatibleLoras.map((r) => (
             <span key={r.name} className="lora-chip">
               <span
                 className="lora-chip-name"
-                title="Click to add to active LoRAs"
+                title={t("lora.addActiveTitle")}
                 onClick={() => addLoraFromRegistry(r.name)}
               >
                 {r.name}
@@ -210,7 +212,7 @@ export default function LoraManagerDrawer({
               <button
                 type="button"
                 className="lora-delete-chip-btn"
-                title={`Delete ${r.name} from disk and registry`}
+                title={t("lora.deleteChipTitle", { name: r.name })}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDeleteRegisteredLora(r.name);
@@ -230,13 +232,13 @@ export default function LoraManagerDrawer({
           onClick={() => setShowAllLoras((v) => !v)}
         >
           {showAllLoras
-            ? "▲ Hide Installed LoRAs Hub"
-            : `📦 Installed LoRAs Hub (${loraRegistry.length} models)`}
+            ? t("lora.hideHub")
+            : t("lora.showHub", { count: loraRegistry.length })}
         </button>
         {showAllLoras && (
           <div className="lora-hub-drawer">
             {loraRegistry.length === 0 ? (
-              <p className="hint">No LoRAs installed yet.</p>
+              <p className="hint">{t("lora.hubEmpty")}</p>
             ) : (
               <div className="lora-hub-list">
                 {loraRegistry.map((r) => {
@@ -268,22 +270,22 @@ export default function LoraManagerDrawer({
                             }}
                             disabled={isActive}
                           >
-                            {isActive ? "✓ Active" : "+ Add"}
+                            {isActive ? t("lora.hubActive") : t("lora.hubAdd")}
                           </button>
                         ) : (
                           <button
                             type="button"
                             className="btn-hub-switch"
                             onClick={() => onSwitchToLoraModel?.(r.base_model, r)}
-                            title={`Switch model to ${r.base_model?.toUpperCase()}`}
+                            title={t("lora.switchTitle", { model: r.base_model?.toUpperCase() })}
                           >
-                            ⚡ Switch to {r.base_model?.toUpperCase()}
+                            {t("lora.switchBtn", { model: r.base_model?.toUpperCase() })}
                           </button>
                         )}
                         <button
                           type="button"
                           className="lora-delete-chip-btn"
-                          title={`Delete ${r.name} from disk and registry`}
+                          title={t("lora.deleteChipTitle", { name: r.name })}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteRegisteredLora(r.name);

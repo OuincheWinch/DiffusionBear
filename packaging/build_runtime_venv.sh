@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the relocatable, torch-free Python runtime that ships inside
-# MLX-Diffusion.app.
+# DiffusionBear.app.
 #
 # Why python-build-standalone (pbs) and not a copy of venv/:
 #   venv/pyvenv.cfg says `home = /opt/homebrew/opt/python@3.10/bin`, so the

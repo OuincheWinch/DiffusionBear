@@ -26,20 +26,30 @@ def _abs_from_env(name: str) -> Path | None:
 # Where the app's own mutable state lives: settings.json, the gallery, the LoRA
 # registry, uploads, queue files and the engine pid files.
 #
-# Defaults to backend/data, which is what a source checkout wants. MLX_DIFFUSION_ASSET_DIR
-# is deliberately NOT reused for this: the dev workflow points it at a shared model
+# Defaults to backend/data, which is what a source checkout wants. The asset dir is
+# deliberately NOT reused for this: the dev workflow points it at a shared model
 # store while the working copy keeps its own gallery, and collapsing the two would
 # change that. But in the standalone .app the checkout *is* the bundle, so writing
 # here would drop the gallery and settings inside the signed app -- growing without
 # bound and invalidating the bundle's own code signature on the next launch. The
-# shell therefore sets MLX_DIFFUSION_DATA_DIR alongside MLX_DIFFUSION_ASSET_DIR.
-DATA_DIR = _abs_from_env("MLX_DIFFUSION_DATA_DIR") or (
-    Path(__file__).resolve().parent / "data"
+# shell therefore sets the data-dir variable alongside the asset-dir one.
+#
+# The variables were renamed MLX_DIFFUSION_* -> DIFFUSIONBEAR_* with the app. The old
+# names still win when set, so existing launchd units, run.sh callers and any script
+# a user already wrote keep working; nothing has to be updated in lockstep.
+DATA_DIR = (
+    _abs_from_env("DIFFUSIONBEAR_DATA_DIR")
+    or _abs_from_env("MLX_DIFFUSION_DATA_DIR")
+    or (Path(__file__).resolve().parent / "data")
 )
 
 
 def _resolve_asset_dir() -> Path:
-    return _abs_from_env("MLX_DIFFUSION_ASSET_DIR") or DATA_DIR
+    return (
+        _abs_from_env("DIFFUSIONBEAR_ASSET_DIR")
+        or _abs_from_env("MLX_DIFFUSION_ASSET_DIR")
+        or DATA_DIR
+    )
 
 
 ASSET_DIR = _resolve_asset_dir()
@@ -72,6 +82,9 @@ DEFAULTS = {
     "default_sampler": "",
     # Default DeepCache interval for SDXL (1 = disabled).
     "default_cache_interval": 1,
+    # Interface language. "auto" follows the OS; the picker in Settings overrides it
+    # with a concrete code, which is then what gets persisted.
+    "language": "auto",
     # Per-model overrides: model_id -> {steps, guidance, sampler, cache_interval, fast_vae, width, height}.
     "model_defaults": {},
     # Per-model local install overrides: model_id -> directory that already holds
@@ -153,6 +166,7 @@ _VALIDATORS = {
     "default_fast_vae": lambda v: isinstance(v, bool),
     "default_sampler": lambda v: isinstance(v, str) and (not v or v in _SAMPLERS),
     "default_cache_interval": lambda v: _is_int(v) and 1 <= v <= 10,
+    "language": lambda v: v in ("auto", "en", "fr", "de", "it"),
     "model_defaults": lambda v: isinstance(v, dict) and len(v) <= _MAX_MODEL_SETTINGS,
     "model_paths": lambda v: isinstance(v, dict) and len(v) <= _MAX_MODEL_SETTINGS,
     "prompt_enhancer": lambda v: isinstance(v, dict) and len(v) <= len(PROMPT_ENHANCER_KEYS),

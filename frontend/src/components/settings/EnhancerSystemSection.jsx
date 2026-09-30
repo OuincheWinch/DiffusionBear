@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
+import { useI18n } from "../../i18n/I18nContext";
 
 const API = "/api/prompt/enhancer/system-prompts";
 
@@ -22,6 +23,7 @@ function isCustom(engine, mode) {
 }
 
 export default function EnhancerSystemSection({ onFeedback, onSaved }) {
+  const { t } = useI18n();
   const [engines, setEngines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -67,7 +69,7 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
   const baseline = active ? draftFor(active, mode) : "";
   const dirty = active ? draft.trim() !== baseline.trim() : false;
   const activeCustom = active ? isCustom(active, mode) : false;
-  const modeLabel = mode === "json" ? "JSON" : "text";
+  const modeLabel = mode === "json" ? t("settings.enhancer.modeJson") : t("settings.enhancer.modeText");
 
   async function save(instructions) {
     if (!active) return;
@@ -84,7 +86,7 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
         ...prev,
         [`${mode}:${active.key}`]: updated ? draftFor(updated, mode) : "",
       }));
-      onFeedback?.({ type: "success", text: "Enhancer system prompt saved" });
+      onFeedback?.({ type: "success", text: t("settings.enhancer.savedFeedback") });
       onSaved?.();
     } catch (e) {
       onFeedback?.({ type: "error", text: e.message || String(e) });
@@ -94,7 +96,7 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
   }
 
   if (loading) {
-    return <p className="hint">Loading prompt-enhancer profiles…</p>;
+    return <p className="hint">{t("settings.enhancer.loading")}</p>;
   }
   if (error) {
     return (
@@ -104,7 +106,7 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
     );
   }
   if (!active) {
-    return <p className="hint">No engines available.</p>;
+    return <p className="hint">{t("settings.enhancer.noEngines")}</p>;
   }
 
   return (
@@ -125,7 +127,7 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
           >
             {e.label.split(" (")[0]}
             {(e.is_custom || e.is_json_custom) && (
-              <span className="enhancer-dot" title="Custom prompt active" />
+              <span className="enhancer-dot" title={t("settings.enhancer.customPromptTitle")} />
             )}
           </button>
         ))}
@@ -133,15 +135,19 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
 
       <div className="enhancer-meta">
         <span className="settings-badge">{active.label}</span>
-        <span className="settings-hint">target length: {active.length}</span>
+        <span className="settings-hint">{t("settings.enhancer.targetLength", { length: active.length })}</span>
         {activeCustom ? (
-          <span className="settings-badge ok">custom {modeLabel}</span>
+          <span className="settings-badge ok">
+            {mode === "json" ? t("settings.enhancer.customJson") : t("settings.enhancer.customText")}
+          </span>
         ) : (
-          <span className="settings-badge">built-in {modeLabel}</span>
+          <span className="settings-badge">
+            {mode === "json" ? t("settings.enhancer.builtinJson") : t("settings.enhancer.builtinText")}
+          </span>
         )}
       </div>
 
-      <div className="enhancer-mode-toggle" role="tablist" aria-label="Enhancer output mode">
+      <div className="enhancer-mode-toggle" role="tablist" aria-label={t("settings.enhancer.modeToggleAria")}>
         <button
           type="button"
           role="tab"
@@ -152,7 +158,7 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
             setShowPreview(false);
           }}
         >
-          📝 Text mode
+          {t("settings.enhancer.textModeBtn")}
         </button>
         <button
           type="button"
@@ -164,21 +170,21 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
             setShowPreview(false);
           }}
         >
-          {"{ }"} JSON mode
+          {t("settings.enhancer.jsonModeBtn")}
         </button>
       </div>
 
       <label className="settings-field">
         <span className="settings-field-title">
           {mode === "json"
-            ? "JSON system prompt — structure + fill-in guidelines"
-            : "System prompt — engine guidance (text mode)"}
+            ? t("settings.enhancer.jsonFieldTitle")
+            : t("settings.enhancer.textFieldTitle")}
         </span>
         <span className="settings-hint">
           {mode === "json"
-            ? "This is the complete instruction sent to the local LLM in JSON mode: the engine guidance, the exact JSON structure (keys) to output, and the rules for filling each field. Edit it and Save to store a custom override, or ↺ Reset to built-in to restore the default."
-            : `This text is injected into the local LLM's system prompt when you click ✨ Enhance with an ${active.label.split(" (")[0]} model in text mode. Edit it and Save to store a custom override, or ↺ Reset to built-in to restore the default.`}{" "}
-          Text and JSON modes are stored independently.
+            ? t("settings.enhancer.jsonFieldHint")
+            : t("settings.enhancer.textFieldHint", { model: active.label.split(" (")[0] })}{" "}
+          {t("settings.enhancer.modesIndependent")}
         </span>
         <textarea
           className="enhancer-textarea"
@@ -197,32 +203,32 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
           className={`btn-mini enhancer-save-btn${dirty ? " dirty" : ""}`}
           disabled={saving || !dirty}
           onClick={() => save(draft)}
-          title={dirty ? "Save this custom guidance" : "Edit the text to enable saving"}
+          title={dirty ? t("settings.enhancer.saveTitleDirty") : t("settings.enhancer.saveTitleClean")}
         >
-          {saving ? "Saving…" : "💾 Save"}
+          {saving ? t("settings.enhancer.saving") : t("settings.enhancer.saveBtn")}
         </button>
         <button
           type="button"
           className="btn-mini"
           disabled={saving || !activeCustom}
           onClick={() => save("")}
-          title="Restore the built-in engine guidance"
+          title={t("settings.enhancer.resetTitle")}
         >
-          ↺ Reset to built-in
+          {t("settings.enhancer.resetBtn")}
         </button>
         <button
           type="button"
           className={`btn-mini${showDefault ? " active" : ""}`}
           onClick={() => setShowDefault((v) => !v)}
         >
-          {showDefault ? "Hide built-in" : "View built-in"}
+          {showDefault ? t("settings.enhancer.hideBuiltin") : t("settings.enhancer.viewBuiltin")}
         </button>
         <button
           type="button"
           className={`btn-mini${showPreview ? " active" : ""}`}
           onClick={() => setShowPreview((v) => !v)}
         >
-          {showPreview ? "Hide preview" : "Preview full prompt"}
+          {showPreview ? t("settings.enhancer.hidePreview") : t("settings.enhancer.previewFullPrompt")}
         </button>
       </div>
 
@@ -230,8 +236,8 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
         <div className="enhancer-readonly">
           <span className="settings-field-title">
             {mode === "json"
-              ? "Built-in JSON instructions (structure + guidelines)"
-              : "Built-in engine guidance (text mode)"}
+              ? t("settings.enhancer.builtinJsonTitle")
+              : t("settings.enhancer.builtinTextTitle")}
           </span>
           <pre>
             {mode === "json"
@@ -244,21 +250,18 @@ export default function EnhancerSystemSection({ onFeedback, onSaved }) {
       {showPreview && (
         <div className="enhancer-readonly">
           <span className="settings-field-title">
-            Full system prompt sent to the LLM ({modeLabel} mode, no active LoRA triggers)
+            {t("settings.enhancer.previewTitle", { mode: modeLabel })}
           </span>
           <pre>{mode === "json" ? active.json_system_prompt : active.system_prompt}</pre>
           <span className="settings-hint">
             {mode === "json"
-              ? "JSON mode appends the mandatory LoRA-trigger block (when triggers are active) after your instructions."
-              : "Text mode appends the prose TASK and general prompt-engineering rules after your guidance."}
+              ? t("settings.enhancer.previewHintJson")
+              : t("settings.enhancer.previewHintText")}
           </span>
         </div>
       )}
 
-      <p className="params-hint">
-        These prompts drive the local prompt enhancer (Qwen2.5-0.5B-Instruct, MLX). Each generated
-        model is mapped to one of these four engines: FLUX.2 Klein / SDXL / Krea 2 / Z-Image Turbo.
-      </p>
+      <p className="params-hint">{t("settings.enhancer.footerHint")}</p>
     </div>
   );
 }

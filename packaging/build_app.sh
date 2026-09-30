@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Assemble MLX-Diffusion.app from the built runtimes, the production SPA and the
+# Assemble DiffusionBear.app from the built runtimes, the production SPA and the
 # Swift shell, then ad-hoc sign it. No Apple Developer ID required.
 #
 # Layout is dictated by the backend's own path expectations (see Paths in
@@ -63,7 +63,7 @@ say "copying backend"
 # lora_files (425 MB of .safetensors) and -- critically -- hf_token.txt and
 # civitai_token.txt. Those are real credentials and must never be copied into a
 # distributable bundle. Everything there lives in the external store anyway, which
-# MLX_DIFFUSION_ASSET_DIR / MLX_DIFFUSION_DATA_DIR point at.
+# DIFFUSIONBEAR_ASSET_DIR / DIFFUSIONBEAR_DATA_DIR point at.
 rsync -a --quiet \
   --exclude '__pycache__' --exclude '*.pyc' --exclude '.DS_Store' \
   --exclude 'data' \
@@ -212,7 +212,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSHighResolutionCapable</key>       <true/>
   <key>LSApplicationCategoryType</key>     <string>public.app-category.graphics-design</string>
   <!-- Disk access: the model store and the gallery live on an external volume via
-       MLX_DIFFUSION_ASSET_DIR / MLX_DIFFUSION_DATA_DIR, which point into
+       DIFFUSIONBEAR_ASSET_DIR / DIFFUSIONBEAR_DATA_DIR, which point into
        /Volumes/<name>/... These keys are NOT optional. Without
        NSRemovableVolumesUsageDescription macOS has no string to show a consent
        dialog for, so it grants nothing: the spawned backend's open() blocks at 0%
@@ -342,5 +342,5 @@ du -sh "$APP/Contents/Resources/backend"     | sed 's/^/  backend    /'
 du -sh "$APP/Contents/Resources/frontend"    | sed 's/^/  frontend   /'
 du -sh "$APP/Contents/MacOS/$APP_NAME"      | sed 's/^/  shell      /'
 echo
-echo "  models stay external: ~/Library/Application Support/MLX-Diffusion/data"
+echo "  models stay external: ~/Library/Application Support/DiffusionBear/data"
 echo "  install with: ditto $APP /Applications/"

@@ -3,11 +3,13 @@ import GenerateForm from "./components/GenerateForm";
 import Gallery from "./components/Gallery";
 import ParametersTab from "./components/ParametersTab";
 import LicencesTab from "./components/LicencesTab";
+import { useI18n } from "./i18n/I18nContext";
 import { APP_TITLE, APP_VERSION_LABEL } from "./version";
 import logo from "./assets/logo.png";
 import "./App.css";
 
 export default function App() {
+  const { t } = useI18n();
   const [tab, setTab] = useState("generate");
   const [refreshKey, setRefreshKey] = useState(0);
   const [newImage, setNewImage] = useState(null);
@@ -33,9 +35,9 @@ export default function App() {
     <div className="app">
       <header>
         <div className="brand">
-          <img className="app-logo" src={logo} alt="MLX-Diffusion" />
+          <img className="app-logo" src={logo} alt={t("app.logoAlt")} />
           <div>
-            <h1>MLX-Diffusion</h1>
+            <h1>DiffusionBear</h1>
             <span className="version-badge">{APP_VERSION_LABEL}</span>
           </div>
         </div>
@@ -44,25 +46,25 @@ export default function App() {
             className={tab === "generate" ? "active" : ""}
             onClick={() => setTab("generate")}
           >
-            Generate
+            {t("app.generate")}
           </button>
           <button
             className={tab === "browser" ? "active" : ""}
             onClick={() => setTab("browser")}
           >
-            Browser
+            {t("app.navBrowser")}
           </button>
           <button
             className={tab === "params" ? "active" : ""}
             onClick={() => setTab("params")}
           >
-            ⚙️ Parameters
+            {t("app.navParams")}
           </button>
           <button
             className={tab === "licences" ? "active" : ""}
             onClick={() => setTab("licences")}
           >
-            ⚖ Licences
+            ⚖ {t("licences.title")}
           </button>
         </nav>
       </header>

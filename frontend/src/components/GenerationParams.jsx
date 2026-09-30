@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { STANDARD_SIZES } from "../constants/sizes";
+import { useI18n } from "../i18n/I18nContext";
 
 function clampRefStrength(v) {
   const n = Math.round((Number(v) + Number.EPSILON) * 100) / 100;
@@ -39,6 +40,7 @@ function GenerationParams({
   maxPixels,
   setMaxPixels,
 }) {
+   const { t } = useI18n();
    const maxRefImages = Math.max(1, Number(maxReferenceImages) || 1);
 
    const haveHardCap = Boolean(maxPixels && modelInfo.max_pixels);
@@ -66,7 +68,7 @@ function GenerationParams({
     <div className="generation-params-container">
       <div className="param-grid">
         <label>
-          Size
+          {t("params.size.label")}
           <div className="size-row">
             <select
               value={`${width}x${height}`}
@@ -78,7 +80,7 @@ function GenerationParams({
             >
               {!cappedSizes.some((s) => s.value === `${width}x${height}`) && (
                 <option value={`${width}x${height}`}>
-                  ✦ {width} × {height} (Preset)
+                  {t("params.size.customOption", { width, height })}
                 </option>
               )}
               {cappedSizes.map((s) => (
@@ -87,7 +89,7 @@ function GenerationParams({
                 </option>
               ))}
             </select>
-            <span className="shape-preview" title={`${width} × ${height}`}>
+            <span className="shape-preview" title={t("params.size.shapePreviewTitle", { width, height })}>
               <span
                 className="shape"
                 style={(() => {
@@ -105,13 +107,13 @@ function GenerationParams({
         {modelInfo.max_pixels ? (
           <label>
             <span className="step-label-header">
-              Max pixels (hard cap)
+              {t("params.maxPixels.label")}
               <span
                 className="distill-subtle-tag"
-                 title="Hard ceiling enforced by the backend for this model."
+                 title={t("params.maxPixels.oomGuardTitle")}
 
               >
-                ⚙ OOM guard
+                {t("params.maxPixels.oomGuardTag")}
               </span>
             </span>
             <input
@@ -137,10 +139,10 @@ function GenerationParams({
 
         <label>
           <span className="step-label-header">
-            Steps ({steps})
+            {t("params.steps.label", { steps })}
             {modelInfo?.id === "krea2-turbo" && steps <= 4 && (
-              <span className="distill-subtle-tag" title="4-step distillation LoRA auto-activated in parameters">
-                ⚡ 4-step distill
+              <span className="distill-subtle-tag" title={t("params.steps.distillTitle")}>
+                {t("params.steps.distillTag")}
               </span>
             )}
           </span>
@@ -155,7 +157,7 @@ function GenerationParams({
 
         {modelInfo.supports_guidance && (
           <label>
-            Guidance
+            {t("params.guidance.label")}
             <input
               type="number"
               min="0"
@@ -169,13 +171,13 @@ function GenerationParams({
 
         <label>
           <div className="seed-label-row">
-            <span>Seed</span>
+            <span>{t("params.seed.label")}</span>
             <div className="seed-quick-actions">
               <button
                 type="button"
                 className="btn-tiny"
                 onClick={randomizeSeed}
-                title="Randomize (empty seed)"
+                title={t("params.seed.randomTitle")}
               >
                 🎲
               </button>
@@ -183,7 +185,7 @@ function GenerationParams({
                 type="button"
                 className="btn-tiny"
                 onClick={() => incrementSeed(1)}
-                title="Next Seed (+1)"
+                title={t("params.seed.nextTitle")}
               >
                 +1
               </button>
@@ -191,7 +193,7 @@ function GenerationParams({
                 type="button"
                 className="btn-tiny"
                 onClick={() => incrementSeed(1024)}
-                title="Next Batch Seed (+1024)"
+                title={t("params.seed.nextBatchTitle")}
               >
                 +1024
               </button>
@@ -199,22 +201,22 @@ function GenerationParams({
           </div>
           <input
             type="number"
-            placeholder="random"
+            placeholder={t("params.seed.placeholder")}
             value={seed}
             onChange={(e) => setSeed(e.target.value)}
           />
         </label>
 
         <label>
-          Batch
+          {t("params.batch.label")}
           <select
             value={batch}
             onChange={(e) => setBatch(Number(e.target.value))}
           >
             {Array.from({ length: 16 }, (_, i) => i + 1).map((n) => (
               <option key={n} value={n}>
-                {n} image{n > 1 ? "s" : ""}
-                {n > 1 ? ` (+1024 seed)` : ""}
+                {t(n > 1 ? "params.batch.optionMany" : "params.batch.optionOne", { n })}
+                {n > 1 ? t("params.batch.optionSeedSuffix") : null}
               </option>
             ))}
           </select>
@@ -223,11 +225,11 @@ function GenerationParams({
 
       {modelInfo.supports_negative && (
         <label>
-          Negative prompt
+          {t("params.negative.label")}
           <textarea
             value={negativePrompt}
             onChange={(e) => setNegativePrompt(e.target.value)}
-            placeholder="What to avoid: blurry, low quality..."
+            placeholder={t("params.negative.placeholder")}
             rows={2}
           />
         </label>
@@ -235,7 +237,7 @@ function GenerationParams({
 
       {modelInfo.samplers && (
         <label>
-          Sampler
+          {t("params.sampler.label")}
           <select value={sampler} onChange={(e) => setSampler(e.target.value)}>
             {modelInfo.samplers.map((sm) => (
               <option key={sm} value={sm}>
@@ -248,11 +250,11 @@ function GenerationParams({
 
       {modelInfo.engine === "sdxl" && (
         <label>
-          DeepCache
+          {t("params.deepCache.label")}
           <select value={cacheInterval} onChange={(e) => setCacheInterval(Number(e.target.value))}>
-            <option value={1}>Off (Exact UNet)</option>
-            <option value={2}>⚡ DeepCache 2 (~1.6x faster)</option>
-            <option value={3}>⚡⚡ DeepCache 3 (~2x faster)</option>
+            <option value={1}>{t("params.deepCache.off")}</option>
+            <option value={2}>{t("params.deepCache.level2")}</option>
+            <option value={3}>{t("params.deepCache.level3")}</option>
           </select>
         </label>
       )}
@@ -260,8 +262,8 @@ function GenerationParams({
       {supportsRef && (
         <fieldset className="ref-section">
           <legend>
-            Reference images ({refImages.length}/{maxRefImages})
-            {supportsMultiRef && <span className="ref-badge-pill">FLUX.2 In-Context</span>}
+            {t("params.ref.legend", { count: refImages.length, max: maxRefImages })}
+            {supportsMultiRef && <span className="ref-badge-pill">{t("params.ref.inContextBadge")}</span>}
           </legend>
 
           <div className="ref-gallery-row">
@@ -269,19 +271,19 @@ function GenerationParams({
               <div className="ref-card" key={img.id || img.path}>
                 <div className="ref-thumb-wrapper">
                    {img.preview ? (
-                     <img src={img.preview} alt={`Reference ${idx + 1}`} />
+                     <img src={img.preview} alt={t("params.ref.thumbAlt", { n: idx + 1 })} />
                    ) : (
-                     <span className="ref-preview-missing" aria-label={`Reference ${idx + 1} preview unavailable`}>
+                     <span className="ref-preview-missing" aria-label={t("params.ref.previewUnavailable", { n: idx + 1 })}>
                        {idx + 1}
                      </span>
                    )}
 
-                  <span className="ref-index-badge">Image {idx + 1}</span>
+                  <span className="ref-index-badge">{t("params.ref.indexBadge", { n: idx + 1 })}</span>
                   <button
                     type="button"
                     className="ref-remove-btn"
                     onClick={() => removeRefImage(idx)}
-                    title="Remove reference image"
+                    title={t("params.ref.removeTitle")}
                   >
                     ✕
                   </button>
@@ -290,15 +292,15 @@ function GenerationParams({
                   type="button"
                   className="ref-insert-chip"
                   onClick={() => insertIntoPrompt(`Image ${idx + 1}`)}
-                  title={`Insert "Image ${idx + 1}" into prompt`}
+                  title={t("params.ref.insertTitle", { n: idx + 1 })}
                 >
-                  + Prompt tag
+                  {t("params.ref.promptTagBtn")}
                 </button>
               </div>
             ))}
 
             {refImages.length < maxRefImages && (
-              <label className="ref-add-card" title="Add reference image (up to 10 for FLUX.2)">
+              <label className="ref-add-card" title={t("params.ref.addCardTitle")}>
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,.heic,.HEIC,image/heic,image/heif"
@@ -308,7 +310,9 @@ function GenerationParams({
                 />
                 <span className="ref-add-plus">＋</span>
                 <span className="ref-add-text">
-                  {refImages.length === 0 ? "Add Image" : `Add (${refImages.length + 1})`}
+                  {refImages.length === 0
+                    ? t("params.ref.addTextFirst")
+                    : t("params.ref.addTextNext", { n: refImages.length + 1 })}
                 </span>
               </label>
             )}
@@ -317,7 +321,7 @@ function GenerationParams({
           {refImages.length > 0 && !supportsMultiRef && (
             <div className="ref-strength">
               <div className="ref-strength-head">
-                <span className="ref-strength-label">KREA image ref strength</span>
+                <span className="ref-strength-label">{t("params.ref.strengthLabel")}</span>
                 <input
                   className="ref-strength-input"
                   type="number"
@@ -343,7 +347,7 @@ function GenerationParams({
                 <button
                   type="button"
                   className="btn-mini"
-                  title="Decrease by 0.1"
+                  title={t("params.ref.decrease01Title")}
                   onClick={() => setRefStrength((v) => clampRefStrength(Number(v) - 0.1))}
                 >
                   −0.1
@@ -351,7 +355,7 @@ function GenerationParams({
                 <button
                   type="button"
                   className="btn-mini"
-                  title="Decrease by 0.01"
+                  title={t("params.ref.decrease001Title")}
                   onClick={() => setRefStrength((v) => clampRefStrength(Number(v) - 0.01))}
                 >
                   −0.01
@@ -360,7 +364,7 @@ function GenerationParams({
                 <button
                   type="button"
                   className="btn-mini"
-                  title="Increase by 0.01"
+                  title={t("params.ref.increase001Title")}
                   onClick={() => setRefStrength((v) => clampRefStrength(Number(v) + 0.01))}
                 >
                   +0.01
@@ -368,7 +372,7 @@ function GenerationParams({
                 <button
                   type="button"
                   className="btn-mini"
-                  title="Increase by 0.1"
+                  title={t("params.ref.increase01Title")}
                   onClick={() => setRefStrength((v) => clampRefStrength(Number(v) + 0.1))}
                 >
                   +0.1
@@ -378,7 +382,7 @@ function GenerationParams({
           )}
           {supportsMultiRef && (
             <p className="hint">
-              💡 <strong>FLUX.2 In-Context Conditioning:</strong> Up to 10 reference images. The transformer injects image tokens directly into cross-attention. Refer to them naturally in your prompt as <code>Image 1</code>, <code>Image 2</code>, etc. (e.g. <em>&quot;A portrait of the character from Image 1 in the artistic style of Image 2&quot;</em>).
+              💡 <strong>{t("params.ref.multiRefHintLead")}</strong> {t("params.ref.multiRefHintBody")}
             </p>
           )}
         </fieldset>

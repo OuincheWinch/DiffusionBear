@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { formatBytes } from "../../utils/formatBytes";
+import { useI18n } from "../../i18n/I18nContext";
 
 export default function HfCacheSection({ onFeedback }) {
+  const { t } = useI18n();
   const [cache, setCache] = useState(null);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(null);
@@ -27,7 +29,7 @@ export default function HfCacheSection({ onFeedback }) {
   }, []);
 
   async function clearRepo(repo) {
-    if (!window.confirm(`Remove "${repo.repo_id}" (${formatBytes(repo.size_bytes)}) from the Hugging Face cache?`)) {
+    if (!window.confirm(t("settings.hfCache.clearConfirm", { repo: repo.repo_id, size: formatBytes(repo.size_bytes) }))) {
       return;
     }
     setClearing(repo.repo_id);
@@ -36,7 +38,7 @@ export default function HfCacheSection({ onFeedback }) {
         method: "POST",
         body: JSON.stringify({ repo_id: repo.repo_id }),
       });
-      onFeedback?.({ type: "success", text: `Freed ${formatBytes(res.freed_bytes)}` });
+      onFeedback?.({ type: "success", text: t("settings.hfCache.freed", { size: formatBytes(res.freed_bytes) }) });
       await refresh();
     } catch (e) {
       onFeedback?.({ type: "error", text: e.message || String(e) });
@@ -46,7 +48,7 @@ export default function HfCacheSection({ onFeedback }) {
   }
 
   if (loading && !cache) {
-    return <div className="settings-row"><span className="hint">Scanning Hugging Face cache…</span></div>;
+    return <div className="settings-row"><span className="hint">{t("settings.hfCache.scanning")}</span></div>;
   }
   if (err && !cache) {
     return <div className="settings-row"><span className="error">{err}</span></div>;
@@ -56,23 +58,23 @@ export default function HfCacheSection({ onFeedback }) {
   return (
     <div className="settings-row">
       <div className="settings-inline">
-        <span className="settings-badge">{formatBytes(cache?.total_bytes || 0)} total</span>
+        <span className="settings-badge">{t("settings.hfCache.totalBadge", { size: formatBytes(cache?.total_bytes || 0) })}</span>
         <span className="settings-hint">
-          {cache?.exists ? cache.root : `${cache?.root} does not exist yet`}
+          {cache?.exists ? cache.root : t("settings.hfCache.rootMissing", { path: cache?.root })}
         </span>
         <button type="button" className="btn-mini" onClick={refresh} disabled={loading}>
-          ↺ Refresh
+          {t("settings.hfCache.refresh")}
         </button>
       </div>
       {repos.length === 0 ? (
-        <p className="params-hint">No cached repositories.</p>
+        <p className="params-hint">{t("settings.hfCache.empty")}</p>
       ) : (
         <div className="models-table">
           <div className="models-table-head">
-            <span>Repository</span>
-            <span>Size</span>
-            <span>Details</span>
-            <span>Actions</span>
+            <span>{t("settings.hfCache.colRepository")}</span>
+            <span>{t("settings.hfCache.colSize")}</span>
+            <span>{t("settings.hfCache.colDetails")}</span>
+            <span>{t("settings.hfCache.colActions")}</span>
           </div>
           {repos.map((r) => (
             <div className="models-table-row" key={r.repo_id}>
@@ -82,7 +84,10 @@ export default function HfCacheSection({ onFeedback }) {
               </span>
               <span className="models-size">{formatBytes(r.size_bytes)}</span>
               <span className="models-state">
-                {r.n_revisions} revision{r.n_revisions !== 1 ? "s" : ""} · {r.n_files} files
+                {r.n_revisions !== 1
+                  ? t("settings.hfCache.revisionMany", { count: r.n_revisions })
+                  : t("settings.hfCache.revisionOne", { count: r.n_revisions })}
+                {t("settings.hfCache.files", { count: r.n_files })}
               </span>
               <span className="models-actions">
                 <button
@@ -91,18 +96,14 @@ export default function HfCacheSection({ onFeedback }) {
                   disabled={clearing === r.repo_id}
                   onClick={() => clearRepo(r)}
                 >
-                  {clearing === r.repo_id ? "Removing…" : "🗑 Clear"}
+                  {clearing === r.repo_id ? t("settings.hfCache.removing") : t("settings.hfCache.clear")}
                 </button>
               </span>
             </div>
           ))}
         </div>
       )}
-      <p className="params-hint">
-        Model weights live in the shared Hugging Face hub cache (~/.cache/huggingface). Clearing a
-        repo removes snapshots + blobs; generation re-downloads it lazily. Repos currently
-        downloading are protected.
-      </p>
+      <p className="params-hint">{t("settings.hfCache.footerHint")}</p>
     </div>
   );
 }

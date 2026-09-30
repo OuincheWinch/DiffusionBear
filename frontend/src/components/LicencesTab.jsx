@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { useI18n } from "../i18n/I18nContext";
 import {
   GITHUB_REPO_URL,
   GITHUB_LICENSE_URL,
@@ -18,6 +19,7 @@ function ExtLink({ href, children }) {
 }
 
 export default function LicencesTab() {
+  const { t } = useI18n();
   const [apiVersion, setApiVersion] = useState(null);
 
   useEffect(() => {
@@ -35,44 +37,46 @@ export default function LicencesTab() {
   return (
     <div className="parameters-tab licences-tab">
       <section className="params-section">
-        <h3>⚖ Licences — MLX-Diffusion</h3>
+        <h3>⚖ {t("licences.title")} — DiffusionBear</h3>
         <p className="params-section-desc">
-          What you may and may not do with MLX-Diffusion, and which projects it
-          is built from. Every third-party package below keeps its own licence;
-          nothing here grants or revokes those terms.
+          {t("licences.intro")} {t("licences.introSecond")}
         </p>
       </section>
 
       <section className="params-section">
-        <h3>This project</h3>
+        <h3>{t("licences.thisProject")}</h3>
         <p>
-          <strong>MLX-Diffusion</strong> — {APP_VERSION_LABEL} — is released
-          under the <ExtLink href={GITHUB_LICENSE_URL}>MIT License</ExtLink>,
-          Copyright © 2026{" "}
-          <ExtLink href={AUTHOR_WEBSITE}>Ouinche</ExtLink>.
-          Source: <ExtLink href={GITHUB_REPO_URL}>github.com/OuincheWinch/MLX-Diffusion</ExtLink>.
+          <strong>DiffusionBear</strong> — {APP_VERSION_LABEL} —{" "}
+          {t("licences.releasedUnder")}{" "}
+          <ExtLink href={GITHUB_LICENSE_URL}>{t("licences.mitLicense")}</ExtLink>,{" "}
+          {t("licences.copyright", { year: 2026 })}{" "}
+          <ExtLink href={AUTHOR_WEBSITE}>Ouinche</ExtLink>. {t("licences.source")}{" "}
+          <ExtLink href={GITHUB_REPO_URL}>github.com/OuincheWinch/MLX-Diffusion</ExtLink>.
         </p>
         <p>
-          <strong>Heavily coded by AI</strong> — assisted by{" "}
-          {AI_CREDITS.join(", ")} together with its human author. Reviewed and
-          benchmarked by hand.
+          <strong>{t("licences.aiAuthored")}</strong> —{" "}
+          {t("licences.aiCredits", { credits: AI_CREDITS.join(", ") })}
         </p>
         <p className="licence-hint">
-          The MIT licence covers <em>this project's source code only</em>. The
-          model weights are not covered by it — see the weights table below.
+          {t("licences.mitScopeBefore")} <em>{t("licences.mitScopeEm")}</em>
+          {t("licences.mitScopeAfter")}
         </p>
       </section>
 
       {LICENCE_SECTIONS.map((section) => (
         <section className="params-section" key={section.id}>
-          <h3>{section.title}</h3>
-          {section.note && <p className="params-section-desc">{section.note}</p>}
+          <h3>{section.titleKey ? t(section.titleKey) : section.title}</h3>
+          {(section.noteKey || section.note) && (
+            <p className="params-section-desc">
+              {section.noteKey ? t(section.noteKey) : section.note}
+            </p>
+          )}
           <table className="licence-table">
             <thead>
               <tr>
-                <th>Package</th>
-                <th>Licence</th>
-                <th>Repository</th>
+                <th>{t("licences.colPackage")}</th>
+                <th>{t("licences.colLicence")}</th>
+                <th>{t("licences.colRepository")}</th>
               </tr>
             </thead>
             <tbody>
@@ -96,14 +100,14 @@ export default function LicencesTab() {
       ))}
 
       <section className="params-section">
-        <h3>Versions</h3>
+        <h3>{t("licences.versions")}</h3>
         <p className="params-section-desc">
-          Frontend {APP_VERSION_LABEL}
-          {apiVersion && ` · Backend API ${apiVersion}`}
+          {t("licences.frontendVersion", { version: APP_VERSION_LABEL })}
+          {apiVersion && t("licences.backendApi", { version: apiVersion })}
           {apiVersion && (
             <>
               {" · "}
-              <ExtLink href={GITHUB_REPO_URL}>repo</ExtLink>
+              <ExtLink href={GITHUB_REPO_URL}>{t("licences.repoLink")}</ExtLink>
             </>
           )}
         </p>

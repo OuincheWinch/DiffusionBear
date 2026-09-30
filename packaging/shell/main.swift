@@ -16,7 +16,7 @@
 //     macOS truncates shebangs at the first space -- that is how a whole app ends
 //     up booting under a stale interpreter.
 //   * The 28 GB model/LoRA/gallery store is never inside the bundle. It lives in
-//     Application Support and is passed through MLX_DIFFUSION_ASSET_DIR.
+//     Application Support and is passed through DIFFUSIONBEAR_ASSET_DIR.
 
 import AppKit
 import WebKit
@@ -36,7 +36,7 @@ private struct Paths {
     /// it returned the .app root instead of Contents/Resources, which left the
     /// backend's cwd pointing at the bundle root so uvicorn had no `main:app` to
     /// import and the app hung for minutes with an empty log. Walking up from the
-    /// executable is unambiguous: MacOS/MLX-Diffusion -> MacOS -> Contents.
+    /// executable is unambiguous: MacOS/DiffusionBear -> MacOS -> Contents.
     static let resources: URL = {
         let exe = Bundle.main.executableURL
             ?? URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
@@ -253,8 +253,8 @@ final class BackendProcess {
         // DATA_DIR (gallery, settings.json, LoRA registry, uploads, pid files) is
         // separate -- without it the app writes into the signed bundle, which grows
         // without bound and invalidates the bundle's own signature on next launch.
-        env["MLX_DIFFUSION_ASSET_DIR"] = Paths.assetDir.path
-        env["MLX_DIFFUSION_DATA_DIR"] = Paths.assetDir.path
+        env["DIFFUSIONBEAR_ASSET_DIR"] = Paths.assetDir.path
+        env["DIFFUSIONBEAR_DATA_DIR"] = Paths.assetDir.path
         // PYTHONHOME is intentionally absent: it leaks into every grandchild and
         // kills interpreters that are not ours, and the SDXL and Qwen engines are
         // spawned as grandchildren with their own interpreters. The venvs are
@@ -515,7 +515,7 @@ private func installMainMenu() {
 
 // MARK: - UI
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
     private var window: NSWindow!
     private var webView: WKWebView!
     private let backend = BackendProcess()
@@ -617,6 +617,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         config.websiteDataStore = .default()   // keep logins/session across launches
         webView = AppWebView(frame: NSRect(x: 0, y: 0, width: 1280, height: 840), configuration: config)
         webView.navigationDelegate = self
+        // A UI delegate is mandatory, not cosmetic. Without it WebKit does NOT show a
+        // panel: window.confirm() resolves to false synchronously and window.alert()
+        // does nothing at all. That silently disabled every destructive action in the
+        // app, because each one is guarded by `if (!window.confirm(...)) return`.
+        // Symptoms seen: the recovery queue's "clear all" buttons did nothing, and
+        // the experimental-model launch gate at GenerateForm.jsx modelLaunchBlocked()
+        // rejected every launch with no explanation shown.
+        webView.uiDelegate = self
         webView.autoresizingMask = [.width, .height]
 
         let content = DropHostView(frame: NSRect(x: 0, y: 0, width: 1280, height: 840))
@@ -744,6 +752,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         // The GPU process can be reclaimed under memory pressure. Reload rather
         // than leaving a blank window.
         webView.reload()
+    }
+
+    // MARK: - JS dialogs
+    //
+    // WebKit calls these instead of showing anything itself. The completion handlers
+    // must be invoked exactly once: leaving one uncalled hangs the JS thread, and
+    // calling it twice traps. Both panels are presented on the main thread because
+    // WKWebView delivers them there already, but NSAlert.runModal is not re-entrant,
+    // so the JS side must not be blocked from calling in while it is up.
+
+    func webView(_ webView: WKWebView,
+                 runJavaScriptAlertPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "DiffusionBear"
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+        completionHandler()
+    }
+
+    func webView(_ webView: WKWebView,
+                 runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "DiffusionBear"
+        alert.informativeText = message
+        alert.addButton(withTitle: NSLocalizedString("OK", comment: "confirm dialog confirm button"))
+        alert.addButton(withTitle: NSLocalizedString("Cancel", comment: "confirm dialog cancel button"))
+        alert.alertStyle = .warning
+        completionHandler(alert.runModal() == .alertFirstButtonReturn)
+    }
+
+    /// window.prompt() has no native equivalent worth offering, and the app never
+    /// calls it. Returning an empty string keeps WebKit from showing a blank panel.
+    func webView(_ webView: WKWebView,
+                 runJavaScriptTextInputPanelWithPrompt prompt: String,
+                 defaultText: String?,
+                 initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping (String?) -> Void) {
+        completionHandler(nil)
     }
 }
 

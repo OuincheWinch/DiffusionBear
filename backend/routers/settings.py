@@ -28,6 +28,10 @@ class SettingsUpdate(BaseModel):
     default_sampler: str | None = Field(default=None, max_length=80)
     default_cache_interval: int | None = Field(default=None, ge=1, le=10)
     model_defaults: dict | None = None
+    # UI language. "auto" follows the OS locale; a concrete code pins it. Stored
+    # with the rest of the settings so the choice survives a reinstall, and
+    # validated here rather than trusted from the client.
+    language: str | None = Field(default=None, pattern=r"^(auto|en|fr|de|it)$")
 
 
 @router.get("/api/settings")

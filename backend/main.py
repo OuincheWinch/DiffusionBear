@@ -25,14 +25,23 @@ import app_version
 import threading
 
 
+# Renamed MLX_DIFFUSION_* -> DIFFUSIONBEAR_* with the app. The legacy names are kept
+# as fallbacks so an existing launchd unit or export in a shell still works.
 _LOCAL_API_TOKEN = (
-    os.environ.get("MLX_DIFFUSION_API_TOKEN")
+    os.environ.get("DIFFUSIONBEAR_API_TOKEN")
+    or os.environ.get("MLX_DIFFUSION_API_TOKEN")
     or os.environ.get("MLX_API_TOKEN")
     or os.environ.get("LOCAL_API_TOKEN", "")
 )
 _DEV_FALLBACK = any(
     os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
-    for name in ("MLX_DIFFUSION_API_DEV_FALLBACK", "MLX_DIFFUSION_DEV_FALLBACK", "MLX_ALLOW_DEV_NO_TOKEN")
+    for name in (
+        "DIFFUSIONBEAR_API_DEV_FALLBACK",
+        "DIFFUSIONBEAR_DEV_FALLBACK",
+        "MLX_DIFFUSION_API_DEV_FALLBACK",
+        "MLX_DIFFUSION_DEV_FALLBACK",
+        "MLX_ALLOW_DEV_NO_TOKEN",
+    )
 )
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 # The two Vite dev ports, plus the app's own port. The standalone build serves the
@@ -154,7 +163,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="MLX-Diffusion", version=app_version.APP_VERSION, lifespan=lifespan)
+app = FastAPI(title="DiffusionBear", version=app_version.APP_VERSION, lifespan=lifespan)
 
 app.add_middleware(LocalHostMiddleware)
 app.add_middleware(RequestSizeMiddleware)

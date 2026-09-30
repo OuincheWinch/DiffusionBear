@@ -17,7 +17,7 @@ import requests
 
 
 CIVITAI_API_BASE = "https://civitai.com/api/v1"
-DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 MLX-Diffusion/0.1.2"
+DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 DiffusionBear/0.1.2"
 MAX_LORA_DOWNLOAD_BYTES = 8 * (1 << 30)
 MAX_API_RESPONSE_BYTES = 4 * 1024 * 1024
 MAX_DOWNLOAD_REDIRECTS = 5
@@ -38,7 +38,10 @@ class DownloadCancelled(RuntimeError):
 
 
 def download_deadline_seconds() -> int:
-    raw = os.environ.get("MLX_DIFFUSION_DOWNLOAD_TIMEOUT_S", str(DEFAULT_DOWNLOAD_DEADLINE_SECONDS))
+    raw = os.environ.get(
+        "DIFFUSIONBEAR_DOWNLOAD_TIMEOUT_S",
+        os.environ.get("MLX_DIFFUSION_DOWNLOAD_TIMEOUT_S", str(DEFAULT_DOWNLOAD_DEADLINE_SECONDS)),
+    )
     try:
         return min(86400, max(60, int(raw)))
     except (TypeError, ValueError):

@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api";
 import { formatBytes } from "../../utils/formatBytes";
+import { useI18n } from "../../i18n/I18nContext";
 
 // Read-only by design. This panel answers "where did my disk go", and it has no
 // delete button anywhere on purpose: a report that can destroy things is a report
 // people stop trusting. Anything worth removing has to be a decision, not a
 // side effect of looking.
 
-const STATUS_LABEL = {
-  registered: "in use",
-  internal: "loaded at runtime",
-  unrecognised: "unrecognised",
+// Maps the backend's status codes to i18n keys rather than to literal text: the
+// table lives at module level, outside any component, so it cannot call useI18n().
+const STATUS_KEY = {
+  registered: "settings.storage.statusRegistered",
+  internal: "settings.storage.statusInternal",
+  unrecognised: "settings.storage.statusUnrecognised",
 };
 
 function Row({ label, bytes, detail }) {
@@ -24,6 +27,7 @@ function Row({ label, bytes, detail }) {
 }
 
 export default function StorageSection({ onFeedback }) {
+  const { t } = useI18n();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
@@ -45,8 +49,8 @@ export default function StorageSection({ onFeedback }) {
     refresh();
   }, [refresh]);
 
-  if (loading && !report) return <p className="muted">Scanning…</p>;
-  if (err) return <p className="error">Storage scan failed: {err}</p>;
+  if (loading && !report) return <p className="muted">{t("settings.storage.scanning")}</p>;
+  if (err) return <p className="error">{t("settings.storage.scanFailed", { error: err })}</p>;
   if (!report) return null;
 
   const { totals, models, loras, gallery, uploads, secrets, config, unrecognised, roots } = report;
@@ -59,51 +63,62 @@ export default function StorageSection({ onFeedback }) {
     <div className="settings-section">
       <div className="storage-head">
         <div>
-          <strong>{formatBytes(totals.bytes)}</strong> on disk
+          <strong>{formatBytes(totals.bytes)}</strong> {t("settings.storage.onDisk")}
           <div className="muted small">
             {roots.same
-              ? `store: ${roots.data_dir}`
-              : `models: ${roots.asset_dir} · data: ${roots.data_dir}`}
+              ? t("settings.storage.storeRoot", { path: roots.data_dir })
+              : t("settings.storage.rootsSplit", { models: roots.asset_dir, data: roots.data_dir })}
           </div>
         </div>
         <button type="button" onClick={() => refresh(true)} disabled={loading}>
-          {loading ? "Scanning…" : "Rescan"}
+          {loading ? t("settings.storage.scanning") : t("settings.storage.rescan")}
         </button>
       </div>
 
       <table className="storage-table">
         <tbody>
-          <Row label="Models" bytes={totals.by_category.models} detail={`${models.length} directories`} />
           <Row
-            label="LoRAs"
+            label={t("settings.storage.rowModels")}
+            bytes={totals.by_category.models}
+            detail={t("settings.storage.directories", { count: models.length })}
+          />
+          <Row
+            label={t("settings.storage.rowLoras")}
             bytes={totals.by_category.loras}
-            detail={`${loras.files} file(s) across ${(loras.directories || []).length} director${(loras.directories || []).length === 1 ? "y" : "ies"}`}
+            detail={(loras.directories || []).length === 1
+              ? t("settings.storage.lorasDetailOne", { files: loras.files })
+              : t("settings.storage.lorasDetailMany", { files: loras.files, dirs: (loras.directories || []).length })}
           />
           <Row
-            label="Generated images"
+            label={t("settings.storage.rowGallery")}
             bytes={totals.by_category.gallery}
-            detail={`${gallery.images} image(s) + ${gallery.thumbnails} thumbnail(s)`}
+            detail={t("settings.storage.galleryDetail", { images: gallery.images, thumbnails: gallery.thumbnails })}
           />
-          <Row label="Uploads" bytes={totals.by_category.uploads} detail={`${uploads.files} file(s)`} />
+          <Row
+            label={t("settings.storage.rowUploads")}
+            bytes={totals.by_category.uploads}
+            detail={t("settings.storage.uploadsDetail", { files: uploads.files })}
+          />
         </tbody>
       </table>
 
       {wasted > 0 && (
         <p className="warning">
-          <strong>{formatBytes(wasted)} is stored more than once.</strong> {dupes.length} probable duplicate file
-          {dupes.length === 1 ? "" : "s"} exist as identical copies in different directories —
-          usually a leftover from an older install alongside the current one. Nothing has been
-          removed; this is only telling you the space is there.
+          <strong>{t("settings.storage.dupeLead", { size: formatBytes(wasted) })}</strong>{" "}
+          {dupes.length === 1
+            ? t("settings.storage.dupeBodyOne", { count: dupes.length })
+            : t("settings.storage.dupeBodyMany", { count: dupes.length })}
         </p>
       )}
 
       {missing > 0 && (
         <p className="warning">
           <strong>
-            {missing} registered LoRA{missing === 1 ? "" : "s"} point at a file that is no longer
-            there.
+            {missing === 1
+              ? t("settings.storage.missingOne", { count: missing })
+              : t("settings.storage.missingMany", { count: missing })}
           </strong>{" "}
-          They will fail silently if selected. Names:{" "}
+          {t("settings.storage.missingTail")}{" "}
           <span className="mono">{(loras.missing_names || []).slice(0, 6).join(", ")}</span>
           {(loras.missing_names || []).length > 6 && " …"}
         </p>
@@ -112,24 +127,24 @@ export default function StorageSection({ onFeedback }) {
       {unseen > 0 && (
         <p className="warning">
           <strong>
-            {unseen} model director{unseen === 1 ? "y is" : "ies are"} not referenced by anything
-            in the app.
+            {unseen === 1
+              ? t("settings.storage.unseenOne", { count: unseen })
+              : t("settings.storage.unseenMany", { count: unseen })}
           </strong>{" "}
-          That is not a verdict — a model placed by hand, or one a different build supports, looks
-          the same. Worth a look, not an instruction. Nothing here is ever marked reclaimable.
+          {t("settings.storage.unseenTail")}
         </p>
       )}
 
       {wasted > 0 && (
         <details>
-          <summary>Duplicated files</summary>
+          <summary>{t("settings.storage.duplicatedFiles")}</summary>
           <table className="storage-table">
             <thead>
               <tr>
-                <th>File</th>
-                <th className="num">Each</th>
-                <th className="num">Copies</th>
-                <th className="num">Wasted</th>
+                <th>{t("settings.storage.thFile")}</th>
+                <th className="num">{t("settings.storage.thEach")}</th>
+                <th className="num">{t("settings.storage.thCopies")}</th>
+                <th className="num">{t("settings.storage.thWasted")}</th>
               </tr>
             </thead>
             <tbody>
@@ -147,14 +162,14 @@ export default function StorageSection({ onFeedback }) {
       )}
 
       <details>
-        <summary>Model directories</summary>
+        <summary>{t("settings.storage.modelDirectories")}</summary>
         <table className="storage-table">
           <thead>
             <tr>
-              <th>Directory</th>
-              <th className="num">Size</th>
-              <th className="num">Files</th>
-              <th>Status</th>
+              <th>{t("settings.storage.thDirectory")}</th>
+              <th className="num">{t("settings.storage.thSize")}</th>
+              <th className="num">{t("settings.storage.thFiles")}</th>
+              <th>{t("settings.storage.thStatus")}</th>
             </tr>
           </thead>
           <tbody>
@@ -164,7 +179,7 @@ export default function StorageSection({ onFeedback }) {
                 <td className="num">{formatBytes(m.bytes)}</td>
                 <td className="num">{m.files}</td>
                 <td className="muted">
-                  {STATUS_LABEL[m.status] || m.status}
+                  {STATUS_KEY[m.status] ? t(STATUS_KEY[m.status]) : m.status}
                   {m.purpose ? ` — ${m.purpose}` : ""}
                   {m.label ? ` — ${m.label}` : ""}
                 </td>
@@ -174,30 +189,28 @@ export default function StorageSection({ onFeedback }) {
         </table>
         {unseen > 0 && (
           <p className="muted small">
-            Unaccounted for: {unrecognised.map((m) => `${m.name} (${formatBytes(m.bytes)})`).join(", ")}
+            {t("settings.storage.unaccountedFor", { names: unrecognised.map((m) => `${m.name} (${formatBytes(m.bytes)})`).join(", ") })}
           </p>
         )}
       </details>
 
       <details>
-        <summary>Configuration and credentials</summary>
+        <summary>{t("settings.storage.configCreds")}</summary>
         <table className="storage-table">
           <tbody>
-            <Row label="settings.json" bytes={config.settings_bytes} detail="preferences, presets" />
-            <Row label="loras.json" bytes={config.loras_registry_bytes} detail="LoRA registry" />
+            <Row label="settings.json" bytes={config.settings_bytes} detail={t("settings.storage.detailSettings")} />
+            <Row label="loras.json" bytes={config.loras_registry_bytes} detail={t("settings.storage.detailLoras")} />
             {secrets.map((s) => (
               <Row
                 key={s.name}
                 label={s.name}
                 bytes={s.bytes}
-                detail={s.present ? "present on disk" : "not set"}
+                detail={s.present ? t("settings.storage.secretPresent") : t("settings.storage.secretMissing")}
               />
             ))}
           </tbody>
         </table>
-        <p className="muted small">
-          Credential files are reported by name and size only. This panel never opens them.
-        </p>
+        <p className="muted small">{t("settings.storage.credentialNote")}</p>
       </details>
     </div>
   );

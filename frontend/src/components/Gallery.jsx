@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, imageUrl } from "../api";
 import { bindFullImageDrag, copyFullImageToClipboard, revealImageInFinder } from "../utils/dragDrop";
 import LazyGalleryImage from "./LazyGalleryImage";
+import { useI18n } from "../i18n/I18nContext";
 
 export default function Gallery({ refreshKey, onReuse, activeTab = "browser", newImage = null }) {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
@@ -222,7 +224,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
       setSelected(upscaled);
       load();
     } catch (e) {
-      alert(`Upscale error: ${e.message || e}`);
+      alert(t("gallery.upscaleError", { message: e.message || e }));
     } finally {
       setUpscaling(false);
     }
@@ -233,7 +235,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
       <div className="gallery-controls">
         <input
           className="search"
-          placeholder="Search prompts or seeds..."
+          placeholder={t("gallery.searchPlaceholder")}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -241,7 +243,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
           }}
         />
         <input
-          placeholder="tags: comma,separated"
+          placeholder={t("gallery.tagsPlaceholder")}
           value={tags}
           onChange={(e) => {
             setTags(e.target.value);
@@ -249,8 +251,8 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
           }}
         />
         <select value={sort} onChange={(e) => setSort(e.target.value)}>
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
+          <option value="newest">{t("gallery.sortNewest")}</option>
+          <option value="oldest">{t("gallery.sortOldest")}</option>
         </select>
         <select
           className="model-filter"
@@ -260,7 +262,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
             setPage(1);
           }}
         >
-          <option value="">All models</option>
+          <option value="">{t("gallery.allModels")}</option>
           {models.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
@@ -274,13 +276,13 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
             setLora(e.target.value);
             setPage(1);
           }}
-          title="Filter images by LoRA"
+          title={t("gallery.loraFilterTitle")}
         >
-          <option value="">All Images ({loraStats?.total ?? total})</option>
-          <option value="__none__">Without LoRA ({loraStats?.without_lora ?? 0})</option>
-          <option value="__any__">With any LoRA ({loraStats?.with_lora ?? 0})</option>
+          <option value="">{t("gallery.loraOptionAll", { count: loraStats?.total ?? total })}</option>
+          <option value="__none__">{t("gallery.loraOptionNone", { count: loraStats?.without_lora ?? 0 })}</option>
+          <option value="__any__">{t("gallery.loraOptionAny", { count: loraStats?.with_lora ?? 0 })}</option>
           {loraStats?.loras?.length > 0 && (
-            <optgroup label="Installed & Used LoRAs">
+            <optgroup label={t("gallery.loraOptgroup")}>
               {loraStats.loras.map((l) => (
                 <option key={l.name} value={l.name}>
                   {l.name} ({l.count})
@@ -290,13 +292,13 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
           )}
         </select>
         <span className="count">
-          {total} image{total === 1 ? "" : "s"}
+          {total === 1 ? t("gallery.countOne", { count: total }) : t("gallery.countMany", { count: total })}
         </span>
       </div>
 
       <div className="gallery-lora-tabs-bar">
         <div className="gallery-lora-tabs-header">
-          <span className="lora-tabs-title">LoRA:</span>
+          <span className="lora-tabs-title">{t("gallery.loraPrefix")}</span>
           {lora && (
             <button
               type="button"
@@ -305,9 +307,9 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 setLora("");
                 setPage(1);
               }}
-              title="Reset LoRA filter"
+              title={t("gallery.loraResetTitle")}
             >
-              ✕ Clear filter
+              {t("gallery.loraClearBtn")}
             </button>
           )}
         </div>
@@ -320,7 +322,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
               setPage(1);
             }}
           >
-            All Images <span className="lora-tab-count">{loraStats?.total ?? total}</span>
+            {t("gallery.loraTabAll")} <span className="lora-tab-count">{loraStats?.total ?? total}</span>
           </button>
           <button
             type="button"
@@ -330,7 +332,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
               setPage(1);
             }}
           >
-            Without LoRA <span className="lora-tab-count">{loraStats?.without_lora ?? 0}</span>
+            {t("gallery.loraTabNone")} <span className="lora-tab-count">{loraStats?.without_lora ?? 0}</span>
           </button>
           <button
             type="button"
@@ -340,7 +342,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
               setPage(1);
             }}
           >
-            With any LoRA <span className="lora-tab-count">{loraStats?.with_lora ?? 0}</span>
+            {t("gallery.loraTabAny")} <span className="lora-tab-count">{loraStats?.with_lora ?? 0}</span>
           </button>
           {loraStats?.loras?.map((l) => (
             <button
@@ -351,7 +353,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 setLora(lora === l.name ? "" : l.name);
                 setPage(1);
               }}
-              title={`Filter by ${l.name} (${l.count} image${l.count === 1 ? "" : "s"})`}
+              title={l.count === 1 ? t("gallery.loraTabTitleOne", { name: l.name, count: l.count }) : t("gallery.loraTabTitleMany", { name: l.name, count: l.count })}
             >
               <span className="lora-tab-name">{l.name}</span>
               <span className="lora-tab-count">{l.count}</span>
@@ -361,7 +363,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
       </div>
 
       {items.length === 0 ? (
-        <p className="hint">No images yet. Generate something!</p>
+        <p className="hint">{t("gallery.empty")}</p>
       ) : (
         <div className="grid">
           {items.map((item) => (
@@ -377,7 +379,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                   openDetail(item);
                 }
               }}
-              title="Click to view details · Drag anywhere for full-resolution image"
+              title={t("gallery.cellTitle")}
               {...bindFullImageDrag(item)}
             >
               <LazyGalleryImage item={item} />
@@ -385,7 +387,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 <button
                   type="button"
                   className="cell-quick-btn"
-                  title="Copier l'image PNG (Cmd+V sur Civitai ou dans le chat)"
+                  title={t("gallery.cellCopyTitle")}
                   onClick={(e) => {
                     e.stopPropagation();
                     copyImage(item);
@@ -396,7 +398,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 <button
                   type="button"
                   className="cell-quick-btn"
-                  title="Révéler le fichier dans le Finder macOS"
+                  title={t("gallery.cellRevealTitle")}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleReveal(item);
@@ -435,7 +437,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 e.stopPropagation();
                 navigateDetail(-1);
               }}
-              title="Previous (←)"
+              title={t("gallery.detailPrevTitle")}
             >
               ←
             </button>
@@ -447,7 +449,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 e.stopPropagation();
                 navigateDetail(1);
               }}
-              title="Next (→)"
+              title={t("gallery.detailNextTitle")}
             >
               →
             </button>
@@ -456,47 +458,47 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
             <img
               src={imageUrl(selected.id)}
               alt={selected.prompt}
-              title="Drag for full-resolution image"
+              title={t("gallery.dragFullResTitle")}
               {...bindFullImageDrag(selected)}
             />
             <div className="detail">
               <p className="detail-prompt">{selected.prompt}</p>
               <dl>
-                <dt>Model</dt>
+                <dt>{t("gallery.fieldModel")}</dt>
                 <dd>{labelFor(selected.model)}</dd>
-                <dt>Seed</dt>
+                <dt>{t("gallery.fieldSeed")}</dt>
                 <dd>{selected.seed}</dd>
-                <dt>Size</dt>
+                <dt>{t("gallery.fieldSize")}</dt>
                 <dd>
                   {selected.width} × {selected.height}
                 </dd>
-                <dt>Steps</dt>
+                <dt>{t("gallery.fieldSteps")}</dt>
                 <dd>{selected.steps}</dd>
-                <dt>Guidance</dt>
+                <dt>{t("gallery.fieldGuidance")}</dt>
                 <dd>{selected.guidance}</dd>
                 {selected.sampler && (
                   <>
-                    <dt>Sampler</dt>
+                    <dt>{t("gallery.fieldSampler")}</dt>
                     <dd>{selected.sampler}</dd>
                   </>
                 )}
                 {selected.negative_prompt && (
                   <>
-                    <dt>Negative</dt>
+                    <dt>{t("gallery.fieldNegative")}</dt>
                     <dd>{selected.negative_prompt}</dd>
                   </>
                 )}
                 {selected.quantization != null && (
                   <>
-                    <dt>Quantization</dt>
+                    <dt>{t("gallery.fieldQuantization")}</dt>
                     <dd>{selected.quantization}-bit</dd>
                   </>
                 )}
-                <dt>Time</dt>
+                <dt>{t("gallery.fieldTime")}</dt>
                 <dd>{selected.generation_time}s</dd>
                 {selected.loras?.length > 0 && (
                   <>
-                    <dt>LoRAs</dt>
+                    <dt>{t("gallery.fieldLoras")}</dt>
                     <dd>
                       {selected.loras
                         .map((l) => {
@@ -513,35 +515,35 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 <button
                   className="btn-accent"
                   onClick={() => copyImage(selected)}
-                  title="Copier l'image PNG originale dans le presse-papier macOS (Cmd+C / puis Cmd+V sur Civitai ou dans le chat)"
+                  title={t("gallery.copyImageFullTitle")}
                 >
-                  {imageCopied ? "Image Copiée ✓ (Cmd+V)" : "📋 Copier l'image"}
+                  {imageCopied ? t("gallery.copyImageDone") : t("gallery.copyImageBtn")}
                 </button>
                 <button
                   onClick={() => handleReveal(selected)}
-                  title="Ouvrir l'image originale dans le Finder macOS pour la glisser-déposer vers Civitai"
+                  title={t("gallery.revealFullTitle")}
                 >
-                  {revealed ? "Ouvert dans le Finder ✓" : "📂 Finder"}
+                  {revealed ? t("gallery.revealedDone") : t("gallery.revealBtn")}
                 </button>
                 <button onClick={copyPrompt}>
-                  {promptCopied ? "Prompt copied ✓" : "Copy prompt"}
+                  {promptCopied ? t("gallery.promptCopiedDone") : t("gallery.copyPromptBtn")}
                 </button>
                 <button onClick={copySeed}>
-                  {copied ? "Copied ✓" : "Copy seed"}
+                  {copied ? t("gallery.seedCopiedDone") : t("gallery.copySeedBtn")}
                 </button>
                 <button
                   onClick={() => handleUpscale(2)}
                   disabled={upscaling}
-                  title="2x Super-Resolution Upscale"
+                  title={t("gallery.upscale2xTitle")}
                 >
-                  {upscaling ? "Upscaling…" : "⚡ Upscale 2x"}
+                  {upscaling ? t("gallery.upscaling") : t("gallery.upscale2xBtn")}
                 </button>
                 <button
                   onClick={() => handleUpscale(4)}
                   disabled={upscaling}
-                  title="4x Super-Resolution Upscale"
+                  title={t("gallery.upscale4xTitle")}
                 >
-                  {upscaling ? "Upscaling…" : "⚡ Upscale 4x"}
+                  {upscaling ? t("gallery.upscaling") : t("gallery.upscale4xBtn")}
                 </button>
                 <button
                   onClick={() => {
@@ -549,20 +551,20 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                     setSelected(null);
                   }}
                 >
-                  Reuse params
+                  {t("gallery.reuseParams")}
                 </button>
                 <a className="btn" href={imageUrl(selected.id)} download={selected.file || `${selected.id}.${selected.format || 'png'}`}>
-                  Download
+                  {t("gallery.download")}
                 </a>
                 <button
                   className="danger"
                   onClick={() =>
-                    confirm("Delete this image?") && deleteImage(selected.id)
+                    confirm(t("gallery.deleteConfirm")) && deleteImage(selected.id)
                   }
                 >
-                  Delete
+                  {t("gallery.deleteBtn")}
                 </button>
-                <button onClick={() => setSelected(null)}>Close</button>
+                <button onClick={() => setSelected(null)}>{t("gallery.closeBtn")}</button>
               </div>
             </div>
           </div>
@@ -573,14 +575,15 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
 }
 
 function TagEditor({ item, onSave }) {
+  const { t } = useI18n();
   const [value, setValue] = useState((item.tags || []).join(", "));
   return (
     <div className="tag-editor">
       <label>
-        Tags
+        {t("gallery.tagsLabel")}
         <input value={value} onChange={(e) => setValue(e.target.value)} />
       </label>
-      <button onClick={() => onSave(value)}>Save tags</button>
+      <button onClick={() => onSave(value)}>{t("gallery.saveTags")}</button>
     </div>
   );
 }

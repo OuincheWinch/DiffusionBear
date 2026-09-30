@@ -9,7 +9,7 @@ import app_settings
 from image_meta import atomic_write_json, save_image_with_metadata, extract_image_metadata, _artist_fallback
 
 # Derive from app_settings rather than re-deriving backend/data here: this was a
-# second hardcoded copy, so it ignored MLX_DIFFUSION_DATA_DIR and would have written
+# second hardcoded copy, so it ignored the configured data dir and would have written
 # upscaled images into the signed .app bundle instead of the user's store.
 DATA_DIR = app_settings.DATA_DIR
 GENERATED_DIR = DATA_DIR / "generated"

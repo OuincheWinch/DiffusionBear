@@ -3692,3 +3692,57 @@ p.warning {
   font-size: 13px;
   margin: 10px 0;
 }
+
+/* ------------------------------------------------------- recovery queue errors
+   These banners replace window.alert(), which is a silent no-op in the app's
+   WKWebView (no WKUIDelegate was set), so failures used to vanish with no sign. */
+.queue-recovery-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid #7a2f2f;
+  border-radius: 6px;
+  background: rgba(122, 47, 47, 0.18);
+  color: #f0b4b4;
+  font-size: 12px;
+}
+.queue-recovery-error > span:nth-child(2) {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------- language picker
+   The entries are named in their own language on purpose: a picker that renames
+   itself with the current selection makes the target harder to spot. The flag and
+   the active ring carry the state instead. */
+.language-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.language-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border, #3a3a3a);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.language-option:hover {
+  border-color: #6d6d6d;
+}
+.language-option.active {
+  border-color: #7aa2ff;
+  box-shadow: inset 0 0 0 1px #7aa2ff;
+  color: #cfe0ff;
+}
+.language-flag {
+  font-size: 14px;
+  line-height: 1;
+}

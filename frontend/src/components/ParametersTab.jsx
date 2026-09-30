@@ -8,9 +8,12 @@ import HfCacheSection from "./settings/HfCacheSection";
 import QueueSection from "./settings/QueueSection";
 import StorageSection from "./settings/StorageSection";
 import EnhancerSystemSection from "./settings/EnhancerSystemSection";
+import LanguageSection from "./settings/LanguageSection";
+import { useI18n } from "../i18n/I18nContext";
 import { useSettings } from "../hooks/useSettings";
 
 export default function ParametersTab({ onNavigate }) {
+  const { t } = useI18n();
   const { settings, loading: settingsLoading, update, refresh } = useSettings();
   const [models, setModels] = useState([]);
   const [modelsLoading, setModelsLoading] = useState(true);
@@ -167,12 +170,13 @@ export default function ParametersTab({ onNavigate }) {
           onTokenSaved={() => setTokenAutofocus(null)}
         />
         <p className="params-hint">
-          Note: gated Hugging Face repos also fall back to a token stored in{" "}
-          <code>~/.cache/huggingface/token</code> if this file is empty.
+          {t("settings.queue.tokenFallback")} <code>~/.cache/huggingface/token</code>
         </p>
       </section>
         </>
       )}
+
+      <LanguageSection />
     </div>
   );
 }

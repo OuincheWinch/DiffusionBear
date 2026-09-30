@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import { useI18n } from "../i18n/I18nContext";
 
 const mb = (bytes) => `${(bytes / 1048576).toFixed(0)} MB`;
 
 export default function ModelInstaller({ modelInfo, onInstalled }) {
+  const { t } = useI18n();
   const [task, setTask] = useState(null);
   const [starting, setStarting] = useState(false);
   const [showLocal, setShowLocal] = useState(false);
@@ -81,7 +83,7 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
   const installLocal = async () => {
     const path = (manualPath.trim() || picked).trim();
     if (!path) {
-      setLocalError("Choose a cached repo or enter a folder path");
+      setLocalError(t("installer.pathRequired"));
       return;
     }
     setInstalling(true);
@@ -107,17 +109,17 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
   return (
     <div className="model-installer">
       <div className="model-installer-row">
-        <span className="dl-tag">weights</span>
+        <span className="dl-tag">{t("installer.tagWeights")}</span>
         <span className="model-installer-text">
           {task?.status === "done"
-            ? "✓ Installed"
+            ? t("installer.statusInstalled")
             : task?.status === "error"
-              ? "✕ Download failed"
+              ? t("installer.statusFailed")
               : task?.status === "cancelled"
-                ? "Download cancelled"
+                ? t("installer.statusCancelled")
                 : showBar
-                  ? `⬇ ${task?.status_text || "Downloading…"}`
-                  : "⬇ Not installed — download weights first"}
+                  ? `⬇ ${task?.status_text || t("installer.statusDownloading")}`
+                  : t("installer.statusNotInstalled")}
         </span>
         {showBar ? (
           <button type="button" className="btn-cancel-download" onClick={cancel}>
@@ -129,22 +131,22 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
               <div className="model-installer-actions">
                 {canDownload && (
                   <button type="button" className="btn-open-token" onClick={start} disabled={starting}>
-                    {starting ? "Starting…" : "Download"}
+                    {starting ? t("installer.startingBtn") : t("installer.downloadBtn")}
                   </button>
                 )}
                 <button
                   type="button"
                   className={`btn-mini${showLocal ? " active" : ""}`}
                   onClick={() => (showLocal ? setShowLocal(false) : openLocal())}
-                  title="Install from a folder already on disk (HF cache or local)"
+                  title={t("installer.localBtnTitle")}
                 >
-                  📁 Local…
+                  {t("installer.localBtn")}
                 </button>
               </div>
             )}
             {task?.status === "error" && (
               <button type="button" className="btn-open-token" onClick={() => { setTask(null); start(); }} disabled={starting}>
-                {starting ? "Starting…" : "Retry"}
+                {starting ? t("installer.startingBtn") : t("app.retry")}
               </button>
             )}
           </>
@@ -177,12 +179,9 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
 
       {showLocal && !showBar && (
         <div className="model-installer-local">
-          <span className="settings-hint">
-            Install from a copy already on your disk — nothing is downloaded or copied; the model
-            loads directly from the folder.
-          </span>
+          <span className="settings-hint">{t("installer.localHint")}</span>
           {sourcesLoading ? (
-            <span className="settings-hint">Scanning Hugging Face cache…</span>
+            <span className="settings-hint">{t("installer.scanningCache")}</span>
           ) : (
             <select
               className="model-installer-select"
@@ -194,7 +193,7 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
               }}
             >
               <option value="">
-                {sources.length ? "— pick a cached Hugging Face repo —" : "— no cached repos found —"}
+                {sources.length ? t("installer.pickCachedRepo") : t("installer.noCachedRepo")}
               </option>
               {sources.map((s) => (
                 <option key={`${s.repo_id}|${s.path}`} value={s.path}>
@@ -208,7 +207,7 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
             className="model-installer-path"
             type="text"
             value={manualPath}
-            placeholder="…or /path/to/model/folder (or an HF cache models--org--name dir)"
+            placeholder={t("installer.pathPlaceholder")}
             onChange={(e) => {
               setManualPath(e.target.value);
               setPicked("");
@@ -223,10 +222,10 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
               onClick={installLocal}
               disabled={installing || (!picked && !manualPath.trim())}
             >
-              {installing ? "Installing…" : "Install from local"}
+              {installing ? t("installer.installingBtn") : t("installer.installLocalBtn")}
             </button>
             <button type="button" className="btn-mini" onClick={() => setShowLocal(false)}>
-              Cancel
+              {t("app.cancel")}
             </button>
           </div>
           {localError && <span className="error">{localError}</span>}

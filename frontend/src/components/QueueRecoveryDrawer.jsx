@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import { useI18n } from "../i18n/I18nContext";
 
 export default function QueueRecoveryDrawer({
   isOpen,
@@ -7,14 +8,23 @@ export default function QueueRecoveryDrawer({
   items = [],
   onRefresh,
 }) {
+  const { t } = useI18n();
   const [restoring, setRestoring] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [error, setError] = useState(null);
+
+  function traceDeleteError(err) {
+    // Silent catch blocks hid a real failure for a long time: the buttons looked
+    // dead and there was nothing in any log. Keep the detail in the console.
+    console.error("[DiffusionBear] recovery delete failed:", err);
+  }
 
   if (!isOpen) return null;
 
   async function handleRestoreAll() {
     setRestoring(true);
+    setError(null);
     try {
       await api("/api/queue/recovery/restore", {
         method: "POST",
@@ -23,7 +33,8 @@ export default function QueueRecoveryDrawer({
       onRefresh?.();
       onClose();
     } catch (err) {
-      alert("Erreur lors de la réinsertion : " + err);
+      setError("restoreFailed");
+      console.error("[DiffusionBear] recovery restore failed:", err);
     } finally {
       setRestoring(false);
     }
@@ -31,6 +42,7 @@ export default function QueueRecoveryDrawer({
 
   async function handleRestoreSingle(id) {
     setRestoring(true);
+    setError(null);
     try {
       await api("/api/queue/recovery/restore", {
         method: "POST",
@@ -38,7 +50,8 @@ export default function QueueRecoveryDrawer({
       });
       onRefresh?.();
     } catch (err) {
-      alert("Erreur lors de la réinsertion : " + err);
+      setError("restoreFailed");
+      console.error("[DiffusionBear] recovery restore failed:", err);
     } finally {
       setRestoring(false);
     }
@@ -50,31 +63,34 @@ export default function QueueRecoveryDrawer({
         method: "DELETE",
       });
       onRefresh?.();
-    } catch {}
+    } catch (err) {
+      setError("deleteItemFailed");
+      traceDeleteError(err);
+    }
   }
 
   async function handleClearAll() {
-    if (!window.confirm("Effacer définitivement l'historique de récupération ?")) return;
+    if (!window.confirm(t("queue.clearAllConfirm"))) return;
     try {
       await api("/api/queue/recovery", { method: "DELETE" });
       onRefresh?.();
       onClose();
-    } catch {}
+    } catch (err) {
+      setError("deleteAllFailed");
+      traceDeleteError(err);
+    }
   }
 
   async function handleClearAndForget() {
-    if (
-      !window.confirm(
-        "Effacer ET oublier ?\n\nCela supprime aussi les jobs encore en attente pour qu'aucun ne soit restauré au prochain démarrage. Action définitive."
-      )
-    ) {
-      return;
-    }
+    if (!window.confirm(t("queue.clearAndForgetConfirm"))) return;
     try {
       await api("/api/queue/recovery?forget=true", { method: "DELETE" });
       onRefresh?.();
       onClose();
-    } catch {}
+    } catch (err) {
+      setError("deleteAllFailed");
+      traceDeleteError(err);
+    }
   }
 
   function handleLoadInForm(item) {
@@ -94,7 +110,10 @@ export default function QueueRecoveryDrawer({
       await navigator.clipboard.writeText(text);
       setCopiedId(item.id);
       setTimeout(() => setCopiedId(null), 1500);
-    } catch {}
+    } catch (err) {
+      setError("clipboard");
+      console.error("[DiffusionBear] clipboard write failed:", err);
+    }
   }
 
   async function handleCopyAllPrompts() {
@@ -106,7 +125,10 @@ export default function QueueRecoveryDrawer({
       await navigator.clipboard.writeText(all);
       setCopiedAll(true);
       setTimeout(() => setCopiedAll(false), 2000);
-    } catch {}
+    } catch (err) {
+      setError("clipboard");
+      console.error("[DiffusionBear] clipboard write failed:", err);
+    }
   }
 
   function formatTime(ts) {
@@ -128,19 +150,36 @@ export default function QueueRecoveryDrawer({
         <div className="queue-recovery-header">
           <div className="queue-recovery-title">
             <span className="queue-recovery-icon">↺</span>
-            <h3>File d'attente récupérable</h3>
+            <h3>{t("queue.recoveryTitle")}</h3>
             <span className="queue-recovery-count-badge">
-              {items.length} {items.length > 1 ? "prompts" : "prompt"}
+              {items.length} {items.length > 1 ? t("queue.promptsCount") : t("queue.promptCount")}
             </span>
           </div>
-          <button type="button" className="btn-close" onClick={onClose} title="Fermer">
+          <button type="button" className="btn-close" onClick={onClose} title={t("app.close")}>
             ✕
           </button>
         </div>
 
-        <p className="queue-recovery-subtitle">
-          Prompts sauvegardés suite à une annulation de queue ou un arrêt imprévu de la machine.
-        </p>
+        <p className="queue-recovery-subtitle">{t("queue.recoverySubtitle")}</p>
+
+        {error && (
+          <div className="queue-recovery-error" role="alert">
+            <span>⚠</span>
+            <span>{error === "restoreFailed"
+              ? t("queue.restoreFailed")
+              : error === "clipboard"
+                ? t("queue.clipboardFailed")
+                : t("queue.deleteFailed")}</span>
+            <button
+              type="button"
+              className="btn-mini"
+              onClick={() => setError(null)}
+              title={t("app.dismiss")}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {items.length > 0 && (
           <div className="queue-recovery-bulk-actions">
@@ -150,29 +189,29 @@ export default function QueueRecoveryDrawer({
               onClick={handleRestoreAll}
               disabled={restoring}
             >
-              ↺ Tout réinsérer dans la file ({items.length})
+              ↺ {t("queue.restoreAll")} ({items.length})
             </button>
             <button
               type="button"
               className="btn-secondary"
               onClick={handleCopyAllPrompts}
             >
-              {copiedAll ? "✓ Copiés !" : "⎘ Copier tous les prompts"}
+              {copiedAll ? t("queue.copiedAll") : `⎘ ${t("queue.copyAll")}`}
             </button>
             <button
               type="button"
               className="btn-danger-ghost"
               onClick={handleClearAll}
             >
-              🗑 Tout effacer
+              🗑 {t("queue.clearAll")}
             </button>
             <button
               type="button"
               className="btn-danger"
               onClick={handleClearAndForget}
-              title="Efface aussi la file en attente : rien ne sera restauré au prochain démarrage"
+              title={t("queue.forgetTitle")}
             >
-              🚫 Effacer et oublier
+              🚫 {t("queue.clearAndForget")}
             </button>
           </div>
         )}
@@ -181,10 +220,8 @@ export default function QueueRecoveryDrawer({
           {items.length === 0 ? (
             <div className="queue-recovery-empty">
               <span className="empty-sparkle">✨</span>
-              <p>Aucun prompt en attente de récupération.</p>
-              <span className="hint">
-                Vos générations annulées ou interrompues s'archiveront automatiquement ici.
-              </span>
+              <p>{t("queue.empty")}</p>
+              <span className="hint">{t("queue.emptyHint")}</span>
             </div>
           ) : (
             items.map((it) => {
@@ -201,13 +238,13 @@ export default function QueueRecoveryDrawer({
                     <span
                       className={`badge-status ${isInterrupted ? "badge-interrupted" : "badge-cancelled"}`}
                     >
-                      {isInterrupted ? "⚡ Interrompu (Crash/Arrêt)" : "⌫ Annulé"}
+                      {isInterrupted ? `⚡ ${t("queue.interruptedBadge")}` : `⌫ ${t("queue.cancelledBadge")}`}
                     </span>
                     <span className="queue-recovery-item-time">
                       {formatTime(it.timestamp)}
                     </span>
                     <span className="queue-recovery-model-tag">
-                      {req.model || "modèle standard"}
+                      {req.model || t("queue.defaultModel")}
                     </span>
                     {req.width && req.height && (
                       <span className="queue-recovery-spec-pill">
@@ -216,7 +253,7 @@ export default function QueueRecoveryDrawer({
                     )}
                     {req.steps && (
                       <span className="queue-recovery-spec-pill">
-                        {req.steps} steps
+                        {req.steps} {t("queue.steps")}
                       </span>
                     )}
                     {loraCount > 0 && (
@@ -236,31 +273,31 @@ export default function QueueRecoveryDrawer({
                       className="btn-mini btn-action-requeue"
                       onClick={() => handleRestoreSingle(it.id)}
                       disabled={restoring}
-                      title="Réinsérer ce prompt directement dans la file"
+                      title={t("queue.requeueOneTitle")}
                     >
-                      ↺ Réinsérer
+                      ↺ {t("queue.restore")}
                     </button>
                     <button
                       type="button"
                       className="btn-mini"
                       onClick={() => handleLoadInForm(it)}
-                      title="Charger ce prompt et ses réglages dans le formulaire"
+                      title={t("queue.loadTitle")}
                     >
-                      ✎ Charger
+                      ✎ {t("queue.load")}
                     </button>
                     <button
                       type="button"
                       className="btn-mini"
                       onClick={() => handleCopyPrompt(it)}
-                      title="Copier le texte du prompt"
+                      title={t("queue.copyTitle")}
                     >
-                      {copiedId === it.id ? "✓ Copié" : "⎘ Copier"}
+                      {copiedId === it.id ? `✓ ${t("app.copied")}` : `⎘ ${t("app.copy")}`}
                     </button>
                     <button
                       type="button"
                       className="btn-mini btn-item-delete"
                       onClick={() => handleDeleteSingle(it.id)}
-                      title="Supprimer définitivement ce prompt de la liste de récupération"
+                      title={t("queue.deleteOneTitle")}
                     >
                       ✕
                     </button>
