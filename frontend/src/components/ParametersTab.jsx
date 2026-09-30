@@ -6,6 +6,7 @@ import EngineSection from "./settings/EngineSection";
 import ModelsSection from "./settings/ModelsSection";
 import HfCacheSection from "./settings/HfCacheSection";
 import QueueSection from "./settings/QueueSection";
+import StorageSection from "./settings/StorageSection";
 import EnhancerSystemSection from "./settings/EnhancerSystemSection";
 import { useSettings } from "../hooks/useSettings";
 
@@ -134,6 +135,15 @@ export default function ParametersTab({ onNavigate }) {
         </p>
         <QueueSection onNavigate={onNavigate} />
       </section>
+
+        <section className="params-section">
+          <h3>📦 Storage</h3>
+          <p className="params-section-desc">
+            What is on disk and what accounts for it. Read-only: this panel never deletes anything,
+            and never marks anything reclaimable.
+          </p>
+          <StorageSection onFeedback={handleFeedback} />
+        </section>
 
       <section className="params-section">
         <h3>💾 Hugging Face Cache</h3>

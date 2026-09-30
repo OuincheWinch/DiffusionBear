@@ -18,7 +18,7 @@ except Exception:
 
 import generator
 from state import _discover_local_loras, _init_gallery_index
-from routers import jobs, gallery, loras, tokens, uploads, downloads, settings as settings_router
+from routers import jobs, gallery, loras, tokens, uploads, downloads, settings as settings_router, storage as storage_router
 import app_version
 
 
@@ -176,6 +176,7 @@ app.include_router(tokens.router)
 app.include_router(uploads.router)
 app.include_router(downloads.router)
 app.include_router(settings_router.router)
+app.include_router(storage_router.router)
 
 
 # GET and HEAD both, deliberately: this is the launcher's readiness probe target, and

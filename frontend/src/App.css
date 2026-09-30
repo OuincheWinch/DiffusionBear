@@ -3631,3 +3631,64 @@ dd {
   background: rgba(148, 163, 184, 0.16);
   color: #cbd5e1;
 }
+
+/* --- storage manifest panel (read-only; no destructive affordances by design) --- */
+.storage-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.storage-head strong {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.storage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.storage-table th {
+  text-align: left;
+  color: var(--dim);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.storage-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: top;
+}
+.storage-table td.num,
+.storage-table th.num {
+  text-align: right;
+  white-space: nowrap;
+}
+.storage-table .muted,
+.muted.small {
+  color: var(--dim);
+}
+.muted.small {
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.storage-table .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+}
+p.warning {
+  border-left: 3px solid var(--warn);
+  background: rgba(255, 180, 84, 0.08);
+  padding: 10px 13px;
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  margin: 10px 0;
+}
