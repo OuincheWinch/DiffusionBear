@@ -224,3 +224,50 @@ class StorageEndpointTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GalleryIndexSelfHealTests(unittest.TestCase):
+    """An empty gallery index is usually a failed scan, not an empty gallery."""
+
+    def setUp(self):
+        import state as state_mod
+        self.state = state_mod
+        self._tmp = TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        (self.root / "generated").mkdir()
+        (self.root / "generated" / "abc123.png").write_bytes(b"x")
+        (self.root / "generated" / "abc123.json").write_text(
+            json.dumps({"id": "abc123", "prompt": "p", "created_at": 1}), encoding="utf-8")
+        self._saved_dir = self.state.GENERATED_DIR
+        self._saved_lock_built = self.state._GALLERY_INDEX_BUILT_AT
+        self.state.GENERATED_DIR = self.root / "generated"
+        self.state._GALLERY_INDEX_BUILT_AT = 0.0
+        with self.state._gallery_lock:
+            self.state.GALLERY_INDEX.clear()
+
+    def tearDown(self):
+        self.state.GENERATED_DIR = self._saved_dir
+        self.state._GALLERY_INDEX_BUILT_AT = self._saved_lock_built
+        with self.state._gallery_lock:
+            self.state.GALLERY_INDEX.clear()
+        self._tmp.cleanup()
+
+    def test_empty_index_is_rebuilt_when_sidecars_exist(self):
+        self.assertEqual(len(self.state.GALLERY_INDEX), 0)
+        size = self.state.ensure_gallery_index()
+        self.assertEqual(size, 1, "an empty index beside real sidecars must be rebuilt")
+
+    def test_repeated_calls_do_not_rescan_every_time(self):
+        self.state.ensure_gallery_index()
+        built = self.state._GALLERY_INDEX_BUILT_AT
+        self.state.ensure_gallery_index()
+        self.assertEqual(self.state._GALLERY_INDEX_BUILT_AT, built,
+                         "a healthy index must not be rebuilt on every request")
+
+    def test_genuinely_empty_store_is_not_rescanned_repeatedly(self):
+        (self.root / "generated" / "abc123.json").unlink()
+        self.state.ensure_gallery_index()
+        built = self.state._GALLERY_INDEX_BUILT_AT
+        self.state.ensure_gallery_index()
+        self.assertEqual(self.state._GALLERY_INDEX_BUILT_AT, built,
+                         "an empty store has nothing to retry, so it must not spin")

@@ -169,6 +169,36 @@ final class BackendProcess {
         catch { return false }
     }
 
+    /// Explains a stall that left an empty log, which is otherwise undiagnosable.
+    ///
+    /// The symptom is brutal: the child sits at 0% CPU, never writes a single byte
+    /// to its log, and the interpreter runs perfectly from a shell. The cause is
+    /// almost always macOS refusing the child access to the data directory because
+    /// this bundle declared no volume usage strings, so there is no consent dialog
+    /// and no error -- just an open() that never returns. Say so, rather than
+    /// showing a bare timeout.
+    static func diagnoseSilentStall() -> String {
+        let log = Paths.support.appendingPathComponent("Logs/backend.log")
+        let attrs = try? FileManager.default.attributesOfItem(atPath: log.path)
+        let logSize = (attrs?[.size] as? NSNumber)?.intValue ?? -1
+        let logIsEmpty = logSize <= 0
+        let data = Paths.assetDir
+        let dataReachable = FileManager.default.isReadableFile(atPath: data.path)
+        let volumeName = data.deletingLastPathComponent().lastPathComponent
+
+        if logIsEmpty && !dataReachable {
+            return "\n\nThe log is empty and the data directory is not readable. "
+                + "macOS is withholding access to \(volumeName) instead of prompting. "
+                + "Grant DiffusionBear access under System Settings > Privacy & Security "
+                + "> Files and Folders, then launch again."
+        }
+        if logIsEmpty {
+            return "\n\nThe log is empty, so the backend never reached startup. "
+                + "Check that this app bundle is intact and try running it from /Applications."
+        }
+        return "\n\nSee \(log.path) for the backend's last words."
+    }
+
     func start() {
         // Fail fast and loudly on a broken bundle. Without this the app appears to
         // hang: uvicorn is launched with a bad cwd, finds no `main:app`, and the
@@ -265,7 +295,7 @@ final class BackendProcess {
             if Date().timeIntervalSince(startedAt) > attemptTimeout {
                 timer.invalidate()
                 trace("attempt \(thisAttempt): no response after \(Int(attemptTimeout))s, killing pid \(p.processIdentifier)")
-                self.retryOrFail("The backend did not respond within \(Int(attemptTimeout))s.")
+                self.retryOrFail("The backend did not respond within \(Int(attemptTimeout))s.\(BackendProcess.diagnoseSilentStall())")
             }
         }
     }

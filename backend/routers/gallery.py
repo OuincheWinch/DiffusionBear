@@ -22,6 +22,7 @@ from state import (
     _mark_image_deleted,
     _unmark_image_deleted,
     GALLERY_INDEX,
+    ensure_gallery_index,
     _validate_image_id,
     _atomic_write_text,
     _read_loras,
@@ -99,6 +100,10 @@ def gallery(
 ):
     if len(query) > 200 or len(tags) > 1000 or len(model) > 120 or len(lora) > 4096:
         raise HTTPException(400, "gallery filter is too long")
+    # Self-heal an index that came up empty because the scan could not read the
+    # data directory at startup. Without this the gallery stays empty until the app
+    # is restarted, which is indistinguishable from having no images.
+    ensure_gallery_index()
     if sort not in ("newest", "oldest"):
         raise HTTPException(400, "invalid sort order")
     if model and model not in generator.MODELS:

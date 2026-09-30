@@ -211,8 +211,25 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key>        <string>15.0</string>
   <key>NSHighResolutionCapable</key>       <true/>
   <key>LSApplicationCategoryType</key>     <string>public.app-category.graphics-design</string>
-  <!-- The backend is a local loopback server; no outbound network entitlement is
-       claimed, and no camera/microphone/disk-access prompt is needed. -->
+  <!-- Disk access: the model store and the gallery live on an external volume via
+       MLX_DIFFUSION_ASSET_DIR / MLX_DIFFUSION_DATA_DIR, which point into
+       /Volumes/<name>/... These keys are NOT optional. Without
+       NSRemovableVolumesUsageDescription macOS has no string to show a consent
+       dialog for, so it grants nothing: the spawned backend's open() blocks at 0%
+       CPU forever, the launcher times out after 100s and retries three times, and
+       the failure looks like a Python bug (no traceback, empty log, interpreter
+       that runs fine by hand from a shell). Measured: same bundle, same env, same
+       command, same cwd -- 11s to "Application startup complete" from a shell,
+       100s+ hang as a child of this GUI app. Declaring the strings makes macOS
+       prompt once; the grant then persists for the backend child too. -->
+  <key>NSRemovableVolumesUsageDescription</key>
+  <string>DiffusionBear reads and writes your image library and model store, which may live on an external drive.</string>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>DiffusionBear saves images you export and drag to the Desktop.</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>DiffusionBear reads and writes image plans and backups in your Documents folder.</string>
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>DiffusionBear imports images and writes backups to your Downloads folder.</string>
   <key>NSAppTransportSecurity</key>
   <dict>
     <key>NSAllowsLocalNetworking</key><true/>

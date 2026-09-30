@@ -4,8 +4,8 @@ import queue
 import re
 import struct
 import tempfile
-import threading
 import time
+import threading
 from pathlib import Path
 from typing import Literal
 from fastapi import HTTPException
@@ -181,6 +181,7 @@ _gallery_lock = threading.Lock()
 _IMAGE_MUTATION_LOCK = threading.RLock()
 _IMAGE_TOMBSTONES: set[str] = set()
 GALLERY_INDEX: dict[str, dict] = {}
+_GALLERY_INDEX_BUILT_AT: float = 0.0
 
 
 def _image_is_deleted(image_id: str) -> bool:
@@ -195,7 +196,19 @@ def _unmark_image_deleted(image_id: str):
     _IMAGE_TOMBSTONES.discard(image_id)
 
 
-def _init_gallery_index():
+def _init_gallery_index() -> int:
+    """Rebuild the gallery index from sidecars. Returns how many entries landed.
+
+    The index is a cache, and it is only built at startup. If every read fails --
+    which is exactly what happens when the data directory is on an external volume
+    and macOS has not yet granted access, so every open() raises -- then the loop
+    below skips every file and the app presents an EMPTY gallery indefinitely, with
+    no error anywhere. That is not a cosmetic failure: the images are on disk and
+    the API answers 200 with an empty list.
+
+    So the result is now returned, and an empty index is treated as suspect rather
+    than authoritative. See ensure_gallery_index().
+    """
     valid_entries = []
     for jf in GENERATED_DIR.glob("*.json"):
         try:
@@ -212,9 +225,31 @@ def _init_gallery_index():
             valid_entries.append((image_id, data))
         except (OSError, UnicodeError, json.JSONDecodeError):
             continue
+    global _GALLERY_INDEX_BUILT_AT
     with _gallery_lock:
         GALLERY_INDEX.clear()
         GALLERY_INDEX.update(valid_entries)
+        _GALLERY_INDEX_BUILT_AT = time.time()
+    return len(GALLERY_INDEX)
+
+
+def ensure_gallery_index(max_age: float = 0.0) -> int:
+    """Return the index size, rebuilding if it is empty or older than max_age.
+
+    An empty index next to a non-empty directory is the signature of a failed scan,
+    not an empty gallery, so it is retried rather than believed. Retries are rate
+    limited so a genuinely empty store cannot turn every request into a full scan.
+    """
+    now = time.time()
+    with _gallery_lock:
+        size = len(GALLERY_INDEX)
+        age = now - _GALLERY_INDEX_BUILT_AT if _GALLERY_INDEX_BUILT_AT else None
+    stale = size == 0 and any(GENERATED_DIR.glob("*.json"))
+    if stale and (age is None or age > 5.0):
+        return _init_gallery_index()
+    if max_age and (age is None or age > max_age):
+        return _init_gallery_index()
+    return size
 
 
 
