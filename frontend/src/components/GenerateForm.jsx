@@ -566,18 +566,49 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
     }
   }
 
+  function firstDragValue(dt, type) {
+    try {
+      return (dt?.getData?.(type) || "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0] || "";
+    } catch {
+      return "";
+    }
+  }
+
+  /** Attach an image that is already in our own gallery -- no upload, no copy. */
+  function attachGalleryImage(imageId) {
+    const clean = String(imageId || "").trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(clean)) return false;
+    if (!supportsRef) {
+      setError(`Reference images are not supported on ${modelInfo.label}.`);
+      return false;
+    }
+    if (refImages.length >= maxRefImages) {
+      setError(`This model accepts at most ${maxRefImages} reference image${maxRefImages === 1 ? "" : "s"}.`);
+      return false;
+    }
+    // A bare filename: the backend resolves it against the gallery directory, so this
+    // works without knowing where the data directory lives.
+    const name = `${clean}.png`;
+    setRefImages((previous) => [
+      ...previous,
+      {
+        id: crypto.randomUUID(),
+        path: name,
+        preview: `${API_BASE}/api/images/${clean}/file`,
+        name,
+      },
+    ]);
+    return true;
+  }
+
   async function importDroppedPath(path) {
-    // WKWebView (the standalone app's window) cannot hand a page a File. A Finder
-    // drop arrives as a text/plain path instead, so dataTransfer.files is empty and
-    // WebKit drops the path into the focused text field. Hand the path to the
-    // backend, which copies it in. A real browser never takes this branch because
-    // it populates files, so localhost behaviour is unchanged.
+    // A real local file path from Finder. WKWebView cannot hand the page a File, so
+    // this is the channel that case arrives on.
     const trimmed = decodeURIComponent(String(path || "").trim().replace(/^file:\/\//, ""));
     if (!trimmed.startsWith("/")) return false;
     try {
       const res = await api("/api/import-path", { method: "POST", body: JSON.stringify({ path: trimmed }) });
       if (trimmed.toLowerCase().endsWith(".safetensors")) {
-        // The backend already upserted the registry entry; the LoRA list picks it up.
         setError("");
         return true;
       }
@@ -602,22 +633,43 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
   async function handleDrop(e) {
     e.preventDefault();
     setDragOver(false);
-    const files = Array.from(e.dataTransfer?.files || []);
-    if (!files.length) {
-      const raw =
-        e.dataTransfer?.getData?.("text/uri-list") || e.dataTransfer?.getData?.("text/plain") || "";
-      const first = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0];
-      if (first) await importDroppedPath(first);
+    const dt = e.dataTransfer;
+    const files = Array.from(dt?.files || []);
+    if (files.length) {
+      const loraFile = files.find((f) => f.name.endsWith(".safetensors"));
+      if (loraFile) {
+        await uploadLoraFile(loraFile);
+        return;
+      }
+      const imgFiles = files.filter(isImageFile);
+      if (imgFiles.length > 0) {
+        await uploadImageFiles(imgFiles);
+      }
       return;
     }
-    const loraFile = files.find((f) => f.name.endsWith(".safetensors"));
-    if (loraFile) {
-      await uploadLoraFile(loraFile);
-      return;
-    }
-    const imgFiles = files.filter(isImageFile);
-    if (imgFiles.length > 0) {
-      await uploadImageFiles(imgFiles);
+
+    // No File objects. In a real browser this branch never runs; in WKWebView it is
+    // the only way anything arrives, and it arrives as a string. Try, in order:
+    //   1. our own image id, set by the gallery's drag handler
+    //   2. one of our own /api/images/<id>/file URLs
+    //   3. a local filesystem path (Finder)
+    //   4. give up with a clear message rather than silently pasting a URL
+    const internalId = firstDragValue(dt, "application/x-mlx-image-id");
+    if (internalId && attachGalleryImage(internalId)) return;
+
+    const raw = firstDragValue(dt, "text/uri-list") || firstDragValue(dt, "text/plain");
+    const decoded = decodeURIComponent(raw.replace(/^file:\/\//, ""));
+    const own = decoded.match(/\/api\/images\/([A-Za-z0-9][A-Za-z0-9_-]{0,127})\/file/);
+    if (own && attachGalleryImage(own[1])) return;
+
+    if (decoded.startsWith("/") && (await importDroppedPath(decoded))) return;
+
+    if (decoded) {
+      setError(
+        decoded.startsWith("http")
+          ? `Cannot import a web address (${decoded.slice(0, 80)}). Download it first, or drag the file itself from Finder.`
+          : `Nothing usable was dropped.`,
+      );
     }
   }
 
@@ -947,6 +999,10 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
             ref={promptRef}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            // The prompt box is the deepest drop target, so it is where a dropped URL
+            // was being inserted as literal text. Cancel the insertion here and let the
+            // event keep bubbling to the form's onDrop, which does the real work.
+            onDrop={(e) => e.preventDefault()}
             placeholder="Describe the image to generate... (or drag & drop an image/LoRA here)"
             rows={4}
             required
