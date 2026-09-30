@@ -448,9 +448,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     private var statusLabel: NSTextField!
     private var activityToken: NSObjectProtocol?
 
+    /// Drop cached responses for the local UI, keeping cookies and localStorage.
+    ///
+    /// The backend now serves index.html with no-store, but a copy cached before
+    /// that fix can still be in the persistent data store, and WKWebView will happily
+    /// render last build's JavaScript against this build's API -- which is exactly the
+    /// "Load failed, 0 images" state, with every endpoint returning 200. Only the
+    /// caches are removed; localStorage holds user preferences and image tags, so it
+    /// must survive.
+    private func purgeInterfaceCache() {
+        // Only the caches. WKWebsiteDataStore exposes allWebsiteDataTypes() but not
+        // per-cache-type constants, so build the removal set by subtraction and keep
+        // what holds user state: localStorage (preferences, image tags), session
+        // storage, cookies and IndexedDB.
+        let available = WKWebsiteDataStore.allWebsiteDataTypes()
+        let keep = Set<String>(
+            [WKWebsiteDataTypeLocalStorage,
+             WKWebsiteDataTypeSessionStorage,
+             WKWebsiteDataTypeCookies,
+             WKWebsiteDataTypeIndexedDBDatabases]
+                .filter { available.contains($0) }
+        )
+        let types = WKWebsiteDataStore.allWebsiteDataTypes().subtracting(keep)
+        guard !types.isEmpty else { return }
+        WKWebsiteDataStore.default().removeData(ofTypes: types, modifiedSince: .distantPast) {
+            trace("purged \(types.count) web view cache type(s); kept localStorage, cookies and IndexedDB")
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
         installMainMenu()
+        purgeInterfaceCache()
         // Hold a user-initiated activity for the app's whole life. Without this,
         // macOS is free to App-Nap this process (and its backend child) whenever
         // the window is occluded or the app is not frontmost, which stalls the

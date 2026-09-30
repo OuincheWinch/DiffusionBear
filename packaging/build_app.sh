@@ -46,6 +46,18 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 touch "$DIST/.metadata_never_index" 2>/dev/null || true
 
 # ---------------------------------------------------------------- payload
+say "building the production SPA"
+# The bundle is built here, not copied from whatever frontend/dist happens to be on
+# disk. A stale or wrongly-flagged dist is how the app shipped with an absolute API
+# base baked in, which is cross-origin against the page's own origin and made every
+# panel fail with a bare "Load failed". vite.config.js injects an empty API base for
+# `vite build`, so this is correct by construction.
+if [ ! -d "$REPO/frontend/node_modules" ]; then
+  ( cd "$REPO/frontend" && npm ci --silent )
+fi
+( cd "$REPO/frontend" && npm run build >/dev/null )
+[ -f "$REPO/frontend/dist/index.html" ] || { echo "frontend build produced nothing" >&2; exit 1; }
+
 say "copying backend"
 # Only code. The whole data/ tree is excluded, not just data/models: it also holds
 # lora_files (425 MB of .safetensors) and -- critically -- hf_token.txt and
@@ -160,11 +172,26 @@ rsync -a --quiet "$REPO/frontend/dist/" "$APP/Contents/Resources/frontend/dist/"
 
 # ---------------------------------------------------------------- shell
 say "compiling the Swift shell"
+# Compile to a scratch path first. Compiling straight into the bundle means a
+# compile error leaves a bundle with no executable, and `open` then fails with an
+# opaque "launchd job spawn failed / error 111" that looks like a broken install
+# rather than a build error. Only a binary that exists and is a real Mach-O gets
+# installed into the bundle.
+SHELL_SRC="$HERE/shell/main.swift"
+SHELL_TMP="$(mktemp -d)/$APP_NAME"
 swiftc -O -wmo \
   -target arm64-apple-macos15.0 \
   -framework AppKit -framework WebKit \
-  -o "$APP/Contents/MacOS/$APP_NAME" \
-  "$HERE/shell/main.swift"
+  -o "$SHELL_TMP" \
+  "$SHELL_SRC"
+if [ ! -x "$SHELL_TMP" ]; then
+  echo "the shell did not produce an executable; refusing to assemble a bundle that cannot launch" >&2
+  exit 1
+fi
+file "$SHELL_TMP" | grep -q 'Mach-O' || {
+  echo "the shell binary is not Mach-O; refusing to ship" >&2; exit 1; }
+cp "$SHELL_TMP" "$APP/Contents/MacOS/$APP_NAME"
+chmod +x "$APP/Contents/MacOS/$APP_NAME"
 
 # ---------------------------------------------------------------- plist
 say "writing Info.plist"

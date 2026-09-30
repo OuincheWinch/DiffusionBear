@@ -196,10 +196,17 @@ def api_version():
 
 
 if _SPA_DIR.is_dir():
-    # Hashed asset filenames, so they can be cached hard and never revalidated.
+    class _ImmutableStatic(StaticFiles):
+        """Cache hashed asset filenames forever; they change name when content changes."""
+
+        def file_response(self, *args, **kwargs):
+            response = super().file_response(*args, **kwargs)
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return response
+
     app.mount(
         "/assets",
-        StaticFiles(directory=_SPA_DIR / "assets" if (_SPA_DIR / "assets").is_dir() else _SPA_DIR),
+        _ImmutableStatic(directory=_SPA_DIR / "assets" if (_SPA_DIR / "assets").is_dir() else _SPA_DIR),
         name="assets",
     )
 
@@ -214,7 +221,14 @@ if _SPA_DIR.is_dir():
             # resolve() collapses ../ so a crafted path cannot escape dist/
             if candidate.is_file() and candidate.is_relative_to(_SPA_DIR.resolve()):
                 return FileResponse(candidate)
-        return FileResponse(_SPA_DIR / "index.html")
+        # The shell must never be cached. Without an explicit header WKWebView
+        # heuristically caches it, so after a rebuild the window kept rendering the
+        # PREVIOUS build's JavaScript against the new API -- which showed as "Load
+        # failed" and an empty gallery while every endpoint was returning 200.
+        response = FileResponse(_SPA_DIR / "index.html")
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        return response
 
 else:  # no build present -- dev mode, Vite owns the UI
 
