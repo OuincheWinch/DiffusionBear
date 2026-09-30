@@ -89,6 +89,46 @@ private struct Paths {
 
 private var backendURL: URL { URL(string: "http://127.0.0.1:\(backendPort)")! }
 
+/// True when the app itself lives on a mounted volume rather than the system disk.
+///
+/// This matters more than it looks. macOS gates access to removable and external
+/// volumes behind a TCC consent prompt. If DiffusionBear is launched from
+/// /Volumes/Externe and nobody is at the machine to click Allow, the backend's
+/// very first open() of its own bundled stdlib blocks forever at 0% CPU -- the app
+/// appears to hang with an empty log. That is exactly what was measured, and it is
+/// why the app belongs in /Applications.
+private var isOnExternalVolume: Bool {
+    Paths.resources.path.hasPrefix("/Volumes/")
+}
+
+private var externalVolumeName: String {
+    let parts = Paths.resources.path.split(separator: "/")
+    return parts.count > 1 ? "/Volumes/\(parts[1])" : "/Volumes"
+}
+
+/// Append to the launch log. Separate from the child's own log so a child's output
+/// buffering can never hide the launch record.
+private func trace(_ message: String) {
+    let stamp = ISO8601DateFormatter().string(from: Date())
+    let line = "\(stamp) [pid \(ProcessInfo.processInfo.processIdentifier)] \(message)\n"
+    NSLog("%@", message)
+    let url = Paths.support
+        .appendingPathComponent("Logs", isDirectory: true)
+        .appendingPathComponent("launch.log")
+    try? FileManager.default.createDirectory(
+        at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    // FileHandle(forWritingTo:) throws when the file is absent, so create it first.
+    if !FileManager.default.fileExists(atPath: url.path) {
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+    }
+    if let data = line.data(using: .utf8),
+       let handle = try? FileHandle(forWritingTo: url) {
+        defer { try? handle.close() }
+        handle.seekToEndOfFile()
+        handle.write(data)
+    }
+}
+
 // MARK: - Backend supervision
 
 /// Owns the backend child process: starts it, waits for it to answer, watches it,
@@ -115,29 +155,6 @@ final class BackendProcess {
 
     deinit { stop() }
 
-    private func trace(_ message: String) {
-        let stamp = ISO8601DateFormatter().string(from: Date())
-        let line = "\(stamp) [pid \(ProcessInfo.processInfo.processIdentifier)] \(message)\n"
-        NSLog("%@", message)
-        // Written separately from the child's log so a child's own buffering can
-        // never hide the launch record. FileHandle(forWritingTo:) throws when the
-        // file is absent, so create it first -- a silent try? here is how this log
-        // stayed empty on the first attempt.
-        let url = Paths.support
-            .appendingPathComponent("Logs", isDirectory: true)
-            .appendingPathComponent("launch.log")
-        try? FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if !FileManager.default.fileExists(atPath: url.path) {
-            FileManager.default.createFile(atPath: url.path, contents: nil)
-        }
-        if let data = line.data(using: .utf8),
-           let handle = try? FileHandle(forWritingTo: url) {
-            defer { try? handle.close() }
-            handle.seekToEndOfFile()
-            handle.write(data)
-        }
-    }
 
     /// Refuse to start rather than fight an existing listener: two backends on one
     /// port means the UI silently talks to someone else's server.
@@ -234,20 +251,20 @@ final class BackendProcess {
             guard let self else { timer.invalidate(); return }
             if p.isRunning == false {
                 timer.invalidate()
-                self.trace("attempt \(thisAttempt): child exited, status \(p.terminationStatus) reason \(p.terminationReason.rawValue)")
+                trace("attempt \(thisAttempt): child exited, status \(p.terminationStatus) reason \(p.terminationReason.rawValue)")
                 self.retryOrFail("The backend exited during startup (status \(p.terminationStatus)).")
                 return
             }
             if Self.answers(path: "/api/version") {
                 timer.invalidate()
                 self.isReady = true
-                self.trace("ready after \(String(format: "%.1f", Date().timeIntervalSince(self.startedAt)))s on attempt \(thisAttempt)")
+                trace("ready after \(String(format: "%.1f", Date().timeIntervalSince(self.startedAt)))s on attempt \(thisAttempt)")
                 self.onReady?()
                 return
             }
             if Date().timeIntervalSince(startedAt) > attemptTimeout {
                 timer.invalidate()
-                self.trace("attempt \(thisAttempt): no response after \(Int(attemptTimeout))s, killing pid \(p.processIdentifier)")
+                trace("attempt \(thisAttempt): no response after \(Int(attemptTimeout))s, killing pid \(p.processIdentifier)")
                 self.retryOrFail("The backend did not respond within \(Int(attemptTimeout))s.")
             }
         }
@@ -264,6 +281,15 @@ final class BackendProcess {
         } else {
             onFailure?("""
                 \(reason)
+
+                If a macOS permission dialog is open right now — "DiffusionBear would \
+                like to access files in your <volume>" — that is the cause. It blocks the \
+                backend until answered, and nothing else will tell you so.
+
+                This app is running from \(Paths.resources.path), which is on \(externalVolumeName). \
+                macOS asks for consent on external volumes, and an unanswered prompt looks \
+                exactly like a hung app. Move DiffusionBear.app into /Applications to avoid \
+                the prompt entirely.
 
                 Tried \(maxAttempts) times. Logs:
 
@@ -447,6 +473,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         }
 
         setStatus("Starting the local engine…", spinner: true)
+        if isOnExternalVolume {
+            // Ask for the volume up front and say why. A blocked prompt is
+            // indistinguishable from a hung app otherwise.
+            NSApp.activate(ignoringOtherApps: true)
+            setStatus("""
+                Waiting for macOS permission to read \(externalVolumeName).
+                Click Allow if a dialog appeared — DiffusionBear cannot start until you do.
+                """, spinner: true)
+            requestAccessToOwnBundle()
+        }
         backend.onReady = { [weak self] in
             guard let self else { return }
             self.setStatus(nil)
@@ -495,11 +531,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
         window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1280, height: 840),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
         window.title = "DiffusionBear"
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
+        // The window was un-draggable: titlebarAppearsTransparent + hidden title
+        // left nothing that looked like a title bar to grab. Dragging the window
+        // background is the fix that works regardless of how the title bar is drawn,
+        // and it is the behaviour every borderless-ish window should have.
+        window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 900, height: 600)
         window.contentView = content
@@ -508,16 +547,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         window.makeFirstResponder(webView)
     }
 
+
+    /// Touch one file inside the bundle so macOS raises the volume's consent prompt
+    /// now, while the status line can explain it, instead of surfacing it as a
+    /// mystery block inside the child process later.
+    ///
+    /// Note the path: Info.plist lives at Contents/Info.plist, not under Resources,
+    /// so probing Resources/Info.plist silently returned early and the whole check
+    /// was a no-op. Probe main.py -- a file the backend genuinely needs, in the
+    /// directory it genuinely runs from.
+    private func requestAccessToOwnBundle() {
+        let probe = Paths.backend.appendingPathComponent("main.py")
+        guard let data = try? Data(contentsOf: probe) else {
+            trace("volume probe FAILED for \(probe.path)")
+            return
+        }
+        trace("volume probe ok: read \(data.count) bytes from \(probe.path) on \(externalVolumeName)")
+    }
+
     private func setStatus(_ text: String?, spinner: Bool = false) {
         guard let window else { return }
         if let text {
-            statusLabel.stringValue = spinner ? "\(text)" : text
+            statusLabel.stringValue = text
             statusLabel.isHidden = false
-            // Float the status over the (still blank) web view.
-            statusLabel.frame = NSRect(x: 0, y: (window.contentView?.bounds.height ?? 0) / 2 - 10,
-                                       width: window.contentView?.bounds.width ?? 0, height: 20)
+            // Size to the text: the volume-permission hint is several lines and a
+            // 20pt single-line field would clip it.
+            let width = window.contentView?.bounds.width ?? 1280
+            let fitting = (text as NSString).boundingRect(
+                with: NSSize(width: width - 80, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin],
+                attributes: [.font: statusLabel.font as Any],
+                context: nil)
+            let height = max(20, min(120, ceil(fitting.height) + 6))
+            statusLabel.frame = NSRect(x: 40, y: (window.contentView?.bounds.height ?? 0) / 2 - height / 2,
+                                       width: width - 80, height: height)
             statusLabel.autoresizingMask = [.width, .maxYMargin]
+            statusLabel.cell?.wraps = true
             window.contentView?.addSubview(statusLabel)
+            window.contentView?.subviews.last { $0 !== webView }?.isHidden = false
         } else {
             statusLabel.isHidden = true
         }
