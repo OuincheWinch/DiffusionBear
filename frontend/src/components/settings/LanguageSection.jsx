@@ -16,8 +16,8 @@ export default function LanguageSection() {
   const { preference, setLang, t } = useI18n();
 
   return (
-    <section className="settings-section">
-      <h3>{t("language.title")}</h3>
+    <section className="params-section language-section">
+      <h3>🌐 {t("language.title")}</h3>
       <div className="language-grid" role="group" aria-label={t("language.title")}>
         <button
           type="button"

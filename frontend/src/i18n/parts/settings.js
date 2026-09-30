@@ -3,6 +3,117 @@
 // this catalogue was made, so the literal is the `en` value and `fr` is the
 // translation the French UI renders.
 export const settingsStrings = {
+  "settings.tab.preferences": {
+    fr: "Préférences",
+    en: "Preferences",
+    de: "Einstellungen",
+    it: "Preferenze",
+  },
+  "settings.tab.enhancer": {
+    fr: "Prompts de l'assistant (expérimental)",
+    en: "Prompt Enhancer prompts (experimental)",
+    de: "Prompt-Enhancer-Prompts (experimentell)",
+    it: "Prompt dell'assistente (sperimentale)",
+  },
+  "settings.tab.enhancerTitle": {
+    fr: "🧠 Assistant de prompt — prompts système (expérimental)",
+    en: "🧠 Prompt Enhancer — system prompts (experimental)",
+    de: "🧠 Prompt-Enhancer — Systemprompts (experimentell)",
+    it: "🧠 Assistente prompt — prompt di sistema (sperimentale)",
+  },
+  "settings.tab.enhancerDesc": {
+    fr: "Personnalisez le prompt système utilisé par le LLM local (Qwen2.5-0.5B-Instruct via MLX) lorsque vous cliquez sur ✨ Améliorer. Un prompt modifiable par moteur — FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo et Z-Image Turbo. Les modifications enregistrées sont prises en compte immédiatement. Le contrat imposé est une sortie uniquement textuelle, dans la limite de longueur de chaque moteur (sans préambule ni explication), mais la fonctionnalité reste expérimentale.",
+    en: "Customize the system prompt the local LLM (Qwen2.5-0.5B-Instruct via MLX) uses when you click ✨ Enhance. One editable prompt per engine — FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo and Z-Image Turbo. Saved overrides are used immediately by the enhancer. The enforced contract is prompt-only output within each engine's length cap (no preamble, no explanation), but the feature itself is experimental.",
+    de: "Passen Sie den Systemprompt an, den das lokale LLM (Qwen2.5-0.5B-Instruct über MLX) beim Klick auf ✨ Verbessern verwendet. Ein bearbeitbarer Prompt pro Engine — FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo und Z-Image Turbo. Gespeicherte Überschreibungen werden vom Enhancer sofort übernommen. Der erzwungene Vertrag ist reine Textausgabe innerhalb der jeweiligen Längenbegrenzung (kein Vorwort, keine Erklärung), die Funktion selbst ist jedoch experimentell.",
+    it: "Personalizza il prompt di sistema che l'LLM locale (Qwen2.5-0.5B-Instruct via MLX) usa quando premi ✨ Migliora. Un prompt modificabile per motore — FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo e Z-Image Turbo. Le personalizzazioni salvate vengono usate subito. Il contratto imposto è un output solo testuale entro il limite di lunghezza di ogni motore (nessun preambolo, nessuna spiegazione), ma la funzione resta sperimentale.",
+  },
+  "settings.section.defaultsTitle": {
+    fr: "🖋 Valeurs par défaut et personnalisation",
+    en: "🖋 Defaults & personalization",
+    de: "🖋 Standardwerte & Personalisierung",
+    it: "🖋 Valori predefiniti e personalizzazione",
+  },
+  "settings.section.defaultsDesc": {
+    fr: "Préférences de génération par défaut pour les nouvelles images, ainsi que le crédit d'artiste intégré à chaque résultat. Votre nom d'artiste remplace l'ancien crédit codé en dur — idéal pour une version publique.",
+    en: "Default generation preferences for new images, plus the artist credit embedded in every output. Your artist name replaces the previous hard-coded credit — great for a public release.",
+    de: "Standardeinstellungen für neue Bilder sowie der in jedes Ergebnis eingebettete Künstler-Credit. Ihr Künstlername ersetzt den bisher fest verdrahteten Credit — ideal für eine öffentliche Version.",
+    it: "Preferenze di generazione predefinite per le nuove immagini, più il credito artista incorporato in ogni risultato. Il tuo nome d'artista sostituisce il vecchio credito fisso — ideale per una versione pubblica.",
+  },
+  "settings.section.engineTitle": {
+    fr: "🖥 Moteur et GPU",
+    en: "🖥 Engine & GPU",
+    de: "🖥 Engine & GPU",
+    it: "🖥 Motore e GPU",
+  },
+  "settings.section.engineDesc": {
+    fr: "Utilisation Metal en direct, budgets de mémoire câblée, pipelines mflux/SDXL residents et compte à rebours de libération en veille.",
+    en: "Live Metal usage, wired-memory budgets, resident mflux/SDXL pipelines and the idle auto-release countdown.",
+    de: "Aktuelle Metal-Nutzung, Limits für verdrahteten Speicher, resident gehaltene mflux-/SDXL-Pipelines und Countdown zur automatischen Freigabe im Leerlauf.",
+    it: "Utilizzo Metal in tempo reale, budget di memoria cablata, pipeline mflux/SDXL residenti e conto alla rovescia del rilascio automatico in inattività.",
+  },
+  "settings.section.modelsTitle": {
+    fr: "🗂 Gestion des modèles",
+    en: "🗂 Model management",
+    de: "🗂 Modellverwaltung",
+    it: "🗂 Gestione dei modelli",
+  },
+  "settings.section.modelsDesc": {
+    fr: "État d'installation et occupation disque de chaque moteur. Supprimez les poids pour libérer de l'espace ; ils sont retéléchargés à la demande.",
+    en: "Installed status and disk footprint of every engine. Remove weights to free space; they are re-downloaded on demand.",
+    de: "Installationsstatus und Speicherplatzbedarf jeder Engine. Gewichte entfernen, um Platz freizugeben; sie werden bei Bedarf erneut heruntergeladen.",
+    it: "Stato di installazione e occupazione su disco di ogni motore. Rimuovi i pesi per liberare spazio; verranno riscaricati su richiesta.",
+  },
+  "settings.section.queueTitle": {
+    fr: "⏳ File et travaux en attente",
+    en: "⏳ Queue & pending jobs",
+    de: "⏳ Warteschlange & ausstehende Jobs",
+    it: "⏳ Coda e lavori in attesa",
+  },
+  "settings.section.queueDesc": {
+    fr: "Suivez la file de génération et remettez en file les prompts interrompus ou annulés.",
+    en: "Watch the generation queue and re-queue prompts that were interrupted or cancelled.",
+    de: "Beobachten Sie die Generierungswarteschlange und reihen Sie unterbrochene oder abgebrochene Prompts erneut ein.",
+    it: "Segui la coda di generazione e reinserisci i prompt interrotti o annullati.",
+  },
+  "settings.section.storageTitle": { fr: "📦 Stockage", en: "📦 Storage", de: "📦 Speicher", it: "📦 Archiviazione" },
+  "settings.section.storageDesc": {
+    fr: "Ce qui se trouve sur le disque et ce qui l'occupe. Lecture seule : ce panneau ne supprime rien et ne signale rien comme récupérable.",
+    en: "What is on disk and what accounts for it. Read-only: this panel never deletes anything, and never marks anything reclaimable.",
+    de: "Was auf der Festplatte liegt und was dafür verantwortlich ist. Nur lesend: Dieses Panel löscht nichts und kennzeichnet nichts als rückgewinnbar.",
+    it: "Cosa si trova sul disco e cosa lo occupa. In sola lettura: questo pannello non elimina nulla e non segnala nulla come recuperabile.",
+  },
+  "settings.section.hfCacheTitle": {
+    fr: "💾 Cache Hugging Face",
+    en: "💾 Hugging Face cache",
+    de: "💾 Hugging-Face-Cache",
+    it: "💾 Cache Hugging Face",
+  },
+  "settings.section.hfCacheDesc": {
+    fr: "Copie locale de chaque dépôt de modèle téléchargé. Videz les entrées pour récupérer de l'espace disque.",
+    en: "Local copy of every downloaded model repo. Clear entries to reclaim disk space.",
+    de: "Lokale Kopie jedes heruntergeladenen Modell-Repos. Einträge leeren, um Speicherplatz freizugeben.",
+    it: "Copia locale di ogni repository di modelli scaricato. Svuota le voci per recuperare spazio su disco.",
+  },
+  "settings.section.secretsTitle": { fr: "🔐 Gestion des secrets", en: "🔐 Secret management", de: "🔐 Secret-Verwaltung", it: "🔐 Gestione dei segreti" },
+  "settings.section.secretsDescBefore": {
+    fr: "Les clés API et jetons sont enregistrés par le moteur dans des fichiers locaux sous",
+    en: "API keys and tokens are saved by the backend into local files under",
+    de: "API-Schlüssel und Tokens werden vom Backend in lokalen Dateien gespeichert unter",
+    it: "Le chiavi API e i token vengono salvati dal motore in file locali sotto",
+  },
+  "settings.section.secretsDescAfter": {
+    fr: "par exemple",
+    en: "for example",
+    de: "zum Beispiel",
+    it: "ad esempio",
+  },
+  "settings.section.secretsDescTail": {
+    fr: "Ils ne sont jamais envoyés aux navigateurs, jamais journalisés et jamais exposés par l'API : ils servent uniquement côté moteur à authentifier les requêtes sortantes vers Civitai / Hugging Face.",
+    en: "They are never sent to the browser clients, never logged, and never exposed by the API — they are used only server-side to authenticate outbound requests to Civitai / Hugging Face.",
+    de: "Sie werden nie an Browser gesendet, nie protokolliert und nie über die API offengelegt — sie dienen ausschließlich serverseitig zur Authentifizierung ausgehender Anfragen an Civitai / Hugging Face.",
+    it: "Non vengono mai inviati ai browser, mai registrati nei log e mai esposti dall'API: servono solo lato motore per autenticare le richieste in uscita verso Civitai / Hugging Face.",
+  },
+
   "settings.queue.tokenFallback": {
     fr: "Remarque : les dépôts Hugging Face gated basculent aussi sur un jeton stocké dans",
     en: "Note: gated Hugging Face repos also fall back to a token stored in",

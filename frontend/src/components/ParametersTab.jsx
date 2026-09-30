@@ -54,6 +54,11 @@ export default function ParametersTab({ onNavigate }) {
         </div>
       )}
 
+      {/* Language first: it is the one setting a user may need before they can
+          read anything else, and it used to sit below the fold at the very bottom
+          of a long scroll. */}
+      <LanguageSection />
+
       <div className="params-subtabs" role="tablist">
         <button
           type="button"
@@ -62,7 +67,7 @@ export default function ParametersTab({ onNavigate }) {
           className={`params-subtab${subtab === "prefs" ? " active" : ""}`}
           onClick={() => setSubtab("prefs")}
         >
-          ⚙️ Preferences
+          ⚙️ {t("settings.tab.preferences")}
         </button>
         <button
           type="button"
@@ -71,33 +76,23 @@ export default function ParametersTab({ onNavigate }) {
           className={`params-subtab${subtab === "enhancer" ? " active" : ""}`}
           onClick={() => setSubtab("enhancer")}
         >
-          🧠 Prompt Enhancer Prompts (experimental)
+          🧠 {t("settings.tab.enhancer")}
         </button>
       </div>
 
       {subtab === "enhancer" ? (
         <section className="params-section">
-          <h3>🧠 Prompt Enhancer — System Prompts (experimental)</h3>
-          <p className="params-section-desc">
-            Customize the system prompt the local LLM (Qwen2.5-0.5B-Instruct via MLX) uses when
-            you click ✨ Enhance. One editable prompt per engine — FLUX.2 Klein, SDXL Lightning,
-            Krea 2 Turbo and Z-Image Turbo. Saved overrides are used immediately by the enhancer.
-            The enforced contract is prompt-only output within each engine's length cap (no
-            preamble, no explanation), but the feature itself is experimental.
-          </p>
+          <h3>{t("settings.tab.enhancerTitle")}</h3>
+          <p className="params-section-desc">{t("settings.tab.enhancerDesc")}</p>
           <EnhancerSystemSection onFeedback={handleFeedback} onSaved={refresh} />
         </section>
       ) : (
         <>
       <section className="params-section">
-        <h3>🖋 Defaults &amp; Personalization</h3>
-        <p className="params-section-desc">
-          Default generation preferences for new images, plus the artist credit embedded in
-          every output. Your artist name replaces the previous hard-coded credit — great for a
-          public release.
-        </p>
+        <h3>{t("settings.section.defaultsTitle")}</h3>
+        <p className="params-section-desc">{t("settings.section.defaultsDesc")}</p>
         {settingsLoading ? (
-          <p className="hint">Loading preferences…</p>
+          <p className="hint">{t("app.loading")}</p>
         ) : (
           <DefaultsSection
             settings={settings}
@@ -109,20 +104,14 @@ export default function ParametersTab({ onNavigate }) {
       </section>
 
       <section className="params-section">
-        <h3>🖥 Engine &amp; GPU</h3>
-        <p className="params-section-desc">
-          Live Metal usage, wired-memory budgets, resident mflux/SDXL pipelines and the
-          idle auto-release countdown.
-        </p>
+        <h3>{t("settings.section.engineTitle")}</h3>
+        <p className="params-section-desc">{t("settings.section.engineDesc")}</p>
         <EngineSection onFeedback={handleFeedback} />
       </section>
 
       <section className="params-section">
-        <h3>🗂 Model Management</h3>
-        <p className="params-section-desc">
-          Installed status and disk footprint of every engine. Remove weights to free space;
-          they are re-downloaded on demand.
-        </p>
+        <h3>{t("settings.section.modelsTitle")}</h3>
+        <p className="params-section-desc">{t("settings.section.modelsDesc")}</p>
         <ModelsSection
           models={models}
           loading={modelsLoading}
@@ -132,38 +121,29 @@ export default function ParametersTab({ onNavigate }) {
       </section>
 
       <section className="params-section">
-        <h3>⏳ Queue &amp; Pending Jobs</h3>
-        <p className="params-section-desc">
-          Watch the generation queue and re-queue prompts that were interrupted or cancelled.
-        </p>
+        <h3>{t("settings.section.queueTitle")}</h3>
+        <p className="params-section-desc">{t("settings.section.queueDesc")}</p>
         <QueueSection onNavigate={onNavigate} />
       </section>
 
         <section className="params-section">
-          <h3>📦 Storage</h3>
-          <p className="params-section-desc">
-            What is on disk and what accounts for it. Read-only: this panel never deletes anything,
-            and never marks anything reclaimable.
-          </p>
+          <h3>{t("settings.section.storageTitle")}</h3>
+          <p className="params-section-desc">{t("settings.section.storageDesc")}</p>
           <StorageSection onFeedback={handleFeedback} />
         </section>
 
       <section className="params-section">
-        <h3>💾 Hugging Face Cache</h3>
-        <p className="params-section-desc">
-          Local copy of every downloaded model repo. Clear entries to reclaim disk space.
-        </p>
+        <h3>{t("settings.section.hfCacheTitle")}</h3>
+        <p className="params-section-desc">{t("settings.section.hfCacheDesc")}</p>
         <HfCacheSection onFeedback={handleFeedback} />
       </section>
 
       <section className="params-section">
-        <h3>🔐 Secret Management</h3>
+        <h3>{t("settings.section.secretsTitle")}</h3>
         <p className="params-section-desc">
-          API keys &amp; tokens are saved by the backend into local files under{" "}
-          <code>backend/data/</code> (e.g. <code>civitai_token.txt</code>,{" "}
-          <code>hf_token.txt</code>). They are never sent to the browser clients, never logged,
-          and never exposed by the API — they are used only server-side to authenticate outbound
-          requests to Civitai / Hugging Face.
+          {t("settings.section.secretsDescBefore")} <code>backend/data/</code>{" "}
+          ({t("settings.section.secretsDescAfter")} <code>civitai_token.txt</code>,{" "}
+          <code>hf_token.txt</code>). {t("settings.section.secretsDescTail")}
         </p>
         <TokenManager
           autofocus={tokenAutofocus}
@@ -175,8 +155,6 @@ export default function ParametersTab({ onNavigate }) {
       </section>
         </>
       )}
-
-      <LanguageSection />
     </div>
   );
 }

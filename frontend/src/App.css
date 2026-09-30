@@ -3746,3 +3746,21 @@ p.warning {
   font-size: 14px;
   line-height: 1;
 }
+
+/* The language picker is the first block on the Parameters tab, so it gets a
+   tighter treatment than a settings section deep in a scroll: heading and options
+   on one row where the window is wide enough. */
+.language-section h3 {
+  margin-bottom: 8px;
+}
+@media (min-width: 720px) {
+  .language-section {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 14px;
+  }
+  .language-section h3 {
+    margin-bottom: 0;
+  }
+}
