@@ -46,6 +46,32 @@ body {
   padding: 1rem;
 }
 
+/* --- active model title -----------------------------------------------------
+   This heading had no class, so it rendered on the browser's default h2 metrics:
+   `margin: 0.83em 0` at `font-size: 1.5em`. That default is the source of two
+   gaps that looked arbitrary in the UI -- roughly 20px of dead space under the
+   header, and roughly 20px between the title and the enhance/JSON/colour row.
+   Neither belonged to a spacing decision; they were just the UA stylesheet.
+
+   The margin is explicit rather than 0 because the title needs to breathe from
+   the header rule, and because the toolbar below it has `margin-bottom: 0.35rem`
+   with none above -- so the title's own bottom margin is what separates it from
+   the enhance buttons. Removing it entirely would run them together.
+
+   1.25rem rather than 1.5rem: the model name is context for the form below it,
+   not a section heading, and at 1.5em it outranked the "Studio Canvas" h3 in the
+   same view, which is the wrong hierarchy for a piece of context. */
+.active-model-title {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--text);
+  /* A long model name must not push the toolbar onto a second line on a narrow
+     window, which would reintroduce a gap there. */
+  overflow-wrap: anywhere;
+}
+
 header {
   display: flex;
   align-items: center;
@@ -2022,6 +2048,32 @@ dd {
   .studio-layout {
     grid-template-columns: 1fr;
   }
+
+  /* The canvas goes FIRST when the panes stack.
+     DOM order is form-then-canvas, which is right on a wide window (you read the
+     form, the result sits beside it) and wrong here: the form is several screens
+     tall, so a result that lands under the Generate button is off-screen and the
+     user sees nothing after a 30-280s render. Reordering with `order` keeps the
+     DOM as-is for screen readers, so the form is still read before the canvas,
+     while a sighted user lands on the result.
+     A render that finishes with the result below the fold is the single worst
+     outcome this layout can produce, so it is worth the asymmetry. */
+  .studio-canvas-pane {
+    order: -1;
+  }
+
+  /* Sticky is meaningless once the pane is not beside a scrolling sibling, and it
+     left a stale 1rem offset. */
+  .studio-canvas-pane {
+    position: static;
+    top: auto;
+  }
+
+  /* The gap was tuned for two side-by-side panes. Stacked, it doubled the
+     distance between a control and the result it affects. */
+  .studio-layout {
+    gap: 0.75rem;
+  }
 }
 
 .studio-form-pane {
@@ -2543,11 +2595,36 @@ dd {
   flex-wrap: wrap;
 }
 
+/* The enhance/JSON/colour actions sit on the right, opposite the trigger chips.
+   `margin-left: auto` pushed them to the far edge of a wide window, which left a
+   large empty band between the model title and the first button whenever no LoRA
+   chips were active -- the left pane was empty and the row read as a void.
+
+   `auto` is kept deliberately: it is what makes the row left-anchored when chips
+   ARE present, and the empty case is now handled by the title's spacing rather
+   than by giving up the right alignment. */
 .prompt-toolbar-right {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-left: auto;
+}
+
+/* When the left pane is empty the row has nothing to balance against, so the
+   actions move to the start instead of hanging at the far edge.
+
+   `:has()` was used here first and then removed: it works on macOS 15, but it is
+   doing a job `:empty` already does, and a selector that silently fails to match
+   in an older engine is invisible. `:empty` is unambiguous and has been supported
+   since CSS 2.1. */
+.prompt-toolbar-left:empty {
+  display: none;
+}
+
+/* A hidden flex child does not remove the `auto` margin on its sibling, so the
+   rule has to be undone explicitly rather than relying on the parent reflowing. */
+.prompt-toolbar-left:empty ~ .prompt-toolbar-right {
+  margin-left: 0;
 }
 
 .ref-quick-chips {

@@ -71,7 +71,7 @@ export default function App() {
 
       <main>
         <div style={{ display: tab === "generate" ? "block" : "none" }}>
-          <h2>{modelLabel} · MLX</h2>
+          <h2 className="active-model-title">{modelLabel} · MLX</h2>
           <GenerateForm
             onGenerated={handleGenerated}
             initialParams={initialParams}
