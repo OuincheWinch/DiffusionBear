@@ -478,7 +478,15 @@ def fill(image_id: str, req: FillRequest):
     except FileNotFoundError as e:
         raise HTTPException(404, "image not found") from e
     except Exception as e:
-        # Never echo str(e): an engine or filesystem error can carry a local path.
+        # The response must not carry str(e) -- an engine or filesystem error can
+        # hold a local path -- but swallowing it in the log as well made this
+        # undiagnosable: a 500 read only "fill failed: ValueError" with nothing on
+        # disk to explain it, and I ended up reproducing a *successful* fill twice
+        # trying to guess the cause. The traceback goes to the log; the client gets
+        # the class name.
+        import traceback
+        print(f"[fill] {image_id} failed: {type(e).__name__}: {e}", flush=True)
+        traceback.print_exc()
         raise HTTPException(500, f"fill failed: {type(e).__name__}") from e
 
     with _gallery_lock:

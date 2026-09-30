@@ -3863,10 +3863,14 @@ p.warning {
 
 .fill-brush-canvas {
   cursor: crosshair;
-  /* A translucent wash so it is obvious which region will be regenerated without
-     hiding the pixels being judged. */
-  background: rgba(59, 130, 246, 0.28);
-  mix-blend-mode: screen;
+  /* Translucency lives HERE, not in the canvas pixels and not as a blend mode.
+     The canvas holds opaque white where painted (so erase works -- see the note in
+     FillBrush.jsx) and `opacity` on the element makes the whole overlay a wash, so
+     the image stays visible through the selection.
+
+     Do NOT re-add `mix-blend-mode` here: screen would take white to full
+     brightness and the stroke would go opaque again. */
+  opacity: 0.45;
 }
 
 .fill-brush-canvas.mode-erase {
@@ -3997,34 +4001,49 @@ p.warning {
   cursor: not-allowed;
 }
 
-/* The fill button sits outside .cell-quick-actions, whose buttons are opacity:0
-   until hover. Fill has to be visible before it can be chosen. */
-.cell-fill-btn {
-  position: absolute;
-  right: 0.35rem;
-  bottom: 0.35rem;
-  z-index: 6;
-  width: 1.9rem;
-  height: 1.9rem;
+/* The fill button is a sibling of .cell-quick-actions and deliberately shares
+   .cell-quick-btn's box, so all three card buttons are the same size and sit on the
+   same line. It was previously a separately-positioned absolute element at 1.9rem
+   with its own colours, which is why it looked smaller and floated out of line with
+   the other two.
+
+   It is NOT opacity:0 until hover. Copy and reveal are things you already know you
+   want; fill is an action you have to see in order to start. */
+.cell-quick-actions {
+  /* The row grows to three; the fill button is the last child. */
+  align-items: center;
+}
+
+.cell-quick-actions .cell-fill-btn {
+  /* Inherit the sibling's geometry and only override what must differ: it is
+     always visible. */
+  opacity: 1;
+  background: rgba(18, 20, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #f1f5f9;
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: rgba(18, 18, 26, 0.82);
-  color: inherit;
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-  opacity: 0.72;
-  transition: opacity 0.15s ease, border-color 0.15s ease;
+  position: static;
+  width: auto;
+  height: auto;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
-.cell-fill-btn:hover {
+
+.cell-quick-actions .cell-fill-btn:hover {
   opacity: 1;
   border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 22%, rgba(18, 20, 26, 0.85));
 }
-.cell-fill-btn:focus-visible {
+
+.cell-quick-actions .cell-fill-btn:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 6px;

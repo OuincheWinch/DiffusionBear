@@ -99,6 +99,19 @@ export default function FillBrush({
     const scale = Math.min(canvas.width, canvas.height);
     const radius = (brushSize / 100) * scale * 0.5;
 
+    // The backing store holds FULLY OPAQUE white where painted, and the visible
+    // translucency is applied in CSS via opacity on the element.
+    //
+    // Two earlier attempts were wrong, both found by test_fill:
+    //   1. Opaque white + mix-blend-mode: screen -> screen sends white to full
+    //      brightness, so every stroke was a solid bar hiding the image.
+    //   2. Translucent white (rgba(255,255,255,0.42)) painted into the canvas ->
+    //      painting masks correctly, but ERASING does not. destination-out leaves
+    //      a partial-alpha residue whose RGB is still (255,255,255); PIL's
+    //      convert("L") reads luma, not alpha, so the erased region still reads as
+    //      255 and keeps masking. The eraser was a no-op.
+    // Opaque in the store, translucent on screen: the only combination where both
+    // paint and erase work and the pixels being judged stay visible.
     ctx.globalCompositeOperation = mode === "erase" ? "destination-out" : "source-over";
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();

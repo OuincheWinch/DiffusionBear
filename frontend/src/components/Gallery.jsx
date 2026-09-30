@@ -148,8 +148,11 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
         tags: tagString.split(",").map((t) => t.trim()).filter(Boolean),
       }),
     });
+    // Same ordering as upscale: the list has to contain the new id before the
+    // detail view points at it, or the panel renders a selection that is not on
+    // screen.
+    await load();
     setSelected(updated);
-    load();
   }
 
   const pages = Math.max(1, Math.ceil(total / limit));
@@ -225,8 +228,13 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
         method: "POST",
         body: JSON.stringify({ scale }),
       });
+      // await load(), do not fire and forget. It was called without await, so the
+      // detail view kept rendering the OLD id while the grid was still on the
+      // previous page; the user saw nothing happen, pressed upscale again, and
+      // every press made another upscale. Several near-identical upscaled images in
+      // the gallery were that loop, not a backend fault.
+      await load();
       setSelected(upscaled);
-      load();
     } catch (e) {
       alert(t("gallery.upscaleError", { message: e.message || e }));
     } finally {

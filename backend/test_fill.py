@@ -16,7 +16,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import fill
 from fill import FillError, composite_fill, mask_bounding_box, _decode_mask
@@ -164,6 +164,74 @@ class MaskDecodeTests(unittest.TestCase):
     def test_a_non_image_payload_is_rejected(self):
         with self.assertRaises(FillError):
             _decode_mask(base64.b64encode(b"hello world").decode(), (16, 16))
+
+
+class TranslucentPaintTests(unittest.TestCase):
+    """The brush paints translucent white so the overlay is a wash, not a bar.
+
+    It still has to mask. The backend reads the mask via convert("L"), which
+    reads luma, so a translucent white must still yield 255. Guessing that is how
+    the overlay ends up visible but non-functional, so it is checked here against
+    the real decoder.
+    """
+
+    def test_translucent_white_still_masks(self):
+        for alpha in (107, 160, 255):
+            with self.subTest(alpha=alpha):
+                m = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+                m.paste((255, 255, 255, alpha), (16, 16, 48, 48))
+                decoded = _decode_mask(b64_png(m), (64, 64))
+                self.assertEqual(decoded.getpixel((32, 32)), 255)
+                self.assertEqual(decoded.getpixel((2, 2)), 0)
+
+    def test_translucent_paint_produces_a_bounding_box(self):
+        m = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        m.paste((255, 255, 255, 107), (10, 10, 50, 50))
+        decoded = _decode_mask(b64_png(m), (64, 64))
+        self.assertIsNotNone(mask_bounding_box(decoded))
+
+    def test_painted_strokes_are_opaque_so_erase_works(self):
+        """Documents why the canvas must hold opaque white, not a translucent wash.
+
+        Painting translucent white masks fine, but ERASING it does not. The canvas
+        `destination-out` reduces the stroke's ALPHA to 0 while leaving its RGB
+        white, and PIL's convert("L") reads luma, not alpha -- so the "erased"
+        region still reads as 255 and keeps masking. The eraser silently did
+        nothing.
+
+        Verified with the exact arithmetic the browser performs:
+            dst_alpha *= (1 - src_alpha)
+        The RGB channels are untouched by that operation, which is the whole
+        problem. Asserted here so a future change to the brush that reintroduces
+        translucent paint is caught by a test rather than by a user.
+        """
+        w = h = 64
+        painted = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        ImageDraw.Draw(painted).rectangle([10, 10, 50, 50], fill=(255, 255, 255, 255))
+        self.assertEqual(painted.getpixel((30, 30)), (255, 255, 255, 255))
+
+        # destination-out: alpha is multiplied down, RGB is left alone.
+        erased = painted.copy()
+        put = Image.new("L", (w, h), 0)
+        ImageDraw.Draw(put).rectangle([20, 20, 40, 40], fill=255)
+        # destination-out on a solid stroke drives its alpha to 0 in the erased box.
+        px = erased.load()
+        for y in range(20, 41):
+            for x in range(20, 41):
+                r, g, b, _a = px[x, y]
+                px[x, y] = (r, g, b, 0)
+
+        self.assertEqual(
+            erased.getpixel((30, 30)),
+            (255, 255, 255, 0),
+            "erase lowers alpha but leaves RGB white -- this is why a translucent "
+            "canvas would make the eraser a no-op",
+        )
+        self.assertEqual(
+            _decode_mask(b64_png(erased), (w, h)).getpixel((30, 30)),
+            255,
+            "and convert('L') therefore still masks the erased region",
+        )
 
 
 class BoundingBoxTests(unittest.TestCase):
