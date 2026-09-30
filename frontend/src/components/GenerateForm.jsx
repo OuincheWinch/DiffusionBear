@@ -601,6 +601,29 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
     return true;
   }
 
+  // The native shell owns a real NSView drop destination, because WKWebView's HTML5
+  // drag-and-drop is unreliable for files. When a drop lands there the shell calls
+  // this global with absolute paths; there is no way to reach React state from
+  // outside, so it has to be a function we own.
+  useEffect(() => {
+    const acceptDragOver = (event) => {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    };
+    const onNativeDrop = (paths) => {
+      const list = Array.isArray(paths) ? paths : [paths];
+      list.filter(Boolean).forEach((value) => importDroppedPath(value));
+    };
+    window.__mlxDropPaths = onNativeDrop;
+    // A drop is only accepted where dragover is cancelled, and any element between
+    // here and the textarea can silently reject it and fall back to inserting text.
+    document.addEventListener("dragover", acceptDragOver);
+    return () => {
+      document.removeEventListener("dragover", acceptDragOver);
+      if (window.__mlxDropPaths === onNativeDrop) delete window.__mlxDropPaths;
+    };
+  });
+
   async function importDroppedPath(path) {
     // A real local file path from Finder. WKWebView cannot hand the page a File, so
     // this is the channel that case arrives on.
@@ -999,9 +1022,14 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
             ref={promptRef}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            // The prompt box is the deepest drop target, so it is where a dropped URL
-            // was being inserted as literal text. Cancel the insertion here and let the
-            // event keep bubbling to the form's onDrop, which does the real work.
+            // The prompt box is the deepest drop target, and a drop is only accepted
+            // if `dragover` is cancelled *there*. Cancelling it on the form alone was
+            // not enough: WebKit treated the textarea as an editable and inserted the
+            // dragged URL as literal text instead of firing a drop event at all.
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+            }}
             onDrop={(e) => e.preventDefault()}
             placeholder="Describe the image to generate... (or drag & drop an image/LoRA here)"
             rows={4}

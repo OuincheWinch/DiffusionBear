@@ -346,6 +346,50 @@ final class BackendProcess {
     }
 }
 
+/// Hosts the web view and accepts real file drops at the AppKit level.
+///
+/// WKWebView's HTML5 drag-and-drop for files is unreliable: dropping a Finder file
+/// or a link onto the page can end with the path inserted as literal text in the
+/// prompt box and no drop event ever reaching the page. Handling it here, in AppKit,
+/// does not depend on WebKit cooperating at all. The paths are handed to the page
+/// through window.__mlxDropPaths, which GenerateForm registers.
+///
+/// A drop that originates INSIDE the page (dragging an image out of the gallery) is
+/// consumed by the web view and will not arrive here; that case is handled in
+/// JavaScript. This destination is for anything coming from the desktop.
+final class DropHostView: NSView {
+    /// Called with absolute POSIX paths.
+    var onDrop: (([String]) -> Void)?
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        extractPaths(from: sender.draggingPasteboard).isEmpty ? [] : .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let paths = extractPaths(from: sender.draggingPasteboard)
+        guard !paths.isEmpty else { return false }
+        onDrop?(paths)
+        return true
+    }
+
+    private func extractPaths(from pasteboard: NSPasteboard) -> [String] {
+        var out: [String] = []
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self],
+                                            options: [.urlReadingFileURLsOnly: true]) as? [URL] {
+            out.append(contentsOf: urls.map(\.path))
+        }
+        // Fall back to plain strings, which is what a link drag delivers.
+        if out.isEmpty, let text = pasteboard.string(forType: .string) {
+            out = text.split(whereSeparator: \.isNewline).map(String.init)
+        }
+        return out.filter { $0.hasPrefix("/") }
+    }
+}
+
 // MARK: - Menus
 
 /// Hosts the web view and contributes text-editing actions to the context menu.
@@ -545,13 +589,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         webView.navigationDelegate = self
         webView.autoresizingMask = [.width, .height]
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 1280, height: 840))
+        let content = DropHostView(frame: NSRect(x: 0, y: 0, width: 1280, height: 840))
+        content.onDrop = { [weak self] paths in
+            guard let self else { return }
+            trace("native drop: \(paths.count) path(s)")
+            let payload = paths.map { "'\($0.replacingOccurrences(of: "'", with: "\\'"))'" }.joined(separator: ",")
+            self.webView.evaluateJavaScript(
+                "window.__mlxDropPaths && window.__mlxDropPaths([\(payload)])",
+                completionHandler: { value, error in
+                    if let error { NSLog("DiffusionBear: native drop handoff failed: %@", String(describing: error)) }
+                    else { trace("native drop handed to the page") }
+                })
+        }
         // Give the web view a real frame. It used to be created with .zero and only
         // given an autoresizing mask, which left it zero-sized forever -- the window
         // opened and the page loaded, but nothing was ever drawn. autoresizing
         // adjusts relative to the current frame, so it can never rescue a zero one.
         webView.frame = content.bounds
         content.addSubview(webView)
+        content.registerForDraggedTypes([.fileURL, .string, .URL])
 
         statusLabel = NSTextField(labelWithString: "")
         statusLabel.font = .systemFont(ofSize: 13, weight: .medium)
