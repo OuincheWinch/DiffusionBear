@@ -31,6 +31,7 @@ import base64
 import binascii
 import io
 import json
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -76,6 +77,11 @@ FILL_ENGINES = {
 }
 
 DEFAULT_FILL_ENGINE = "z-image-turbo"
+
+# One fill at a time. A fill loads a pipeline, renders, then composites, and
+# concurrent fills would fight over the same resident weights. Mirrors the
+# semaphore upscale.py uses for the same reason.
+_FILL_SLOT = threading.BoundedSemaphore(1)
 
 
 class FillError(ValueError):

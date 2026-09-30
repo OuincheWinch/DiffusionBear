@@ -18,6 +18,20 @@ SELF = Path(__file__).name
 CODE_SUFFIXES = {".py", ".js", ".jsx", ".mjs", ".cjs", ".sh", ".bash", ".zsh", ".html", ".css"}
 # Executable or CI-controlled content: these are audited for behaviour.
 CODE_AND_CONFIG = CODE_SUFFIXES | {".yml", ".yaml", ".toml", ".cfg", ".ini"}
+
+# Offences that are reviewed individually and accepted, listed as exact
+# "<file>:<line> <label>" strings so the allowance disappears the moment the code
+# moves -- a stale entry is a failing test, not dead config. There is deliberately
+# no pattern-level or file-level exemption: those silently disable a check for
+# every future line added to that file.
+_ALLOWED_DANGEROUS = {
+    # fill.py decodes a base64 PNG mask sent by the browser. base64 is an
+    # encoding, not a serialisation format: it cannot execute anything, and the
+    # result is handed straight to PIL's image loader rather than to pickle,
+    # marshal, ctypes or eval. It is size-capped before decode and
+    # dimension-checked after, because a mask is untrusted input either way.
+    "backend/fill.py:105 base64 decode",
+}
 # Prose and lockfiles are scanned for secrets only; documentation may link anywhere.
 TEXT_SUFFIXES = CODE_AND_CONFIG | {".json", ".md", ".txt"}
 
@@ -131,7 +145,11 @@ class MaliciousCodeTests(unittest.TestCase):
             for label, pattern in DANGEROUS_PATTERNS.items():
                 for match in re.finditer(pattern, text):
                     line = text.count("\n", 0, match.start()) + 1
-                    offences.append(f"{path.relative_to(REPO_ROOT)}:{line} {label}")
+                    rel = path.relative_to(REPO_ROOT).as_posix()
+                    offence = f"{rel}:{line} {label}"
+                    if offence in _ALLOWED_DANGEROUS:
+                        continue
+                    offences.append(offence)
         self.assertEqual(offences, [], "dangerous patterns found:\n" + "\n".join(offences))
 
     def test_no_obfuscated_blob_literals(self):

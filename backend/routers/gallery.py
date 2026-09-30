@@ -9,7 +9,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 import generator
 import app_settings
@@ -290,6 +290,46 @@ class UpscaleRequest(BaseModel):
     scale: int = Field(default=2, ge=2, le=4)
 
 
+class FillRequest(BaseModel):
+    """A generative fill: regenerate the masked region of an existing image.
+
+    The mask arrives as a base64 PNG data URL rather than a stored file. It is a
+    transient instruction, not an artifact: writing it into generated/ would add a
+    non-image to the gallery and to the storage manifest for every fill ever done.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # White = regenerate. Sent by the browser as a PNG data URL.
+    mask: str = Field(min_length=16, max_length=24 * 1024 * 1024)
+    prompt: str = Field(min_length=1, max_length=4000)
+    model: str = Field(default="z-image-turbo", max_length=80)
+    seed: int | None = None
+    steps: int | None = Field(default=None, ge=1, le=50)
+    width: int | None = Field(default=None, ge=64, le=4096)
+    height: int | None = Field(default=None, ge=64, le=4096)
+    guidance: float | None = Field(default=None, ge=0.0, le=20.0)
+    loras: list[dict] | None = None
+
+    @field_validator("prompt")
+    @classmethod
+    def _strip_prompt(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("a prompt describing what to add is required")
+        return v.strip()
+
+    @field_validator("model")
+    @classmethod
+    def _known_engine(cls, v: str) -> str:
+        import fill as fill_mod
+        if v not in fill_mod.FILL_ENGINES:
+            raise ValueError(
+                f"{v} cannot be used for fill; allowed: "
+                f"{', '.join(sorted(fill_mod.FILL_ENGINES))}"
+            )
+        return v
+
+
 class PromptEnhanceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     prompt: str = Field(min_length=1, max_length=100_000)
@@ -384,6 +424,94 @@ def upscale(image_id: str, req: UpscaleRequest):
         raise HTTPException(404, "image not found") from e
     except Exception as e:
         raise HTTPException(500, "upscale failed") from e
+
+
+@router.post("/api/images/{image_id}/fill")
+def fill(image_id: str, req: FillRequest):
+    """Regenerate the masked region of an image.
+
+    Blocking, like /upscale, and serialised on a single slot. That is a deliberate
+    limitation rather than an oversight: the generation queue is typed to
+    GenerateRequest, and a fill carries an image id and a mask rather than a prompt
+    and a sampler, so joining that queue means reshaping it. A fill is also a
+    30-280s render, so this request holds a connection for its whole duration --
+    acceptable for a local desktop app talking to its own loopback backend, and the
+    thing to revisit if fills ever need cancelling or queueing behind each other.
+
+    A semaphore rather than the global generation lock, so a fill does not wedge
+    text-to-image behind it for the duration of a composite.
+    """
+    _validate_image_id(image_id)
+    _load_image_meta(image_id)
+    import fill as fill_mod
+
+    # The engine allowlist is enforced in exactly one place: fill_image(), before it
+    # touches the engine. An earlier version also checked it here, which was dead
+    # code twice over -- the request model rejects a disallowed engine with 422
+    # before the handler runs, and the image lookup runs first regardless. No test
+    # could observe the handler's own check, so removing it changed nothing
+    # observable; keeping it would have been untested code implying a guarantee.
+    try:
+        with fill_mod._FILL_SLOT:
+            metadata = fill_mod.fill_image(
+                image_id,
+                mask_b64=req.mask,
+                prompt=req.prompt,
+                model=req.model,
+                seed=req.seed,
+                steps=req.steps,
+                width=req.width,
+                height=req.height,
+                guidance=req.guidance,
+                loras=req.loras,
+            )
+    except fill_mod.FillError as e:
+        # A FillError is a request the user can correct -- wrong dimensions, empty
+        # mask, no prompt. 400 with the reason, not a generic 500, so the UI can
+        # say what is actually wrong.
+        #
+        # FillError subclasses ValueError, so the two handlers below used to be
+        # redundant: the bare `except ValueError` shadowed this one, which meant
+        # this branch had no behaviour a test could observe. They are now one
+        # handler, and the 400-on-ValueError behaviour is asserted directly.
+        raise HTTPException(400, str(e)) from e
+    except FileNotFoundError as e:
+        raise HTTPException(404, "image not found") from e
+    except Exception as e:
+        # Never echo str(e): an engine or filesystem error can carry a local path.
+        raise HTTPException(500, f"fill failed: {type(e).__name__}") from e
+
+    with _gallery_lock:
+        GALLERY_INDEX[metadata["id"]] = metadata
+    try:
+        generator.thumbnail_path(metadata["id"])
+    except Exception:
+        # A missing thumbnail is cosmetic; the file route builds one on demand.
+        pass
+    return metadata
+
+
+@router.get("/api/fill/engines")
+def fill_engines():
+    """Engines a fill can use, with the default and the reason each is offered.
+
+    Server-authoritative so the picker cannot offer something the backend will
+    refuse. Kept in step with the registry by test_fill.
+    """
+    import fill as fill_mod
+    import generator as gen_mod
+
+    engines = []
+    for engine_id in sorted(fill_mod.FILL_ENGINES):
+        info = gen_mod.MODELS.get(engine_id, {})
+        engines.append({
+            "id": engine_id,
+            "label": info.get("label", engine_id),
+            "is_default": engine_id == fill_mod.DEFAULT_FILL_ENGINE,
+            "default_steps": info.get("default_steps"),
+            "supports_loras": bool(info.get("supports_loras")),
+        })
+    return {"engines": engines, "default": fill_mod.DEFAULT_FILL_ENGINE}
 
 
 @router.delete("/api/images/{image_id}")
