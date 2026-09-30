@@ -160,7 +160,17 @@ function ResultCanvas({
       <div className="canvas-header">
         <h3>{t("canvas.heading")}</h3>
         {busy ? (
-          <span className={`canvas-meta-pill busy-pill ${phase ? `phase-${phase}` : ""}`}>
+          /* role="status" + aria-live="polite": a render here runs 30-280s, and
+             the step pill is the only place that reports it. Without a live region
+             a screen reader user has no way of knowing the app is doing anything.
+             "polite" rather than "assertive" because the steps tick every few
+             seconds and must not interrupt. */
+          <span
+            className={`canvas-meta-pill busy-pill ${phase ? `phase-${phase}` : ""}`}
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
             {phase === "downloading"
               ? t("canvas.pill.downloadingModel")
               : phase === "loading_model"

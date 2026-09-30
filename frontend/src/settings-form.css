@@ -84,7 +84,8 @@ input[type="checkbox"].settings-checkbox {
   height: 1.05rem;
   margin: 0;
   padding: 0;
-  border: 1px solid #4b5563;
+  /* 2.23:1 against --panel, below the 3:1 a control boundary needs. */
+  border: 1px solid var(--checkbox-border);
   border-radius: 4px;
   background: var(--panel);
   cursor: pointer;
@@ -94,12 +95,12 @@ input[type="checkbox"].settings-checkbox {
 }
 
 input[type="checkbox"].settings-checkbox:hover {
-  border-color: #6b7280;
+  border-color: var(--checkbox-border-hover);
 }
 
 input[type="checkbox"].settings-checkbox:checked {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 /* The tick. Drawn with two borders rotated 45deg so it scales with font-size
@@ -118,8 +119,8 @@ input[type="checkbox"].settings-checkbox:checked::after {
 
 /* Indeterminate is used by "select all" style tri-state controls elsewhere. */
 input[type="checkbox"].settings-checkbox:indeterminate {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 input[type="checkbox"].settings-checkbox:indeterminate::after {
@@ -145,7 +146,7 @@ input[type="checkbox"].settings-checkbox:indeterminate::after {
   width: 2rem;
   height: 1.15rem;
   padding: 0;
-  border: 1px solid #4b5563;
+  border: 1px solid var(--checkbox-border);
   border-radius: 999px;
   background: #1f2937;
   cursor: pointer;
@@ -160,14 +161,14 @@ input[type="checkbox"].settings-checkbox:indeterminate::after {
   width: 0.78rem;
   height: 0.78rem;
   border-radius: 50%;
-  background: #9ca3af;
+  background: var(--switch-knob);
   transform: translateY(-50%);
   transition: transform 0.18s ease, background-color 0.18s ease;
 }
 
 .settings-switch[aria-checked="true"] {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .settings-switch[aria-checked="true"]::after {
@@ -260,14 +261,14 @@ input[type="checkbox"].settings-checkbox:indeterminate::after {
    never clipped by an overflow:hidden ancestor. */
 
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 /* A switch is a pill; a square ring around it looks broken. */
 .settings-switch:focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 999px;
 }
@@ -276,7 +277,7 @@ input[type="checkbox"].settings-checkbox:indeterminate::after {
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 

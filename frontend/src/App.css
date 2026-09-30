@@ -6,6 +6,27 @@
   --text: #e6e6f0;
   --muted: #8a8aa0;
   --accent: #7c5cff;
+
+  /* --accent measures 4.29:1 on --bg and 3.88:1 on --panel, so it is a
+     non-text accent and NOT safe for text or icon glyphs. Two of those four
+     measured pairs were failing WCAG AA. --accent-text is the same hue taken
+     light enough to clear 4.5:1 on the panel, for labels, links and the
+     selected preset. Anything that is a border or a fill keeps --accent. */
+  --accent-text: #a78bfa;
+  /* Primary button fill: #3b82f6 behind white text is 3.68:1, below the 4.5:1
+     needed for a 15px label. #2563eb lifts it to 5.17:1. */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+
+  /* Control boundaries, 1.4.11 at 3:1. #4b5563 measured 2.23:1 on --panel. */
+  --checkbox-border: #6b7280;
+  --checkbox-border-hover: #9ca3af;
+  --switch-knob: #9ca3af;
+  --focus-ring: #93c5fd;
+
+  /* Status text, measured 6.09:1 and 9.67:1 on --panel. */
+  --danger: #f87171;
+  --success: #4ade80;
 }
 
 * {
@@ -61,7 +82,7 @@ header h1 {
   border-radius: 10px;
   font-size: 0.68rem;
   letter-spacing: 0.04em;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .licences-tab {
@@ -91,7 +112,7 @@ header h1 {
 }
 
 .licence-table a {
-  color: var(--accent);
+  color: var(--accent-text);
   word-break: break-all;
 }
 
@@ -226,7 +247,7 @@ select {
 
 .preset-btn.active {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
@@ -1739,7 +1760,7 @@ dd {
 .btn-recovery-trigger {
   background: color-mix(in srgb, var(--accent) 15%, transparent);
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 500;
 }
 .btn-recovery-trigger:hover {
@@ -1789,7 +1810,7 @@ dd {
   padding: 2px 7px;
   border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -1943,7 +1964,7 @@ dd {
 .btn-action-requeue {
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 .btn-action-requeue:hover {
@@ -2039,7 +2060,7 @@ dd {
 .canvas-meta-pill {
   font-size: 0.8rem;
   background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
   padding: 0.2rem 0.6rem;
   border-radius: 12px;
@@ -2172,7 +2193,7 @@ dd {
   width: 32px;
   height: 32px;
   border: 3px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--accent);
+  border-top-color: var(--accent-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -2208,7 +2229,7 @@ dd {
 .batch-strip-status {
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--accent);
+  color: var(--accent-text);
   animation: pulse 1.5s infinite;
 }
 
@@ -2246,12 +2267,12 @@ dd {
 }
 
 .batch-strip-thumb:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   transform: translateY(-2px);
 }
 
 .batch-strip-thumb.active {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
@@ -2289,7 +2310,7 @@ dd {
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--accent);
+  border-top-color: var(--accent-text);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -2468,12 +2489,12 @@ dd {
 }
 
 .trigger-chip:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 
 .trigger-chip.active {
   background: var(--accent);
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   color: #fff;
   font-weight: 500;
 }
@@ -2502,7 +2523,7 @@ dd {
 
 .btn-tiny:hover {
   color: var(--text);
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 
 /* Prompt Toolbar */
@@ -2547,7 +2568,7 @@ dd {
 .ref-tag-chip {
   background: var(--panel);
   border: 1px solid var(--border);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.75rem;
   font-weight: 500;
   padding: 0.15rem 0.5rem;
@@ -2558,7 +2579,7 @@ dd {
 
 .ref-tag-chip:hover {
   background: color-mix(in srgb, var(--accent) 15%, transparent);
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 
 /* Color Matching Tool */
@@ -2579,7 +2600,7 @@ dd {
 
 .color-tool-btn:hover,
 .color-tool-btn.active {
-  border-color: var(--accent);
+  border-color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: #fff;
 }
@@ -2751,7 +2772,7 @@ dd {
   font-size: 0.68rem;
   font-weight: 500;
   background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 10px;
   padding: 0.1rem 0.45rem;
@@ -2844,7 +2865,7 @@ dd {
 
 .ref-insert-chip:hover {
   color: var(--text);
-  border-color: var(--accent);
+  border-color: var(--accent-text);
 }
 
 .ref-add-card {
@@ -2864,8 +2885,8 @@ dd {
 }
 
 .ref-add-card:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--accent-text);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
