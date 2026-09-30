@@ -36,6 +36,15 @@ say "cleaning $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
+# Keep Spotlight out of the build output. Writing 1.8 GB and ~13,000 files into an
+# indexed volume makes mds/mdworker saturate that volume's I/O for a while, and
+# launching the app inside that window leaves the backend child blocked in open()
+# on its own stdlib at 0% CPU -- it looks like a hang, and it is not one. Measured:
+# relaunch straight after a build, the child sat with only dyld mapped for 10+
+# minutes; relaunching the same untouched bundle 30s later was ready in 10s.
+# This marker only excludes build artifacts from indexing; nothing is deleted.
+touch "$DIST/.metadata_never_index" 2>/dev/null || true
+
 # ---------------------------------------------------------------- payload
 say "copying backend"
 # Only code. The whole data/ tree is excluded, not just data/models: it also holds

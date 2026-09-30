@@ -28,7 +28,6 @@ private let backendPort = 8001
 // 1.8 GB bundle, and on a busy 16 GB machine that measured ~95s -- uncomfortably
 // close to a 120s ceiling, which produced a spurious "backend did not start" while
 // the server was mid-import. The window shows progress, so waiting costs nothing.
-private let startupTimeout: TimeInterval = 300
 private let pollInterval: TimeInterval = 0.4
 
 private struct Paths {
@@ -98,11 +97,47 @@ final class BackendProcess {
     private var process: Process?
     private var logHandle: FileHandle?
     private var pollTimer: Timer?
+    private var attempt = 0
+    private var startedAt = Date()
     private(set) var isReady = false
     var onReady: (() -> Void)?
     var onFailure: ((String) -> Void)?
 
+    /// The child occasionally blocks in open() at 0% CPU during interpreter
+    /// startup -- it has been seen with only dyld mapped, no stdlib, for over ten
+    /// minutes, and it is not reproducible from a shell. Importing the same bundled
+    /// interpreter directly always works, and so does relaunching the same
+    /// untouched bundle moments later, so the pragmatic answer is to treat it as
+    /// transient and retry rather than to declare failure. Three attempts, then
+    /// give up and say so.
+    private let maxAttempts = 3
+    private let attemptTimeout: TimeInterval = 100
+
     deinit { stop() }
+
+    private func trace(_ message: String) {
+        let stamp = ISO8601DateFormatter().string(from: Date())
+        let line = "\(stamp) [pid \(ProcessInfo.processInfo.processIdentifier)] \(message)\n"
+        NSLog("%@", message)
+        // Written separately from the child's log so a child's own buffering can
+        // never hide the launch record. FileHandle(forWritingTo:) throws when the
+        // file is absent, so create it first -- a silent try? here is how this log
+        // stayed empty on the first attempt.
+        let url = Paths.support
+            .appendingPathComponent("Logs", isDirectory: true)
+            .appendingPathComponent("launch.log")
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if !FileManager.default.fileExists(atPath: url.path) {
+            FileManager.default.createFile(atPath: url.path, contents: nil)
+        }
+        if let data = line.data(using: .utf8),
+           let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            handle.seekToEndOfFile()
+            handle.write(data)
+        }
+    }
 
     /// Refuse to start rather than fight an existing listener: two backends on one
     /// port means the UI silently talks to someone else's server.
@@ -145,18 +180,22 @@ final class BackendProcess {
         try? FileManager.default.createDirectory(at: Paths.support, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(at: Paths.assetDir, withIntermediateDirectories: true)
 
-        // Truncate the log so a long-running app does not grow it forever, and so
-        // "Reveal in Finder" always shows this session.
+        // Truncate through the same handle rather than a second open of the file, so
+        // there is only ever one writer on it.
         if !FileManager.default.fileExists(atPath: Paths.logFile.path) {
             FileManager.default.createFile(atPath: Paths.logFile.path, contents: nil)
-        } else {
-            try? Data().write(to: Paths.logFile)
         }
         logHandle = try? FileHandle(forWritingTo: Paths.logFile)
+        try? logHandle?.truncate(atOffset: 0)
+        try? logHandle?.seek(toOffset: 0)
 
         let p = Process()
         p.executableURL = Paths.python
-        p.arguments = ["-m", "uvicorn", "main:app",
+        // -u: Python block-buffers stdout when it is not a tty, so uvicorn's
+        // "Started server process" line sat in a 4-8 KB buffer and the log stayed
+        // empty while the server was perfectly healthy -- which reads as a failed
+        // start. Unbuffered output makes the log the honest place to look.
+        p.arguments = ["-u", "-m", "uvicorn", "main:app",
                        "--host", "127.0.0.1",
                        "--port", String(backendPort),
                        "--no-access-log"]
@@ -186,26 +225,51 @@ final class BackendProcess {
             return
         }
         process = p
-        NSLog("DiffusionBear: backend pid %d, cwd %@", p.processIdentifier, Paths.backend.path)
+        attempt += 1
+        startedAt = Date()
+        trace("attempt \(attempt)/\(maxAttempts): backend pid \(p.processIdentifier) cwd \(Paths.backend.path)")
 
-        let started = Date()
+        let thisAttempt = attempt
         pollTimer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] timer in
             guard let self else { timer.invalidate(); return }
             if p.isRunning == false {
                 timer.invalidate()
-                self.onFailure?("The backend exited during startup.\n\nLog:\n\(Paths.logFile.path)")
+                self.trace("attempt \(thisAttempt): child exited, status \(p.terminationStatus) reason \(p.terminationReason.rawValue)")
+                self.retryOrFail("The backend exited during startup (status \(p.terminationStatus)).")
                 return
             }
             if Self.answers(path: "/api/version") {
                 timer.invalidate()
                 self.isReady = true
+                self.trace("ready after \(String(format: "%.1f", Date().timeIntervalSince(self.startedAt)))s on attempt \(thisAttempt)")
                 self.onReady?()
                 return
             }
-            if Date().timeIntervalSince(started) > startupTimeout {
+            if Date().timeIntervalSince(startedAt) > attemptTimeout {
                 timer.invalidate()
-                self.onFailure?("The backend did not become ready within \(Int(startupTimeout))s.\n\nLog:\n\(Paths.logFile.path)")
+                self.trace("attempt \(thisAttempt): no response after \(Int(attemptTimeout))s, killing pid \(p.processIdentifier)")
+                self.retryOrFail("The backend did not respond within \(Int(attemptTimeout))s.")
             }
+        }
+    }
+
+    /// Kill whatever is running and try again, up to `maxAttempts`.
+    private func retryOrFail(_ reason: String) {
+        stop()
+        isReady = false
+        if attempt < maxAttempts {
+            trace("retrying: \(reason)")
+            // A short pause: a hung child may still be releasing its file handles.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.start() }
+        } else {
+            onFailure?("""
+                \(reason)
+
+                Tried \(maxAttempts) times. Logs:
+
+                  backend: \(Paths.logFile.path)
+                  launch:  \(Paths.support.appendingPathComponent("Logs/launch.log").path)
+                """)
         }
     }
 
@@ -256,6 +320,99 @@ final class BackendProcess {
     }
 }
 
+// MARK: - Menus
+
+/// Hosts the web view and contributes text-editing actions to the context menu.
+///
+/// The bare shell sets no NSMenu at all, which is why copy/paste did not work:
+/// with no Edit menu there is nothing for ⌘C/⌘V to route to, and WebKit's own
+/// context menu has no Cut/Copy/Paste for editable fields to fall back on.
+///
+/// This *appends* to whatever menu WebKit builds rather than replacing it, so
+/// link and image context items keep working. Each item has a nil target, so the
+/// responder chain decides whether it is enabled -- the actions are greyed out
+/// when the click was not in a text field.
+final class AppWebView: WKWebView {
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = super.menu(for: event) ?? NSMenu(title: "")
+        let alreadyThere = Set(menu.items.map(\.title))
+        let wanted: [(String, Selector, String)] = [
+            ("Cut", #selector(NSText.cut(_:)), "x"),
+            ("Copy", #selector(NSText.copy(_:)), "c"),
+            ("Paste", #selector(NSText.paste(_:)), "v"),
+            ("Select All", #selector(NSText.selectAll(_:)), "a"),
+        ].filter { !alreadyThere.contains($0.0) }
+        guard !wanted.isEmpty else { return menu }
+        menu.addItem(.separator())
+        for (title, action, key) in wanted {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            item.target = nil
+            menu.addItem(item)
+        }
+        return menu
+    }
+}
+
+/// The app menu bar. Without this there is no Edit menu, which is the root cause
+/// of copy/paste not working -- ⌘C/⌘V/⌘A and the Edit menu both need somewhere to
+/// send their actions.
+private func installMainMenu() {
+    let mainMenu = NSMenu()
+
+    // Application menu (DiffusionBear ▸ About/Quit)
+    let appItem = NSMenuItem()
+    mainMenu.addItem(appItem)
+    let appMenu = NSMenu(title: "DiffusionBear")
+    appMenu.addItem(withTitle: "About DiffusionBear", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+    appMenu.addItem(.separator())
+    appMenu.addItem(withTitle: "Hide DiffusionBear", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+    let hideOthers = appMenu.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+    hideOthers.keyEquivalentModifierMask = [.command, .option]
+    appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+    appMenu.addItem(.separator())
+    appMenu.addItem(withTitle: "Quit DiffusionBear", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+    appItem.submenu = appMenu
+
+    // Edit menu -- this is what makes copy/paste work at all.
+    let editItem = NSMenuItem()
+    mainMenu.addItem(editItem)
+    let editMenu = NSMenu(title: "Edit")
+    editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+    let redo = editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+    redo.keyEquivalentModifierMask = [.command, .shift]
+    editMenu.addItem(.separator())
+    editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+    editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+    editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+    editMenu.addItem(withTitle: "Paste and Match Style", action: Selector(("pasteAsPlainText:")), keyEquivalent: "v")
+    editMenu.addItem(withTitle: "Delete", action: #selector(NSText.delete(_:)), keyEquivalent: "")
+    editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+    editItem.submenu = editMenu
+
+    // View
+    let viewItem = NSMenuItem()
+    mainMenu.addItem(viewItem)
+    let viewMenu = NSMenu(title: "View")
+    viewMenu.addItem(withTitle: "Reload Interface", action: Selector(("reloadIgnoringCache:")), keyEquivalent: "r")
+    viewMenu.addItem(.separator())
+    viewMenu.addItem(withTitle: "Enter Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
+    viewMenu.addItem(withTitle: "Actual Size", action: Selector(("zoom:")), keyEquivalent: "0")
+    viewItem.submenu = viewMenu
+
+    // Window
+    let windowItem = NSMenuItem()
+    mainMenu.addItem(windowItem)
+    let windowMenu = NSMenu(title: "Window")
+    windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+    windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+    windowMenu.addItem(.separator())
+    windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
+    windowItem.submenu = windowMenu
+    NSApp.windowsMenu = windowMenu
+
+    NSApp.mainMenu = mainMenu
+}
+
 // MARK: - UI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
@@ -267,6 +424,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+        installMainMenu()
         // Hold a user-initiated activity for the app's whole life. Without this,
         // macOS is free to App-Nap this process (and its backend child) whenever
         // the window is occluded or the app is not frontmost, which stalls the
@@ -318,7 +476,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     private func buildWindow() {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()   // keep logins/session across launches
-        webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1280, height: 840), configuration: config)
+        webView = AppWebView(frame: NSRect(x: 0, y: 0, width: 1280, height: 840), configuration: config)
         webView.navigationDelegate = self
         webView.autoresizingMask = [.width, .height]
 
