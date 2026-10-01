@@ -67,12 +67,30 @@ export const fillStrings = {
     de: "Die Engine-Liste konnte nicht geladen werden. Erneut versuchen.",
     it: "Impossibile caricare l\'elenco dei motori. Riprova.",
   },
-  "fill.errorFailed": {
-    fr: "Le remplissage a échoué. Réessayez.",
-    en: "The fill failed. Try again.",
-    de: "Das Füllen ist fehlgeschlagen. Erneut versuchen.",
-    it: "Il riempimento non è riuscito. Riprova.",
-  },
+"fill.errorFailed": {
+      fr: "Le remplissage a échoué. Réessayez.",
+      en: "The fill failed. Try again.",
+      de: "Das Füllen ist fehlgeschlagen. Erneut versuchen.",
+      it: "Il riempimento non è riuscito. Riprova.",
+    },
+    "fill.cancel": {
+      fr: "Annuler",
+      en: "Cancel",
+      de: "Abbrechen",
+      it: "Annulla",
+    },
+    "fill.cancelled": {
+      fr: "Remplissage annulé.",
+      en: "Fill cancelled.",
+      de: "Füllen abgebrochen.",
+      it: "Riempimento annullato.",
+    },
+    "fill.progressEta": {
+      fr: "encore ~{seconds} s",
+      en: "~{seconds}s left",
+      de: "noch ~{seconds} s",
+      it: "~{seconds} s rimanenti",
+    },
   "fill.doneBanner": {
     fr: "Remplissage terminé — l\'image a été ajoutée à la galerie.",
     en: "Fill complete — the image has been added to the gallery.",

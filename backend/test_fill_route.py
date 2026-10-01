@@ -325,3 +325,160 @@ class FillEnginesRouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FillProgressRouteTests(unittest.TestCase):
+    """The progress and cancel endpoints.
+
+    Separate from FillRouteTests because these need a *running* fill, and the fake
+    engine there returns instantly. Here it blocks on an event, so a second request can
+    be made while the first is still in flight -- which is the entire point of the
+    feature and the thing that is easy to get wrong.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self._saved_gen = fill.GENERATED_DIR
+        self._saved_data = fill.DATA_DIR
+        fill.GENERATED_DIR = self.root
+        fill.DATA_DIR = self.root
+        import state
+        self._saved_state_gen = state.GENERATED_DIR
+        state.GENERATED_DIR = self.root
+        self._saved_router_gen = gallery_router.GENERATED_DIR
+        gallery_router.GENERATED_DIR = self.root
+
+        self.image_id = "c" * 32
+        Image.new("RGB", (32, 32), (200, 30, 40)).save(self.root / f"{self.image_id}.png")
+        (self.root / f"{self.image_id}.json").write_text(
+            '{"id": "%s", "format": "png", "width": 32, "height": 32}' % self.image_id,
+            encoding="utf-8",
+        )
+
+        import threading
+
+        self.entered = threading.Event()
+        self.release = threading.Event()
+        self.cancel_event = None
+
+        def blocking_generate(**kwargs):
+            self.cancel_event = kwargs.get("cancel_event")
+            self.entered.set()
+            # Respect a cancel the way the real engine does, so the test proves the
+            # endpoint's signal actually reaches the render rather than just flipping
+            # a flag nobody reads.
+            for _ in range(200):
+                if self.cancel_event is not None and self.cancel_event.is_set():
+                    import generator
+                    raise generator.GenerationCancelled()
+                if self.release.wait(0.05):
+                    break
+            new_id = "d" * 32
+            Image.new("RGB", (32, 32), (10, 220, 90)).save(self.root / f"{new_id}.png")
+            (self.root / f"{new_id}.json").write_text('{"id": "%s"}' % new_id, encoding="utf-8")
+            return {"id": new_id, "format": "png", "seed": 7, "steps": 4}
+
+        import generator
+        self._saved_generate = generator.generate
+        generator.generate = blocking_generate
+
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(gallery_router.router)
+        self.client = TestClient(app)
+
+        import threading as _t
+
+        self.result = {}
+
+        def run():
+            try:
+                self.result["response"] = self.client.post(
+                    f"/api/images/{self.image_id}/fill",
+                    json={"mask": mask_data_url(), "prompt": "add a hat",
+                          "token": "test-token-123"},
+                )
+            except Exception as exc:  # pragma: no cover - surfaced via self.result
+                self.result["error"] = exc
+
+        self.thread = _t.Thread(target=run, daemon=True)
+        self.thread.start()
+
+    def tearDown(self):
+        self.release.set()
+        self.thread.join(timeout=10)
+        import generator
+        generator.generate = self._saved_generate
+        import state
+        state.GENERATED_DIR = self._saved_state_gen
+        gallery_router.GENERATED_DIR = self._saved_router_gen
+        fill.GENERATED_DIR = self._saved_gen
+        fill.DATA_DIR = self._saved_data
+        self.tmp.cleanup()
+
+    def test_a_running_fill_reports_progress(self):
+        self.assertTrue(self.entered.wait(10), "the fake engine never ran")
+        r = self.client.get("/api/fill/test-token-123/progress")
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(body["token"], "test-token-123")
+        self.assertEqual(body["image_id"], self.image_id)
+        self.assertIn("phase", body)
+        self.assertTrue(body.get("phase_detail"), "progress needs something to display")
+
+    def test_progress_for_an_unknown_token_is_404(self):
+        self.assertEqual(self.client.get("/api/fill/nope-nope-nope/progress").status_code, 404)
+
+    def test_cancelling_ends_the_request_with_409(self):
+        self.assertTrue(self.entered.wait(10), "the fake engine never ran")
+        r = self.client.post("/api/fill/test-token-123/cancel")
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["status"], "cancelling")
+        self.thread.join(timeout=15)
+        self.assertIn("response", self.result, self.result.get("error"))
+        response = self.result["response"]
+        self.assertEqual(response.status_code, 409, response.text)
+        # Not 400: a cancel is not a malformed request.
+        self.assertNotEqual(response.status_code, 400)
+
+    def test_a_cancelled_fill_writes_no_image(self):
+        self.assertTrue(self.entered.wait(10), "the fake engine never ran")
+        self.client.post("/api/fill/test-token-123/cancel")
+        self.thread.join(timeout=15)
+        filled = []
+        for png in self.root.glob("*.png"):
+            meta = self.root / png.with_suffix(".json")
+            if meta.exists():
+                import json
+                try:
+                    if json.loads(meta.read_text()).get("filled_from"):
+                        filled.append(png.name)
+                except Exception:
+                    pass
+        self.assertEqual(filled, [], "cancelled fill left an image behind")
+
+    def test_cancelling_an_unknown_token_is_not_an_error(self):
+        r = self.client.post("/api/fill/nope-nope-nope/cancel")
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["status"], "not_running")
+
+    def test_progress_is_cleaned_up_when_the_fill_ends(self):
+        self.assertTrue(self.entered.wait(10), "the fake engine never ran")
+        self.release.set()
+        self.thread.join(timeout=15)
+        self.assertEqual(
+            self.client.get("/api/fill/test-token-123/progress").status_code, 404,
+            "a finished fill must not leave a progress record behind",
+        )
+
+    def test_a_malformed_token_is_rejected(self):
+        self.assertEqual(self.client.get("/api/fill/bad!token/progress").status_code, 422)
+
+    def test_a_token_with_bad_characters_is_rejected_on_submit(self):
+        r = self.client.post(
+            f"/api/images/{self.image_id}/fill",
+            json={"mask": mask_data_url(), "prompt": "x", "token": "bad token!"},
+        )
+        self.assertEqual(r.status_code, 422, r.text)

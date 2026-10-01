@@ -31,6 +31,10 @@ export default function FillBrush({
   const wrapRef = useRef(null);
   const paintingRef = useRef(false);
   const lastPointRef = useRef(null);
+  // The token the running fill was started with, so Cancel targets that exact fill
+  // and not whatever happens to be in flight later. Cleared when the fill ends.
+  const tokenRef = useRef(null);
+  const pollRef = useRef(null);
 
   const [prompt, setPrompt] = useState("");
   const [brushSize, setBrushSize] = useState(Math.max(24, Math.round(Math.min(image?.width || 512, image?.height || 512) * 0.12)));
@@ -39,6 +43,8 @@ export default function FillBrush({
   const [engine, setEngine] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [cancelled, setCancelled] = useState(false);
+  const [progress, setProgress] = useState(null);
   const [hasPaint, setHasPaint] = useState(false);
   const [maskPercent, setMaskPercent] = useState(0);
 
@@ -232,12 +238,75 @@ export default function FillBrush({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // 500ms matches the text-to-image poll. A fill's useful granularity is a denoising
+  // step, ~12s apart on this hardware, so a faster poll would only add load.
+  const POLL_MS = 500;
+
+  function stopPolling() {
+    if (pollRef.current != null) {
+      window.clearTimeout(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  // Poll until the fill's progress record disappears, which is the backend's signal
+  // that the POST has finished one way or another. Stops on unmount so a closed dialog
+  // does not keep a timer running.
+  useEffect(() => {
+    if (!busy || !tokenRef.current) return undefined;
+    let stopped = false;
+
+    async function poll() {
+      const token = tokenRef.current;
+      if (stopped || !token) return;
+      try {
+        const data = await api(`/api/fill/${token}/progress`);
+        if (stopped || tokenRef.current !== token) return;
+        setProgress(data);
+      } catch (err) {
+        // 404 means the fill is over -- finished, failed or cancelled. The POST owns
+        // the outcome, so stop polling and let it settle the UI.
+        if (err?.status === 404) return;
+        console.warn("[DiffusionBear] fill progress poll failed:", err);
+      }
+      if (!stopped && tokenRef.current === token) {
+        pollRef.current = window.setTimeout(poll, POLL_MS);
+      }
+    }
+
+    pollRef.current = window.setTimeout(poll, 0);
+    return () => {
+      stopped = true;
+      stopPolling();
+    };
+  }, [busy]);
+
+  async function cancel() {
+    const token = tokenRef.current;
+    if (!token) return;
+    try {
+      await api(`/api/fill/${token}/cancel`, { method: "POST" });
+    } catch (err) {
+      // Already finished is the common race here and needs no message; anything else
+      // is worth surfacing because the fill may be about to run to completion.
+      if (err?.status !== 404) console.warn("[DiffusionBear] fill cancel failed:", err);
+    }
+  }
+
   async function submit() {
     if (busy || !hasPaint) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // crypto.randomUUID needs a secure context; the loopback backend is http, so
+    // fall back rather than leaving the fill uncancellable.
+    const token =
+      globalThis.crypto?.randomUUID?.().replace(/-/g, "") ||
+      `fill${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    tokenRef.current = token;
     setBusy(true);
     setError(null);
+    setCancelled(false);
+    setProgress(null);
     try {
       const dataUrl = canvas.toDataURL("image/png");
       const result = await api(`/api/images/${image.id}/fill`, {
@@ -246,14 +315,25 @@ export default function FillBrush({
           mask: dataUrl,
           prompt: prompt.trim(),
           model: engine || undefined,
+          token,
         }),
       });
+      stopPolling();
       onComplete?.(result);
       onClose?.();
     } catch (err) {
+      stopPolling();
+      // 409 is our own cancellation. Not an error: the user asked for it, so it gets a
+      // quiet acknowledgement and the dialog stays open with the mask intact.
+      if (err?.status === 409) {
+        setCancelled(true);
+        setProgress(null);
+        return;
+      }
       setError(err?.status === 400 ? "invalid" : "failed");
       console.error("[DiffusionBear] fill failed:", err);
     } finally {
+      tokenRef.current = null;
       setBusy(false);
     }
   }
@@ -367,6 +447,37 @@ export default function FillBrush({
           )}
         </div>
 
+        {busy && progress && (
+          <div className="fill-brush-progress" role="status" aria-live="polite">
+            <div className="fill-brush-progress-bar" aria-hidden="true">
+              <div
+                className="fill-brush-progress-fill"
+                style={{
+                  width: progress.steps
+                    ? `${Math.min(100, Math.round((progress.step / progress.steps) * 100))}%`
+                    : "100%",
+                  // Indeterminate while the phase is unknown (model load, VAE decode):
+                  // a bar stuck at 0% for 30s reads as broken, a moving one reads as
+                  // working. Both use the same element so the layout does not jump.
+                  animation: progress.steps ? "none" : "fill-indeterminate 1.4s ease-in-out infinite",
+                }}
+              />
+            </div>
+            <span className="fill-brush-progress-text">
+              {progress.phase_detail || t("fill.working")}
+              {progress.eta_seconds != null && progress.eta_seconds > 0 && (
+                <> · {t("fill.progressEta", { seconds: Math.round(progress.eta_seconds) })}</>
+              )}
+            </span>
+          </div>
+        )}
+
+        {cancelled && !busy && (
+          <p className="fill-brush-notice" role="status">
+            {t("fill.cancelled")}
+          </p>
+        )}
+
         {error && (
           <p className="fill-brush-error" role="alert">
             {error === "invalid"
@@ -381,14 +492,22 @@ export default function FillBrush({
           <p className="fill-brush-hint">
             {bigRegion ? t("fill.hintLargeRegion") : t("fill.hint")}
           </p>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={submit}
-            disabled={busy || !hasPaint || !prompt.trim()}
-          >
-            {busy ? t("fill.working") : t("fill.submit")}
-          </button>
+          <div className="fill-brush-buttons">
+            {busy ? (
+              <button type="button" className="btn-secondary" onClick={cancel}>
+                {t("fill.cancel")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={submit}
+                disabled={!hasPaint || !prompt.trim()}
+              >
+                {t("fill.submit")}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

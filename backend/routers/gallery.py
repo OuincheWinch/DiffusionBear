@@ -1,8 +1,11 @@
 import asyncio
 import json
+import re
 import subprocess
 import sys
 import threading
+import time
+import uuid
 from collections import Counter
 from pathlib import Path
 from typing import Literal
@@ -29,6 +32,21 @@ from state import (
 )
 
 router = APIRouter(tags=["gallery"])
+
+# Live progress for in-flight fills, keyed by the client-supplied token.
+#
+# Deliberately NOT state.JOBS. That registry drives the text-to-image queue, which is
+# persistent and survives restarts because a queued generation must not be lost; a fill
+# is a foreground request on an HTTP connection that dies with its tab, so persisting it
+# would leave phantom entries after a crash. In memory, and pruned in the route's
+# finally, is the right lifetime.
+_FILL_PROGRESS: dict[str, dict] = {}
+_FILL_PROGRESS_LOCK = threading.Lock()
+
+
+def _fill_progress_put(token: str, value: dict) -> None:
+    with _FILL_PROGRESS_LOCK:
+        _FILL_PROGRESS[token] = value
 
 # Image bytes are written once under a unique id and never mutated, but
 # delete_image() unlinks them permanently. A long `immutable` window would keep a
@@ -320,6 +338,9 @@ class FillRequest(BaseModel):
     height: int | None = Field(default=None, ge=64, le=4096)
     guidance: float | None = Field(default=None, ge=0.0, le=20.0)
     loras: list[dict] | None = None
+    # Names this fill so the UI can poll its progress and cancel it. Optional: a caller
+    # that does not want either still works, the server just makes one up.
+    token: str | None = Field(default=None, min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
 
     @field_validator("prompt")
     @classmethod
@@ -461,8 +482,46 @@ def fill(image_id: str, req: FillRequest):
     # before the handler runs, and the image lookup runs first regardless. No test
     # could observe the handler's own check, so removing it changed nothing
     # observable; keeping it would have been untested code implying a guarantee.
+    # A client-supplied token names this fill so a second request can cancel it, and
+    # so a stale Cancel from a previous fill cannot reach this one.
+    token = req.token or uuid.uuid4().hex
+    cancel_event = threading.Event()
+    started = time.monotonic()
+    fill_mod.register_fill(token, cancel_event)
     try:
         with fill_mod._FILL_SLOT:
+            def on_step(t, _total=req.steps):
+                done = t + 1
+                elapsed = time.monotonic() - started
+                eta = elapsed / done * (_total - done) if done and _total else None
+                _fill_progress_put(token, {
+                    "token": token,
+                    "image_id": image_id,
+                    "phase": "generating",
+                    "phase_detail": f"Denoising step {done}/{_total or '?'}...",
+                    "step": done,
+                    "steps": _total,
+                    "elapsed": round(elapsed, 1),
+                    "eta_seconds": round(eta, 1) if eta is not None else None,
+                })
+
+            def on_phase(phase, detail=""):
+                with _FILL_PROGRESS_LOCK:
+                    previous = _FILL_PROGRESS.get(token, {})
+                _fill_progress_put(token, {
+                    **previous,
+                    "token": token,
+                    "image_id": image_id,
+                    "phase": phase,
+                    "phase_detail": detail,
+                })
+
+            _fill_progress_put(token, {
+                "token": token,
+                "image_id": image_id,
+                "phase": "preparing",
+                "phase_detail": "Preparing mask...",
+            })
             metadata = fill_mod.fill_image(
                 image_id,
                 mask_b64=req.mask,
@@ -474,7 +533,15 @@ def fill(image_id: str, req: FillRequest):
                 height=req.height,
                 guidance=req.guidance,
                 loras=req.loras,
+                progress_cb=on_step,
+                phase_cb=on_phase,
+                cancel_event=cancel_event,
             )
+    except fill_mod.FillCancelled:
+        # Not an error. 409 rather than 400 or 500: the request was well-formed, the
+        # server simply declined to finish it, at the user's request.
+        print(f"[fill] {image_id} cancelled by the user", flush=True)
+        raise HTTPException(409, "fill cancelled") from None
     except fill_mod.FillError as e:
         # A FillError is a request the user can correct -- wrong dimensions, empty
         # mask, no prompt. 400 with the reason, not a generic 500, so the UI can
@@ -498,6 +565,12 @@ def fill(image_id: str, req: FillRequest):
         print(f"[fill] {image_id} failed: {type(e).__name__}: {e}", flush=True)
         traceback.print_exc()
         raise HTTPException(500, f"fill failed: {type(e).__name__}") from e
+    finally:
+        # Unconditional. A leaked entry would let a later Cancel signal a finished
+        # fill, and the progress record would outlive the request that made it.
+        fill_mod.unregister_fill(token)
+        with _FILL_PROGRESS_LOCK:
+            _FILL_PROGRESS.pop(token, None)
 
     with _gallery_lock:
         GALLERY_INDEX[metadata["id"]] = metadata
@@ -507,6 +580,64 @@ def fill(image_id: str, req: FillRequest):
         # A missing thumbnail is cosmetic; the file route builds one on demand.
         pass
     return metadata
+
+
+_FILL_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
+
+def _validate_fill_token(token: str) -> str:
+    """Reject a token before it is used as a dict key or echoed back.
+
+    The path parameter is unvalidated by FastAPI, so without this a token of any shape
+    reaches the registry lookup. Rejecting it here also keeps the two fill endpoints
+    consistent with FillRequest.token, which is pattern-validated by pydantic -- without
+    this, `/api/fill/x/progress` and a submitted token disagree about what a token is.
+    """
+    if not isinstance(token, str) or not _FILL_TOKEN_RE.fullmatch(token):
+        raise HTTPException(422, "invalid fill token")
+    return token
+
+
+@router.get("/api/fill/{token}/progress")
+def fill_progress(token: str):
+    """Live progress for a running fill.
+
+    Polled rather than streamed deliberately. A fill is 30-280s and the interesting
+    granularity is a denoising step, ~12s apart on this hardware, so an SSE stream
+    would hold a connection open to deliver about twenty messages. Polling every
+    500ms is simple, survives a dropped connection, and needs no cleanup when the tab
+    closes.
+
+    404 once the fill is gone, which is also how the UI learns it finished -- there is
+    no separate "is it still running" endpoint, and a completed fill returns its image
+    from the POST that started it.
+    """
+    _validate_fill_token(token)
+    with _FILL_PROGRESS_LOCK:
+        record = _FILL_PROGRESS.get(token)
+    if record is None:
+        raise HTTPException(404, "no such fill in progress")
+    return record
+
+
+@router.post("/api/fill/{token}/cancel")
+def cancel_fill(token: str):
+    """Ask a running fill to stop.
+
+    Best-effort and immediate: the event is set here, and the fill notices at its next
+    checkpoint -- at most one denoising step away, plus whatever the composite takes.
+    Returns as soon as the signal is delivered rather than waiting for the render to
+    unwind, because the UI needs to leave the busy state at once.
+    """
+    import fill as fill_mod
+
+    _validate_fill_token(token)
+    if not fill_mod.cancel_fill(token):
+        # Either it never existed or it already finished. Idempotent on purpose: a
+        # Cancel that arrives just after completion is a race the user cannot win or
+        # lose, and reporting failure for it would be a lie about a normal outcome.
+        return {"status": "not_running", "token": token}
+    return {"status": "cancelling", "token": token}
 
 
 @router.get("/api/fill/engines")

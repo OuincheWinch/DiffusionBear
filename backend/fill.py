@@ -167,6 +167,48 @@ MAX_MASK_PIXELS = 64 * 1024 * 1024
 # 4 steps, so it is also the fast option, which is the right default.
 FILL_CAPABLE_ENGINES = {"flux2-klein-4b", "flux2-klein-9b"}
 
+# --- why the other two cannot be added, checked against the installed mflux ----
+#
+# Re-investigated by reading mflux's variant tree rather than trusting the comment
+# above, because "the UI only offers FLUX.2" is a policy that ought to be falsifiable.
+#
+#   mflux/models/*/variants/ holds one directory per capability. Present:
+#     flux2/variants/edit/       in-context, spatial  <- what fill needs
+#     flux/variants/fill/        true masked inpaint (FLUX.1 only)
+#     flux/variants/in_context/  FLUX.1 in-context fill, takes a real mask
+#     qwen/variants/edit/        in-context, spatial
+#     z_image/variants/controlnet/  ControlNet (pose/canny/hed/depth/mlsd)
+#     krea2/variants/            txt2img ONLY
+#
+# So, specifically for the two engines that were in question:
+#
+#   Z-Image Turbo. It has no edit variant but it DOES have ControlNet, which is the
+#   closest thing available and is genuinely spatial: a depth or canny map of the
+#   source constrains layout per-pixel. It is not usable for THIS feature anyway,
+#   because the control signal describes structure that already exists (a canny
+#   edge map of the bear), and a fill has to invent pixels that are not there.
+#   ControlNet can say "keep this geometry", never "put sunglasses here". Admitting
+#   it would mean a fill that reproduces the hole faithfully -- the exact grey box
+#   this module exists to prevent.
+#
+#   Krea 2 Turbo. No edit variant, no ControlNet, no fill, nothing but txt2img in the
+#   entire variants tree. There is no spatial path to reach. Nothing to wire up.
+#
+# The genuine masked-inpaint code (InContextMaskUtil.create_masked_latents, which
+# concatenates a mask channel onto the VAE latents) is FLUX.1-only and needs a
+# FLUX.1 checkpoint; the registry carries no FLUX.1 model, and downloading several
+# gigabytes to add an engine the user did not ask for is not a change to make
+# unilaterally. If a masked FLUX.2 inpaint ever appears upstream, that is the hook.
+#
+# Net: the policy above is not conservatism, it is the ceiling of what the installed
+# mflux exposes. Revisit if mflux gains krea2/variants/edit or a flux2 mask variant.
+#
+# Verified against the vendored copy the bundle actually ships,
+# packaging/vendor/mflux-src (upstream mflux 0.20.0 + the Qwen-Image 2.1 port). Its
+# tree is hash-pinned by test_repo_security.test_vendored_mflux_is_unmodified, so an
+# upgrade that adds an edit variant fails that test loudly rather than silently
+# leaving a working engine hidden behind this policy.
+
 # What the UI is allowed to offer. Identical to FILL_CAPABLE today; keeping a
 # separate name makes the intent explicit and leaves room to widen it if another
 # engine gains real spatial conditioning.
@@ -181,9 +223,83 @@ DEFAULT_FILL_ENGINE = "flux2-klein-4b"
 # semaphore upscale.py uses for the same reason.
 _FILL_SLOT = threading.BoundedSemaphore(1)
 
+# The in-flight fill, so a cancel can reach it.
+#
+# The HTTP request that starts a fill blocks for its whole duration, so the browser
+# cannot both hold the response and watch progress. A second, short request has to find
+# the running fill from somewhere, and a module-level handle is the only state shared
+# between the two. Keyed by a token the caller supplies rather than by image id, because
+# the same image can legitimately be filled twice and a later cancel must not reach an
+# earlier fill.
+_ACTIVE_FILLS: dict[str, object] = {}
+_ACTIVE_FILLS_LOCK = threading.Lock()
+
+
+def register_fill(token: str, cancel_event) -> None:
+    with _ACTIVE_FILLS_LOCK:
+        _ACTIVE_FILLS[token] = cancel_event
+
+
+def unregister_fill(token: str) -> None:
+    with _ACTIVE_FILLS_LOCK:
+        _ACTIVE_FILLS.pop(token, None)
+
+
+def cancel_fill(token: str) -> bool:
+    """Signal the fill identified by `token`. False if it is not running."""
+    with _ACTIVE_FILLS_LOCK:
+        event = _ACTIVE_FILLS.get(token)
+    if event is None:
+        return False
+    event.set()
+    return True
+
+
+def active_fill_tokens() -> list[str]:
+    with _ACTIVE_FILLS_LOCK:
+        return list(_ACTIVE_FILLS)
+
 
 class FillError(ValueError):
     """A fill request that cannot be honoured. Carries a reason for the UI."""
+
+
+class FillCancelled(Exception):
+    """The user cancelled a fill.
+
+    Deliberately NOT a FillError. FillError maps to HTTP 400 -- "a request the user
+    can correct" -- and a cancellation is not correctable, it is the user's decision,
+    so it must not be reported to them as a failure they caused. The route turns this
+    into 409 with no error banner.
+    """
+
+
+def generator_cancelled_errors():
+    """The engine's cancellation exception, or a placeholder that never matches.
+
+    Imported lazily because fill.py must stay importable without generator (and
+    therefore without MLX) for the pure-image tests. When generator is unavailable the
+    sentinel makes the `except` clause simply unreachable rather than a NameError at
+    the moment a fill finishes.
+    """
+    try:
+        from generator import GenerationCancelled
+    except Exception:
+        return ()
+    return (GenerationCancelled,)
+
+
+def _check_cancelled(cancel_event) -> None:
+    """Raise FillCancelled if the user asked to stop.
+
+    Checked at each stage boundary. The engine only polls its event once per denoising
+    step, which on this hardware is 12s apart, and the pre- and post-generation work
+    here (decoding the mask, resizing the crop, Poisson-blending the composite) is not
+    interruptible at all. Without these checks a cancel could sit unnoticed for the
+    length of a whole render and then still write a result the user rejected.
+    """
+    if cancel_event is not None and cancel_event.is_set():
+        raise FillCancelled("fill cancelled by the user")
 
 
 def _decode_mask(mask_b64: str, expected_size: tuple[int, int]) -> Image.Image:
@@ -331,6 +447,11 @@ def fill_image(
         import generator
         generate_fn = generator.generate
 
+    # Past validation, so a cancelled request that was also malformed still reports the
+    # malformed part -- telling the user their prompt is empty when they hit Cancel is
+    # worse than useless.
+    _check_cancelled(cancel_event)
+
     # --- the reference the engine sees -------------------------------------
     # This is the whole trick, and getting it wrong makes the feature useless.
     #
@@ -369,6 +490,15 @@ def fill_image(
 
     t0 = time.time()
     burnt_path = _write_burnt_reference(region_original, region_mask)
+    # The engine polls its own event once per denoising step, which is ~12s apart here,
+    # so a cancel issued during reference preparation would otherwise still cost a full
+    # render. Translating the engine's cancellation to ours keeps the two exit paths
+    # identical for the route, and keeps generator.GenerationCancelled -- which means
+    # something else inside the sampler -- from surfacing as a 500.
+    def _cancelled_step(t):
+        if progress_cb:
+            progress_cb(t)
+
     try:
         result = generate_fn(
             prompt=prompt,
@@ -380,10 +510,12 @@ def fill_image(
             height=render_h,
             guidance=guidance,
             loras=loras,
-            progress_cb=progress_cb,
+            progress_cb=_cancelled_step,
             phase_cb=phase_cb,
             cancel_event=cancel_event,
         )
+    except generator_cancelled_errors() as exc:
+        raise FillCancelled("fill cancelled by the user") from exc
     finally:
         # The burnt reference is a scratch artifact, never a gallery image. Leaving
         # it behind would put an image with a grey hole in the user's library.
@@ -391,6 +523,12 @@ def fill_image(
             burnt_path.unlink()
         except OSError:
             pass
+
+    # The engine's own poll is per denoising step, so a cancel arriving after the last
+    # one -- during VAE decode, or in the ~1s the composite below takes -- would still
+    # save an image. The render already exists at this point, so cancelling here throws
+    # that away rather than handing the user a result they rejected.
+    _check_cancelled(cancel_event)
 
     generated_path = GENERATED_DIR / f"{result['id']}.{result.get('format', 'png')}"
     with Image.open(generated_path) as gen_img:
@@ -409,6 +547,8 @@ def fill_image(
     generated_full.paste(generated, (crop[0], crop[1]))
 
     filled = _seamless_composite(original, generated_full, mask)
+    # Last chance: the composite is the expensive, irreversible-to-the-user part.
+    _check_cancelled(cancel_event)
     return _write_result(
         image_id=image_id,
         parent_meta=src_meta,

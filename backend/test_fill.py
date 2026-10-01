@@ -12,6 +12,7 @@ mask-compositing: a hard edge reads as a mistake, and the feather is what hides 
 
 import base64
 import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -931,3 +932,229 @@ class ContextPaddingTests(unittest.TestCase):
     def test_padding_is_not_zero(self):
         """Some context is still needed or the model has nothing to blend against."""
         self.assertGreater(fill.FILL_CONTEXT_PAD_RATIO, 0.0)
+
+
+class CancellationTests(unittest.TestCase):
+    """A fill the user stops must not leave an image, a scratch file, or an error.
+
+    Cancellation is the one path that was untestable before: fill_image accepted a
+    cancel_event and forwarded it to the engine, but never looked at it itself. The
+    engine only polls its event once per denoising step -- ~12s apart on this
+    hardware -- and none of the pre- and post-generation work (mask decode, crop
+    resize, Poisson blend) is interruptible at all, so a cancel could sit unnoticed
+    for a whole render and still save a result the user had rejected.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self._saved = (fill.GENERATED_DIR, fill.DATA_DIR)
+        fill.GENERATED_DIR = self.root
+        fill.DATA_DIR = self.root
+        self.src_id = "a" * 32
+        Image.new("RGB", (48, 48), (200, 30, 40)).save(self.root / f"{self.src_id}.png")
+        (self.root / f"{self.src_id}.json").write_text(
+            '{"id": "%s", "format": "png", "width": 48, "height": 48}' % self.src_id,
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        fill.GENERATED_DIR, fill.DATA_DIR = self._saved
+        self.tmp.cleanup()
+
+    def _gen(self, on_generate=None, generated_colour=(10, 220, 90)):
+        calls = {}
+
+        def gen(**kwargs):
+            calls.update(kwargs)
+            if on_generate:
+                on_generate(kwargs)
+            new_id = "e" * 32
+            Image.new("RGB", (48, 48), generated_colour).save(self.root / f"{new_id}.png")
+            (self.root / f"{new_id}.json").write_text('{"id": "%s"}' % new_id, encoding="utf-8")
+            return {"id": new_id, "format": "png", "seed": 1, "steps": 4}
+
+        gen.calls = calls
+        return gen
+
+    def _mask(self):
+        m = Image.new("L", (48, 48), 0)
+        for x in range(12, 36):
+            for y in range(12, 36):
+                m.putpixel((x, y), 255)
+        buf = io.BytesIO()
+        m.save(buf, format="PNG")
+        return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+    def _gallery_images(self):
+        return sorted(p.name for p in self.root.glob("*.png"))
+
+    def test_cancelling_before_the_engine_runs_costs_nothing(self):
+        import threading
+
+        event = threading.Event()
+        event.set()
+        gen = self._gen()
+        before = self._gallery_images()
+        with self.assertRaises(fill.FillCancelled):
+            fill.fill_image(self.src_id, self._mask(), "add a hat",
+                            cancel_event=event, generate_fn=gen)
+        self.assertEqual(gen.calls, {}, "the engine must not run for a cancelled fill")
+        self.assertEqual(self._gallery_images(), before, "no image may be written")
+
+    def test_cancelling_during_generation_writes_nothing(self):
+        """The engine finishes its render, then the cancel lands before the composite."""
+        import threading
+
+        event = threading.Event()
+        gen = self._gen(on_generate=lambda kwargs: event.set())
+        before = self._gallery_images()
+        with self.assertRaises(fill.FillCancelled):
+            fill.fill_image(self.src_id, self._mask(), "add a hat",
+                            cancel_event=event, generate_fn=gen)
+        # The engine's own output is a scratch artifact of the fake; what must not
+        # exist is the FILLED image.
+        self.assertFalse((self.root / f"{'f' * 32}.png").exists())
+        filled = [n for n in self._gallery_images()
+                  if json.loads((self.root / n.replace('.png', '.json')).read_text()).get("filled_from")]
+        self.assertEqual(filled, [], "a cancelled fill must not produce a filled image")
+
+    def test_the_scratch_reference_is_removed_even_when_cancelled(self):
+        import threading
+
+        event = threading.Event()
+        gen = self._gen(on_generate=lambda kwargs: event.set())
+        with self.assertRaises(fill.FillCancelled):
+            fill.fill_image(self.src_id, self._mask(), "add a hat",
+                            cancel_event=event, generate_fn=gen)
+        leftover = list((self.root / "uploads").glob(".fill-ref-*.png")) if (self.root / "uploads").exists() else []
+        self.assertEqual(leftover, [], f"burnt reference left behind: {leftover}")
+
+    def test_cancellation_is_not_a_fill_error(self):
+        """FillError maps to HTTP 400 -- 'a request the user can correct'. A cancel is
+        not correctable, it is the user's decision, so it must not be reported as
+        something they got wrong."""
+        self.assertFalse(issubclass(fill.FillCancelled, fill.FillError))
+        self.assertFalse(issubclass(fill.FillCancelled, ValueError))
+
+    def test_an_uncancelled_fill_is_unaffected(self):
+        import threading
+
+        event = threading.Event()
+        gen = self._gen()
+        meta = fill.fill_image(self.src_id, self._mask(), "add a hat",
+                               cancel_event=event, generate_fn=gen)
+        self.assertTrue((self.root / f"{meta['id']}.png").exists())
+        self.assertEqual(meta["filled_from"], self.src_id)
+
+    def test_the_event_is_passed_through_to_the_engine(self):
+        import threading
+
+        event = threading.Event()
+        gen = self._gen()
+        fill.fill_image(self.src_id, self._mask(), "add a hat",
+                        cancel_event=event, generate_fn=gen)
+        self.assertIs(gen.calls["cancel_event"], event)
+
+
+class FillRegistryTests(unittest.TestCase):
+    """The token registry that lets a second request cancel a running fill."""
+
+    def setUp(self):
+        import threading
+
+        self.events = []
+        for token in ("token-one", "token-two"):
+            self.events.append((token, threading.Event()))
+            fill.register_fill(*self.events[-1])
+        self.addCleanup(fill.unregister_fill, "token-one")
+        self.addCleanup(fill.unregister_fill, "token-two")
+
+    def test_cancel_reaches_the_right_fill(self):
+        self.assertTrue(fill.cancel_fill("token-one"))
+        self.assertTrue(self.events[0][1].is_set())
+        self.assertFalse(self.events[1][1].is_set(), "only the named fill may be signalled")
+
+    def test_cancelling_an_unknown_token_reports_failure(self):
+        self.assertFalse(fill.cancel_fill("never-existed"))
+
+    def test_unregister_removes_it(self):
+        fill.unregister_fill("token-one")
+        self.assertFalse(fill.cancel_fill("token-one"))
+
+    def test_active_tokens_lists_what_is_running(self):
+        self.assertEqual(sorted(fill.active_fill_tokens()), ["token-one", "token-two"])
+
+
+class FillEngineCapabilityTests(unittest.TestCase):
+    """FILL_CAPABLE_ENGINES is a claim about the vendored mflux, so test the claim.
+
+    The policy "only FLUX.2 can fill" is falsifiable and has been wrong before: the
+    first version keyed off supports_ref, which is True for every engine that accepts
+    a reference, including three that cannot fill. Reading the installed variant tree
+    is the only way to tell spatial from global conditioning.
+
+    These assert on the STRUCTURE (does this model have an edit variant?) rather than
+    re-stating the list, so a mflux upgrade that adds krea2/variants/edit or
+    z_image/variants/edit fails here instead of leaving a working engine hidden.
+    """
+
+    @staticmethod
+    def _variants_dir(model: str) -> Path:
+        # parents[0] is backend/, [1] is the repo root. parents[2] would be the repo's
+        # PARENT, which silently skips these tests instead of failing.
+        root = Path(__file__).resolve().parents[1] / "packaging" / "vendor" / "mflux-src" / "mflux" / "models"
+        return root / model / "variants"
+
+    def test_flux2_has_an_edit_variant(self):
+        """The premise of the whole policy. If this fails, fill has no engine."""
+        self.assertIn("edit", self._variant_names("flux2"))
+
+    def test_krea2_has_no_spatial_variant(self):
+        """Krea 2's entire variant tree is txt2img. There is no spatial path to wire."""
+        self.assertNotIn("edit", self._variant_names("krea2"))
+        self.assertNotIn("in_context", self._variant_names("krea2"))
+
+    def test_z_image_has_no_edit_variant(self):
+        """Z-Image has ControlNet, which constrains existing structure but cannot
+        invent pixels that are not there -- see the note in fill.py. Admitting it would
+        reproduce the hole rather than fill it."""
+        self.assertNotIn("edit", self._variant_names("z_image"))
+
+    def _variant_names(self, model: str) -> set[str]:
+        """mflux families, not registry ids.
+
+        The registry calls them flux2-klein-4b / -9b; the mflux tree has ONE flux2
+        family with a single edit variant. Resolving the family is what makes this
+        testable at all -- looking for `flux2-klein-4b/variants` skips, which is worse
+        than useless here because it would silently stop guarding the policy.
+        """
+        family = model.split("-")[0] if model.startswith("flux2") else model
+        d = self._variants_dir(family)
+        if not d.is_dir():
+            self.fail(f"vendored mflux has no {family}/variants to inspect")
+        return {
+            p.name
+            for p in d.iterdir()
+            if p.is_dir() and p.name != "__pycache__"
+        }
+
+    def test_every_advertised_fill_engine_has_an_edit_variant(self):
+        """Bridges the structural facts to the policy: nothing may be offered for fill
+        unless mflux gives it a spatial path."""
+        for engine in sorted(fill.FILL_CAPABLE_ENGINES):
+            with self.subTest(engine=engine):
+                self.assertIn(
+                    "edit", self._variant_names(engine),
+                    f"{engine} is offered for fill but its mflux family has no edit variant",
+                )
+
+    def test_the_true_masked_inpaint_path_is_flux1_only(self):
+        """The genuine mask-channel inpaint lives in the FLUX.1 tree. Recording where
+        the hook is, so a future mflux that ports it to FLUX.2 is findable."""
+        flux1 = self._variant_names("flux")
+        self.assertTrue(
+            {"fill", "in_context"} & flux1,
+            "expected FLUX.1 to carry the masked-inpaint variants",
+        )
+        self.assertNotIn("fill", self._variant_names("flux2"))

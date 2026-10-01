@@ -4007,6 +4007,87 @@ p.warning {
   cursor: not-allowed;
 }
 
+.fill-brush-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Cancel replaces the submit button while a fill runs, rather than sitting beside it.
+   Two enabled buttons in the same spot invites the wrong one, and the mask is still on
+   screen so the user can always re-submit afterwards. */
+.fill-brush-actions .btn-secondary {
+  min-height: 2.25rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fill-brush-actions .btn-secondary:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.fill-brush-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fill-brush-progress-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.fill-brush-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 220ms ease-out;
+}
+
+/* Used while the phase has no step count (model load, VAE decode). A full-width bar
+   sliding across reads as "working"; a bar parked at 0% for 30s reads as broken. */
+@keyframes fill-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill-brush-progress-fill {
+    transition: none;
+  }
+
+  .fill-brush-progress-fill[style*="fill-indeterminate"] {
+    animation: none;
+    width: 100% !important;
+    opacity: 0.6;
+  }
+}
+
+.fill-brush-progress-text {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* A cancellation is the user's own decision, so it reads as a neutral notice rather
+   than the red error banner used for a genuine failure. */
+.fill-brush-notice {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
 /* The fill button is a sibling of .cell-quick-actions and deliberately shares
    .cell-quick-btn's box, so all three card buttons are the same size and sit on the
    same line. It was previously a separately-positioned absolute element at 1.9rem
