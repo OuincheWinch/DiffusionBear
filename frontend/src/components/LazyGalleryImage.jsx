@@ -27,7 +27,6 @@ export default function LazyGalleryImage({ item, alt }) {
         }}
         {...bindFullImageDrag(item)}
       />
-      <DragAnchor item={item} />
     </div>
   );
 }
@@ -49,24 +48,3 @@ export default function LazyGalleryImage({ item, alt }) {
  * The overlay is transparent and does not capture the click: WebKit only treats a link as
  * draggable once the pointer moves, and onClick is suppressed so the cell still opens.
  */
-function DragAnchor({ item }) {
-  if (!item.file_url) return null;
-  return (
-    <a
-      className="lazy-gallery-drag-anchor"
-      data-mlx-image-id={item.id}
-      data-mlx-file-url={item.file_url}
-      href={item.file_url}
-      draggable
-      onClick={(e) => e.preventDefault()}
-      onDragStart={(e) => {
-        // Keep the link itself as the dragged object rather than letting WebKit
-        // substitute the element underneath.
-        try {
-          e.dataTransfer.setData("DownloadURL", `image/png:${item.file || `${item.id}.png`}:${item.file_url}`);
-        } catch {}
-      }}
-      title={item.file || item.id}
-    />
-  );
-}

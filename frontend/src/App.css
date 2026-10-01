@@ -1479,29 +1479,6 @@ button {
   background: var(--bg-tertiary, #151520);
 }
 
-/* The drag source for a gallery cell.
- *
- * A transparent link laid over the thumbnail whose href is the file on disk. macOS takes
- * the pasteboard content for a web drag from the element being dragged, so this is what
- * puts a file:// on it; the <img> behind it only offers its last-loaded http URL, which
- * Finder saves as a .webloc.
- *
- * pointer-events stay ON (an anchor must be the element under the cursor to be the drag
- * source) but the layer is empty, so it draws nothing. The click is suppressed in the
- * component, leaving the cell's own click-to-open behaviour intact.
- */
-.lazy-gallery-drag-anchor {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  cursor: grab;
-  text-decoration: none;
-  background: transparent;
-}
-
-.lazy-gallery-drag-anchor:active {
-  cursor: grabbing;
-}
 
 .lazy-gallery-skeleton {
   position: absolute;
@@ -4210,15 +4187,6 @@ p.warning {
   display: inline-block;
 }
 
-.gallery-detail-drag-anchor {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  cursor: grab;
-  background: transparent;
-  text-decoration: none;
-}
-
 /* Drag source for the current generation on the Generate tab. Same reason as the gallery
    cells: the dragged element must be a link whose href is the file on disk, or macOS
    takes the <img>'s http URL and writes a .webloc. */
@@ -4226,11 +4194,21 @@ p.warning {
   position: relative;
 }
 
-.canvas-drag-anchor {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  cursor: grab;
-  background: transparent;
-  text-decoration: none;
+/* No element may be dragged by WebKit inside the native shell.
+ *
+ * Two drag sources were competing. The shell starts a real file drag from an NSEvent
+ * monitor, which puts the image's file:// path on the pasteboard. WebKit separately builds
+ * a pasteboard from the DOM element under the cursor, and for an <img> that is the last URL
+ * it loaded -- http://127.0.0.1:8001/api/images/{id}/file. Finder then saves a .webloc
+ * instead of the image. Whichever started first won, which is why the result alternated
+ * between the correct file and a link.
+ *
+ * A blanket rule is the only way to be sure: no element is draggable, so the monitor is
+ * the single possible source of a drag. Scoped to body.native-shell, which the shell adds
+ * on didFinish, so the browser dev server keeps ordinary web dragging.
+ */
+body.native-shell,
+body.native-shell * {
+  -webkit-user-drag: none;
+  -webkit-user-draggable: no-drag;
 }
