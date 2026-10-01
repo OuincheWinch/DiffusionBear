@@ -522,6 +522,16 @@ private struct DragHit: Equatable {
 
 private var dragHitIndex: [DragHit] = []
 
+/// The image under the cursor, pushed by the page on every pointermove.
+///
+/// Preferred over the rect index, which drifts from the live layout and produced the
+/// reported "grab N, drop N+4" -- one grid row -- and then, with a 6-column grid, cells
+/// that resolved to nothing at all. WebKit exposes no way to convert a mouse point into
+/// page coordinates, so the page does the hit-test itself and reports the answer. A
+/// pointermove always precedes the mouseDown that starts a drag, so this is current by
+/// construction and there is no cache to reconcile.
+private var dragCandidate: URL?
+
 final class NativeBridge: NSObject, WKScriptMessageHandler {
     /// Called with an image id. Returns nil if the id is not a plain hex identifier.
     var resolveFileURL: ((String) -> URL?)?
@@ -531,6 +541,8 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
     var windowProvider: (() -> NSWindow?)?
     /// Set by the web view so a drag can be started with a real file on the pasteboard.
     weak var dragHandler: ImageDragHandler?
+    /// The file under the cursor, for AppWebView to read at drag time.
+    var currentDragCandidate: URL? { dragCandidate }
     /// Maps a point in web-view coordinates to an image id, from the page's rect index.
     var imageIdAtPoint: ((NSPoint) -> String?)?
     /// The rect the drag should appear to start from.
@@ -573,6 +585,12 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
         // `fileUrl` has no imageId of its own on some paths, so resolve it before the
         // shared guard below, which requires one.
         switch action {
+        case "dragCandidate":
+            let raw = (body["fileUrl"] as? String).flatMap { URL(string: $0) }
+            // Only a real file:// path may reach the pasteboard.
+            dragCandidate = (raw?.isFileURL ?? false) ? raw : nil
+            return
+
         case "registerImage":
             guard let imageId = body["imageId"] as? String,
                   let fileUrl = body["fileUrl"] as? String,
@@ -713,6 +731,8 @@ final class AppWebView: WKWebView {
     var rectProvider: ((String) -> NSRect?)?
     /// Resolves an image id to its on-disk file, for the drag source.
     var fileURLProvider: ((String) -> URL?)?
+    /// The file under the cursor as last reported by the page; preferred when present.
+    var dragCandidateProvider: (() -> URL?)?
 
     /// Where the press landed, and which image (if any) it landed on.
     private var pendingDragImageId: String?
@@ -743,7 +763,9 @@ final class AppWebView: WKWebView {
 
         pendingDragImageId = nil   // one drag per press
 
-        guard let url = fileURLProvider(imageId),
+        // The page's answer wins. The rect index is only a fallback for the case where
+        // the pointer never moved after the press, which is rare.
+        guard let url = dragCandidateProvider?() ?? fileURLProvider(imageId),
               FileManager.default.fileExists(atPath: url.path)
         else { return }
 
@@ -991,6 +1013,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
             appWebView.rectProvider = { [weak self] imageId in
                 self?.nativeBridge.rectForImage?(imageId) ?? nil
             }
+            appWebView.dragCandidateProvider = { [weak self] in self?.nativeBridge.currentDragCandidate }
             appWebView.fileURLProvider = { [weak self] imageId in
                 self?.nativeBridge.fileURL(for: imageId)
             }

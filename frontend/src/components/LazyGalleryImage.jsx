@@ -54,6 +54,8 @@ function DragAnchor({ item }) {
   return (
     <a
       className="lazy-gallery-drag-anchor"
+      data-mlx-image-id={item.id}
+      data-mlx-file-url={item.file_url}
       href={item.file_url}
       draggable
       onClick={(e) => e.preventDefault()}

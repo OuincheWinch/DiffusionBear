@@ -124,66 +124,58 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   // re-ran, and the shell kept the previous ids at the previous positions -- which is the
   // state after every generation. `selected?.id` is included because the detail view's
   // image sits above the cells and must win the hit test.
-  // Keep the shell's rect index continuously fresh rather than publishing once.
+  // Report which image is under the cursor, as the cursor moves.
   //
-  // The shell resolves "which image is under this point?" from a cached index, because a
-  // drag starts in mouseDown and evaluateJavaScript is asynchronous -- there is no time to
-  // ask. That cache went stale in a way that was invisible until the user mapped it out:
-  // grabbing cell N dropped cell N+4, a consistent one-row offset, and cells 8-15 dropped
-  // nothing at all. The index had been captured while the grid had a different geometry
-  // and fewer cells, and nothing re-published it afterwards.
+  // This is what the shell uses to resolve a drag, in preference to the rect index it
+  // used before. The index drifted from the live layout and produced the reported
+  // "grab N, drop N+4" -- exactly one grid row -- and then, once the grid went to six
+  // columns, cells that resolved to nothing at all. Any cache of geometry has to be
+  // invalidated by every possible relayout and that list is unbounded.
   //
-  // Keying the effect on the image-id signature did not fix it, because the LAYOUT changed
-  // while the image set did not. So the index is now refreshed from every source that can
-  // move it: a ResizeObserver on the grid, a MutationObserver for cells appearing, scroll,
-  // window resize, and -- the one that guarantees freshness at the moment it matters --
-  // pointer movement over the window, which always precedes a mouseDown by milliseconds.
-  const imageSignature = `${items.map((it) => it.id).join(",")}|${selected?.id ?? ""}`;
+  // The page hit-tests instead, because WebKit exposes no way for the shell to convert a
+  // mouse point into page coordinates. A pointermove always precedes the mouseDown that
+  // starts a drag, so the answer is current by construction.
+  //
+  // Throttled with a timer rather than requestAnimationFrame: rAF stops entirely when the
+  // window is occluded, and a cursor position that has silently stopped updating resolves
+  // to whatever was last seen -- the very bug this removes.
   useEffect(() => {
     if (!hasNativeBridge()) return undefined;
+    const bridge = window.webkit.messageHandlers.native;
 
+    let last = null;
+    let pending = null;
     let timer = null;
-    const publish = () => {
+    const flush = () => {
       timer = null;
-      publishDragRectsToShell(document.querySelectorAll("img[data-mlx-image-id]"));
+      const point = pending;
+      pending = null;
+      if (!point) return;
+      const hit = document.elementFromPoint(point.x, point.y);
+      const target = hit && hit.closest ? hit.closest("[data-mlx-file-url]") : null;
+      const fileUrl = target?.getAttribute("data-mlx-file-url") || null;
+      if (fileUrl === last) return;
+      last = fileUrl;
+      try {
+        bridge.postMessage({
+          action: "dragCandidate",
+          imageId: target?.getAttribute("data-mlx-image-id") || null,
+          fileUrl,
+        });
+      } catch {}
     };
-    const soon = () => {
-      if (timer == null) timer = window.setTimeout(publish, 16);
+
+    const onMove = (event) => {
+      pending = { x: event.clientX, y: event.clientY };
+      if (timer == null) timer = window.setTimeout(flush, 16);
     };
-    const now = () => {
-      if (timer != null) window.clearTimeout(timer);
-      timer = null;
-      publish();
-    };
-
-    now();
-
-    const grid = document.querySelector(".grid");
-    const resizeObserver =
-      grid && typeof ResizeObserver !== "undefined" ? new ResizeObserver(soon) : null;
-    if (resizeObserver && grid) resizeObserver.observe(grid);
-
-    const mutationObserver =
-      grid && typeof MutationObserver !== "undefined"
-        ? new MutationObserver(soon)
-        : null;
-    if (mutationObserver && grid) {
-      mutationObserver.observe(grid, { childList: true, subtree: true });
-    }
-
-    window.addEventListener("resize", soon);
-    window.addEventListener("scroll", soon, true);
-    window.addEventListener("pointermove", now, { passive: true });
+    window.addEventListener("pointermove", onMove, { passive: true });
 
     return () => {
+      window.removeEventListener("pointermove", onMove);
       if (timer != null) window.clearTimeout(timer);
-      resizeObserver?.disconnect();
-      mutationObserver?.disconnect();
-      window.removeEventListener("resize", soon);
-      window.removeEventListener("scroll", soon, true);
-      window.removeEventListener("pointermove", now);
     };
-  }, [imageSignature, activeTab]);
+  }, []);
 
   // The list rows are the full sidecar dicts, so opening one needs no extra
   // round-trip to /api/images/{id}.
