@@ -124,25 +124,64 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   // re-ran, and the shell kept the previous ids at the previous positions -- which is the
   // state after every generation. `selected?.id` is included because the detail view's
   // image sits above the cells and must win the hit test.
+  // Keep the shell's rect index continuously fresh rather than publishing once.
+  //
+  // The shell resolves "which image is under this point?" from a cached index, because a
+  // drag starts in mouseDown and evaluateJavaScript is asynchronous -- there is no time to
+  // ask. That cache went stale in a way that was invisible until the user mapped it out:
+  // grabbing cell N dropped cell N+4, a consistent one-row offset, and cells 8-15 dropped
+  // nothing at all. The index had been captured while the grid had a different geometry
+  // and fewer cells, and nothing re-published it afterwards.
+  //
+  // Keying the effect on the image-id signature did not fix it, because the LAYOUT changed
+  // while the image set did not. So the index is now refreshed from every source that can
+  // move it: a ResizeObserver on the grid, a MutationObserver for cells appearing, scroll,
+  // window resize, and -- the one that guarantees freshness at the moment it matters --
+  // pointer movement over the window, which always precedes a mouseDown by milliseconds.
   const imageSignature = `${items.map((it) => it.id).join(",")}|${selected?.id ?? ""}`;
   useEffect(() => {
     if (!hasNativeBridge()) return undefined;
+
     let timer = null;
     const publish = () => {
       timer = null;
       publishDragRectsToShell(document.querySelectorAll("img[data-mlx-image-id]"));
     };
-    const schedule = () => {
-      if (timer != null) window.clearTimeout(timer);
-      timer = window.setTimeout(publish, 16);
+    const soon = () => {
+      if (timer == null) timer = window.setTimeout(publish, 16);
     };
-    publish();
-    window.addEventListener("resize", schedule);
-    window.addEventListener("scroll", schedule, true);
+    const now = () => {
+      if (timer != null) window.clearTimeout(timer);
+      timer = null;
+      publish();
+    };
+
+    now();
+
+    const grid = document.querySelector(".grid");
+    const resizeObserver =
+      grid && typeof ResizeObserver !== "undefined" ? new ResizeObserver(soon) : null;
+    if (resizeObserver && grid) resizeObserver.observe(grid);
+
+    const mutationObserver =
+      grid && typeof MutationObserver !== "undefined"
+        ? new MutationObserver(soon)
+        : null;
+    if (mutationObserver && grid) {
+      mutationObserver.observe(grid, { childList: true, subtree: true });
+    }
+
+    window.addEventListener("resize", soon);
+    window.addEventListener("scroll", soon, true);
+    window.addEventListener("pointermove", now, { passive: true });
+
     return () => {
       if (timer != null) window.clearTimeout(timer);
-      window.removeEventListener("resize", schedule);
-      window.removeEventListener("scroll", schedule, true);
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
+      window.removeEventListener("resize", soon);
+      window.removeEventListener("scroll", soon, true);
+      window.removeEventListener("pointermove", now);
     };
   }, [imageSignature, activeTab]);
 
