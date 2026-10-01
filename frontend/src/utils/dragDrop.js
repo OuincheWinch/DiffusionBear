@@ -6,6 +6,65 @@ const MAX_CACHE_SIZE = 25;
 const fileCache = new Map();
 const inFlightPromises = new Map();
 
+// The file:// URL the <img> src is switched to, keyed by image id.
+//
+// This Map is load-bearing in a way the older caches are not: see
+// setDragSourceFileUrl below.
+const dragSourceCache = new Map();
+
+/**
+ * Points an <img> at the file:// URL of the image on disk, and returns the element
+ * afterwards so callers can restore it.
+ *
+ * WHY THIS EXISTS, because the obvious fix does not work:
+ *
+ * dataTransfer.setData("DownloadURL", ...) is the documented way to drag a file out to
+ * Finder, and it is silently ignored in WKWebView. The native drag controller builds the
+ * pasteboard from the <img src> it finds under the cursor, and our JS-set flavours are
+ * discarded. Reported symptom: dropping a gallery card on the Desktop wrote
+ * `127.0.0.1-8001:.webloc` -- a web-location stub, because macOS read an http URL and
+ * did what it does with one. The DownloadURL channel was correct the entire time and
+ * simply never reached the pasteboard.
+ *
+ * So the src itself has to become file://. Everything else in this module is unchanged:
+ * the File object still serves web dropzones, and text/uri-list still carries the
+ * loopback URL for browser tabs.
+ */
+export function setDragSourceFileUrl(element, fileUrl) {
+  if (!element || !fileUrl) return null;
+  const img = element.tagName === "IMG"
+    ? element
+    : typeof element.querySelector === "function"
+      ? element.querySelector("img")
+      : null;
+  if (!img) return null;
+  const previous = img.dataset.dragOriginalSrc || img.src;
+  img.dataset.dragOriginalSrc = previous;
+  img.src = fileUrl;
+  dragSourceCache.set(img, previous);
+  return img;
+}
+
+function restoreDragSource(element) {
+  if (!element) return;
+  const previous = dragSourceCache.get(element);
+  if (previous) {
+    element.src = previous;
+    dragSourceCache.delete(element);
+  }
+}
+
+/**
+ * The <img> elements under a drag source, so their src can be pointed at disk.
+ * Covers both the gallery cell and the detail view's single image.
+ */
+function findDragImages(node) {
+  if (!node) return [];
+  if (node.tagName === "IMG") return [node];
+  if (typeof node.querySelectorAll !== "function") return [];
+  return Array.from(node.querySelectorAll("img"));
+}
+
 /**
  * Pre-fetches the full-resolution image and caches it as a File object.
  * Because MLX-DIFFUSION runs locally on localhost:8001, loopback fetch takes <8ms,
@@ -187,7 +246,19 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
       extraHandlers.onMouseDown?.(e);
     },
     onDragStart: (e) => {
-      ensureFullResolutionImage(e, id);
+      // The load-bearing step. WKWebView's drag controller reads the <img src> to build
+      // the pasteboard, so pointing it at the real file on disk is what makes Finder
+      // copy the image instead of writing a .webloc for the loopback URL.
+      const onDisk = fileUrlCache.get(id);
+      const dragged = findDragImages(e.target);
+      if (onDisk?.fileUrl) {
+        dragged.forEach((img) => setDragSourceFileUrl(img, onDisk.fileUrl));
+      } else {
+        // Not resolved yet. The http URL is still better than nothing -- it is at least
+        // a real reachable image for web targets -- and pointerdown normally wins this
+        // race anyway.
+        dragged.forEach((img) => ensureFullResolutionImage(img, id));
+      }
       e.dataTransfer.effectAllowed = "copyMove";
 
       // Channel 1: Real File object for web dropzones (Civitai, Discord, ChatGPT)
@@ -200,18 +271,14 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
         }
       }
 
-      // Channel 2: DownloadURL for macOS Finder / Desktop / Local folders.
+      // Channel 2: DownloadURL.
       //
-      // MUST be a file:// URL. macOS reads the scheme to decide what the drag is: an
-      // http:// DownloadURL is a web link, and dropping one on the Desktop writes a
-      // link stub to the backend instead of the image -- which also breaks the moment
-      // the app quits. The file:// form makes Finder copy the real bytes.
-      //
-      // Falls back to the loopback URL if the path could not be resolved, which is
-      // still better than no DownloadURL at all: some targets will fetch it, and the
-      // File object above still covers web dropzones either way.
+      // Kept because it is correct and it IS honoured by Safari and by any target that
+      // reads the flavour directly. It is NOT the fix for WKWebView -- see
+      // setDragSourceFileUrl, which is what actually reaches Finder's pasteboard. Do
+      // not remove this on the assumption it is dead weight: the web targets still
+      // consume it.
       const mime = cached?.file?.type || (filename.endsWith(".jpeg") || filename.endsWith(".jpg") ? "image/jpeg" : "image/png");
-      const onDisk = fileUrlCache.get(id);
       const downloadTarget = onDisk?.fileUrl || fullUrl;
       const downloadName = onDisk?.filename || filename;
       try {
@@ -237,6 +304,13 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
       } catch {}
 
       extraHandlers.onDragStart?.(e);
+    },
+    onDragEnd: (e) => {
+      // The src is left pointing at file:// after a drag, which would show the raw
+      // file rather than the served image if the same node is re-rendered. Restoring
+      // here also keeps the browser's own image cache coherent.
+      findDragImages(e.target).forEach(restoreDragSource);
+      extraHandlers.onDragEnd?.(e);
     },
     ...extraHandlers,
   };
