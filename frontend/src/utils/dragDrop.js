@@ -242,8 +242,21 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
   // real NSDraggingSession from mouseDown instead, with a real file:// URL.
   const nativeDrag = Boolean(nativeBridge());
 
+  // Suppress the element drag inline, on the images as well as the wrapper.
+  //
+  // Two things this replaces, both of which were assumptions:
+  //   * A CSS rule scoped to body.native-shell. Whether the shell actually adds that
+  //     class could not be confirmed, and if it did not, every drag silently fell back
+  //     to WebKit's own and produced an http:// link again.
+  //   * Setting draggable on the wrapper only. A plain <img> is draggable in WebKit on
+  //     its own account; a draggable=false ancestor does not make its images
+  //     undraggable.
+  //
+  // A plain <img> is the likely reason the http URL survived four attempts: it drags as
+  // the last-loaded http resource, which is exactly what was reported.
   return {
     draggable: !nativeDrag,
+    style: nativeDragSuppression(),
     onPointerEnter: (e) => {
       extraHandlers.onPointerEnter?.(e);
     },
@@ -392,6 +405,20 @@ function nativeBridge() {
 }
 
 /**
+ * Inline style that stops an <img> dragging itself.
+ *
+ * Applied to the images directly rather than via a stylesheet. A plain <img> is draggable
+ * in WebKit on its own account -- `draggable=false` on an ancestor does not change that --
+ * and an image dragging itself offers its last-loaded resource, which for this gallery is
+ * an http://127.0.0.1 URL. Finder then saves that as a .webloc instead of copying the file.
+ *
+ * Returns undefined in a browser, where the web-layer drag should keep working.
+ */
+export function nativeDragSuppression() {
+  return nativeBridge() ? { WebkitUserDrag: "none", WebkitUserDraggable: "no-drag" } : undefined;
+}
+
+/**
  * Publishes every visible gallery image to the shell: where it is on screen, and where
  * the file is on disk.
  *
@@ -405,7 +432,11 @@ function nativeBridge() {
  */
 export function publishDragRectsToShell(nodes) {
   const bridge = nativeBridge();
-  if (!bridge || !Array.isArray(nodes)) return;
+  // Not Array.isArray: querySelectorAll returns a NodeList. That guard rejected every
+  // single call, so the page told the shell nothing, the shell's hit index stayed empty,
+  // and its mouseDragged bailed on every attempt -- leaving WebKit's own image drag to
+  // produce the http:// link that had been reported four times.
+  if (!bridge || !nodes || typeof nodes.length !== "number") return;
 
   const rects = [];
   nodes.forEach((node) => {

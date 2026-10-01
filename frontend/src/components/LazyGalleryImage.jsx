@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { imageUrl } from "../api";
-import { bindFullImageDrag } from "../utils/dragDrop";
+import { bindFullImageDrag, nativeDragSuppression } from "../utils/dragDrop";
 
 export default function LazyGalleryImage({ item, alt }) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -18,6 +18,7 @@ export default function LazyGalleryImage({ item, alt }) {
         src={src}
         alt={alt || item.prompt}
         className={`gallery-thumb ${isLoaded ? "loaded" : ""}`}
+        style={nativeDragSuppression()}
         onLoad={() => setIsLoaded(true)}
         onError={() => {
           if (!thumbError) {

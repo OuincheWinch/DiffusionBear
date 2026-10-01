@@ -6,6 +6,7 @@ import {
   revealImageInFinder,
   exportImageNatively,
   publishDragRectsToShell,
+  nativeDragSuppression,
 } from "../utils/dragDrop";
 import LazyGalleryImage from "./LazyGalleryImage";
 import FillBrush from "./FillBrush";
@@ -121,19 +122,23 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   // once and posting a rect per cell per render is pure overhead.
   useEffect(() => {
     if (!hasNativeBridge()) return undefined;
-    let frame = null;
+    let timer = null;
     const publish = () => {
-      frame = null;
+      timer = null;
       publishDragRectsToShell(document.querySelectorAll("img[data-mlx-image-id]"));
     };
     const schedule = () => {
-      if (frame == null) frame = window.requestAnimationFrame(publish);
+      // setTimeout, not requestAnimationFrame: rAF is throttled to a stop in a web view
+      // that is not on screen, which left the shell with an empty hit index and no drag
+      // at all. Verified with a headless probe -- rAF never fired there.
+      if (timer != null) window.clearTimeout(timer);
+      timer = window.setTimeout(publish, 16);
     };
-    schedule();
+    publish();
     window.addEventListener("resize", schedule);
     window.addEventListener("scroll", schedule, true);
     return () => {
-      if (frame != null) window.cancelAnimationFrame(frame);
+      if (timer != null) window.clearTimeout(timer);
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", schedule, true);
     };
@@ -544,6 +549,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
           <div className="modal-body" onClick={(e) => e.stopPropagation()}>
             <img
               className="gallery-detail-img"
+              style={nativeDragSuppression()}
               data-mlx-image-id={selected.id}
               data-mlx-file-url={selected.file_url || ""}
               src={imageUrl(selected.id)}
