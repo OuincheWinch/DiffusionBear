@@ -145,7 +145,41 @@ def gallery(
         items = [item for item in items if _matches_lora_filter(item, lora)]
     items.sort(key=lambda item: item.get("created_at", 0), reverse=(sort == "newest"))
     start = (page - 1) * limit
-    return {"total": len(items), "page": page, "items": items[start:start + limit]}
+    page_items = items[start:start + limit]
+
+    # The on-disk location of each image, so the shell can start a real file drag without
+    # a round-trip mid-gesture. A drag begins in mouseDown and the shell cannot call back
+    # into JavaScript in time, so it needs this up front; fetching it per image on hover
+    # meant the *first* drag of a session had nothing to use.
+    #
+    # Only for the page being returned, not the whole index -- as_uri() on thousands of
+    # paths to serve 24 of them would make the list call the slow thing it was optimised to
+    # avoid.
+    for item in page_items:
+        file_url = _file_url_for(item.get("id"))
+        if file_url:
+            item["file_url"] = file_url
+    return {"total": len(items), "page": page, "items": page_items}
+
+
+def _file_url_for(image_id) -> str | None:
+    """file:// URL of an image's full-resolution file, or None if it is not there.
+
+    Percent-encoded by as_uri(), which matters: the data dir can sit on a volume whose name
+    contains a space, and an unencoded space truncates the path for anything that does not
+    decode it.
+    """
+    if not isinstance(image_id, str):
+        return None
+    try:
+        generated_root = GENERATED_DIR.resolve()
+        for suffix in (".png", ".jpeg", ".jpg"):
+            path = (GENERATED_DIR / f"{image_id}{suffix}").resolve()
+            if path.is_relative_to(generated_root) and path.is_file():
+                return path.as_uri()
+    except OSError:
+        return None
+    return None
 
 
 @router.get("/api/gallery/loras")

@@ -688,3 +688,100 @@ class FileUrlRouteTests(unittest.TestCase):
                     path.is_relative_to(self.root.resolve()),
                     f"{name} escaped the gallery: {path}",
                 )
+
+
+class GalleryFileUrlTests(unittest.TestCase):
+    """The gallery listing carries each image's on-disk location.
+
+    Needed by the native drag: a drag begins in mouseDown, and the shell cannot call back
+    into JavaScript in time (evaluateJavaScript is async), so it needs the file URL before
+    the gesture starts. Deriving it from a hover-time fetch meant the FIRST drag of a
+    session had nothing to use.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name) / "Data Dir With Space"
+        self.root.mkdir()
+        self._saved = (fill.GENERATED_DIR, fill.DATA_DIR)
+        fill.GENERATED_DIR = self.root
+        fill.DATA_DIR = self.root
+        import state
+        self._saved_state_gen = state.GENERATED_DIR
+        state.GENERATED_DIR = self.root
+        self._saved_router_gen = gallery_router.GENERATED_DIR
+        gallery_router.GENERATED_DIR = self.root
+
+        for name in ("a" * 32, "b" * 32):
+            Image.new("RGB", (32, 32), (10, 20, 30)).save(self.root / f"{name}.png")
+            (self.root / f"{name}.json").write_text(
+                '{"id": "%s", "format": "png", "width": 32, "height": 32, "created_at": 1}'
+                % name, encoding="utf-8",
+            )
+
+        from fastapi import FastAPI
+        import state as state_mod
+
+        app = FastAPI()
+        app.include_router(gallery_router.router)
+        self.client = TestClient(app)
+        state_mod.GALLERY_INDEX.clear()
+        self._saved_index = dict(state_mod.GALLERY_INDEX)
+        # ensure_gallery_index() rate-limits its empty-index retry against this stamp, and
+        # a previous test leaves it set, so the rebuild is silently suppressed and the
+        # fixture looks empty. Zeroing it is what makes this fixture independent of order.
+        self._saved_built_at = state_mod._GALLERY_INDEX_BUILT_AT
+        state_mod._GALLERY_INDEX_BUILT_AT = 0.0
+
+    def tearDown(self):
+        import state as state_mod
+        state_mod.GALLERY_INDEX.clear()
+        state_mod.GALLERY_INDEX.update(self._saved_index)
+        state_mod._GALLERY_INDEX_BUILT_AT = self._saved_built_at
+        state_mod.GENERATED_DIR = self._saved_state_gen
+        gallery_router.GENERATED_DIR = self._saved_router_gen
+        fill.GENERATED_DIR, fill.DATA_DIR = self._saved
+        self.tmp.cleanup()
+
+    def test_every_listed_item_carries_a_file_url(self):
+        import state as state_mod
+
+        state_mod.ensure_gallery_index()
+        body = self.client.get("/api/gallery?limit=10").json()
+        self.assertTrue(body["items"], "fixture produced no items")
+        for item in body["items"]:
+            with self.subTest(id=item["id"]):
+                self.assertIn("file_url", item, "a listed image must expose its path")
+                self.assertTrue(item["file_url"].startswith("file://"))
+
+    def test_the_url_is_percent_encoded(self):
+        import state as state_mod
+
+        state_mod.ensure_gallery_index()
+        items = self.client.get("/api/gallery?limit=10").json()["items"]
+        urls = [i["file_url"] for i in items]
+        self.assertTrue(any("%20" in u for u in urls),
+                        f"the space in the data dir must be encoded, got {urls}")
+
+    def test_the_url_resolves_to_a_real_file(self):
+        from urllib.parse import unquote, urlparse
+
+        import state as state_mod
+
+        state_mod.ensure_gallery_index()
+        for item in self.client.get("/api/gallery?limit=10").json()["items"]:
+            path = Path(unquote(urlparse(item["file_url"]).path))
+            with self.subTest(id=item["id"]):
+                self.assertTrue(path.is_file(), f"{path} does not exist")
+
+    def test_a_deleted_image_gets_no_file_url(self):
+        import state as state_mod
+
+        state_mod.ensure_gallery_index()
+        items = self.client.get("/api/gallery?limit=10").json()["items"]
+        victim = items[0]
+        (self.root / f"{victim['id']}.png").unlink()
+        refreshed = self.client.get("/api/gallery?limit=10").json()["items"]
+        entry = next(i for i in refreshed if i["id"] == victim["id"])
+        self.assertNotIn("file_url", entry,
+                         "a file that is gone must not advertise a path to it")

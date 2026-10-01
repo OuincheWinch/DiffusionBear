@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, imageUrl } from "../api";
-import { bindFullImageDrag, copyFullImageToClipboard, revealImageInFinder, exportImageNatively } from "../utils/dragDrop";
+import {
+  bindFullImageDrag,
+  copyFullImageToClipboard,
+  revealImageInFinder,
+  exportImageNatively,
+  publishDragRectsToShell,
+} from "../utils/dragDrop";
 import LazyGalleryImage from "./LazyGalleryImage";
 import FillBrush from "./FillBrush";
 import { useI18n } from "../i18n/I18nContext";
@@ -107,6 +113,31 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   // <a download> fallback is the correct thing to render.
   const hasNativeBridge = () =>
     typeof window !== "undefined" && Boolean(window.webkit?.messageHandlers?.native);
+
+  // Hand the shell the on-screen position of every gallery image, so a drag can be
+  // started natively. A drag begins in mouseDown and the shell cannot call back into
+  // JavaScript in time (evaluateJavaScript is async), so it has to already know where the
+  // images are. Debounced to one animation frame because a render can add many cells at
+  // once and posting a rect per cell per render is pure overhead.
+  useEffect(() => {
+    if (!hasNativeBridge()) return undefined;
+    let frame = null;
+    const publish = () => {
+      frame = null;
+      publishDragRectsToShell(document.querySelectorAll("img[data-mlx-image-id]"));
+    };
+    const schedule = () => {
+      if (frame == null) frame = window.requestAnimationFrame(publish);
+    };
+    schedule();
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    return () => {
+      if (frame != null) window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+    };
+  }, [items.length, activeTab]);
 
   // The list rows are the full sidecar dicts, so opening one needs no extra
   // round-trip to /api/images/{id}.
@@ -512,6 +543,9 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
           )}
           <div className="modal-body" onClick={(e) => e.stopPropagation()}>
             <img
+              className="gallery-detail-img"
+              data-mlx-image-id={selected.id}
+              data-mlx-file-url={selected.file_url || ""}
               src={imageUrl(selected.id)}
               alt={selected.prompt}
               title={t("gallery.dragFullResTitle")}

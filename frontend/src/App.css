@@ -1508,6 +1508,34 @@ button {
   opacity: 1;
 }
 
+/* Hand image dragging to the native shell.
+ *
+ * WebKit builds a web drag's pasteboard from the DOM element, so a gallery image can only
+ * be dragged out as an http://127.0.0.1:8001/... URL. Finder, the Desktop and anything
+ * that saves bytes treat that as a link and write a .webloc stub pointing at a server
+ * that stops with the app; only clients that will go and fetch it over HTTP appear to
+ * work, and those break once the app quits. DownloadURL is Safari-only (Chrome ignores it)
+ * and WKWebView discards JS-set flavours, so there is no web-layer fix.
+ *
+ * The shell instead starts a real NSDraggingSession from mouseDown. Suppressing the
+ * element drag is what stops the two gestures fighting.
+ *
+ * Belt and braces only. The load-bearing half is that bindFullImageDrag returns
+ * `draggable: false` when the native bridge is present, because `draggable` sits on the
+ * wrapping <div> and a rule aimed at the <img> never touched it. This rule covers the
+ * detail view's <img>, which is the draggable element there.
+ *
+ * Only inside the native shell: in a browser dev session this would remove dragging with
+ * no native replacement, so the rule is scoped to body.native-shell, which the shell adds.
+ */
+body.native-shell .cell,
+body.native-shell .cell img,
+body.native-shell .gallery-detail-img {
+  -webkit-user-drag: none;
+  -webkit-user-draggable: no-drag;
+  -webkit-touch-callout: none;
+}
+
 .nav-arrow {
   position: fixed;
   top: 50%;

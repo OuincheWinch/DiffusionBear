@@ -229,8 +229,21 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
     preloadFileUrl(image);
   };
 
+  // Native shell? Do NOT mark the element draggable.
+  //
+  // This, not CSS, is what stops WebKit winning. `draggable` sits on the wrapping <div>
+  // (and on the detail <img>), and a CSS rule aimed at `img.gallery-thumb` never touched
+  // it -- so WebKit kept building the pasteboard from the div and every drag produced an
+  // http://127.0.0.1 link, which Finder saved as a .webloc. Verified by the symptom: with
+  // the CSS rule in place and still getting the http URL, the suppression was simply on the
+  // wrong element.
+  //
+  // Removing the attribute is deterministic where CSS was a guess. The AppWebView starts a
+  // real NSDraggingSession from mouseDown instead, with a real file:// URL.
+  const nativeDrag = Boolean(nativeBridge());
+
   return {
-    draggable: true,
+    draggable: !nativeDrag,
     onPointerEnter: (e) => {
       extraHandlers.onPointerEnter?.(e);
     },
@@ -363,7 +376,7 @@ export async function copyFullImageToClipboard(imageOrId) {
  */
 export function exportImageNatively(imageOrId) {
   const id = typeof imageOrId === "string" ? imageOrId : imageOrId?.id;
-  const bridge = typeof window !== "undefined" ? window.webkit?.messageHandlers?.native : null;
+  const bridge = nativeBridge();
   if (!id || !bridge) return false;
   try {
     bridge.postMessage({ action: "export", imageId: id });
@@ -371,6 +384,55 @@ export function exportImageNatively(imageOrId) {
   } catch (err) {
     console.warn("[dragDrop] native export unavailable:", err);
     return false;
+  }
+}
+
+function nativeBridge() {
+  return typeof window !== "undefined" ? window.webkit?.messageHandlers?.native ?? null : null;
+}
+
+/**
+ * Publishes every visible gallery image to the shell: where it is on screen, and where
+ * the file is on disk.
+ *
+ * The shell needs both before a drag can begin. A drag starts in mouseDown and
+ * `evaluateJavaScript` is asynchronous, so "which image is under this point?" cannot be
+ * asked on demand — the page has to have already said. Same for the file URL: a drag has
+ * to put a real `file://` on the pasteboard, and there is no time to fetch it mid-gesture.
+ *
+ * Called after every render, debounced into an animation frame, because posting 24 rects
+ * per render is cheap but posting them per image element is not.
+ */
+export function publishDragRectsToShell(nodes) {
+  const bridge = nativeBridge();
+  if (!bridge || !Array.isArray(nodes)) return;
+
+  const rects = [];
+  nodes.forEach((node) => {
+    const id = node?.dataset?.mlxImageId;
+    if (!id || !node.isConnected) return;
+    const r = node.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    rects.push({ id, rect: { x: r.left, y: r.top, w: r.width, h: r.height } });
+  });
+
+  // The file URLs ride along in a separate message. They come from the gallery listing's
+  // `file_url` when present, falling back to the pointerdown preload cache -- the listing
+  // is what makes a first drag work, since a preload has not run yet at that point.
+  const urls = [];
+  nodes.forEach((node) => {
+    const id = node?.dataset?.mlxImageId;
+    if (!id || urls.some((u) => u.imageId === id)) return;
+    const fromCache = fileUrlCache.get(id);
+    const fileUrl = node.dataset.mlxFileUrl || fromCache?.fileUrl;
+    if (fileUrl) urls.push({ imageId: id, fileUrl });
+  });
+
+  try {
+    bridge.postMessage({ action: "dragRects", rects });
+    urls.forEach((u) => bridge.postMessage({ action: "registerImage", ...u }));
+  } catch (err) {
+    console.warn("[dragDrop] could not publish drag rects:", err);
   }
 }
 

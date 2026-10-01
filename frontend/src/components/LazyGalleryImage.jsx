@@ -13,6 +13,8 @@ export default function LazyGalleryImage({ item, alt }) {
       {!isLoaded && <div className="lazy-gallery-skeleton" />}
       <img
         loading="lazy"
+        data-mlx-image-id={item.id}
+        data-mlx-file-url={item.file_url || ""}
         src={src}
         alt={alt || item.prompt}
         className={`gallery-thumb ${isLoaded ? "loaded" : ""}`}
