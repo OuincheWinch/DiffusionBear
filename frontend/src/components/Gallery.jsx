@@ -579,9 +579,30 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 <button onClick={copyPrompt}>
                   {promptCopied ? t("gallery.promptCopiedDone") : t("gallery.copyPromptBtn")}
                 </button>
-                <button onClick={copySeed}>
-                  {copied ? t("gallery.seedCopiedDone") : t("gallery.copySeedBtn")}
-                </button>
+<button onClick={copySeed}>
+                    {copied ? t("gallery.seedCopiedDone") : t("gallery.copySeedBtn")}
+                  </button>
+                  {/* A fill is a NEW image; the original is untouched and still in the
+                      gallery. Without this the lineage is invisible, so "undo" looks
+                      impossible even though reverting is just opening the parent. */}
+                  {selected.filled_from && (
+                    <button
+                      onClick={async () => {
+                        // Fetched rather than picked out of `items`: the parent is
+                        // often on another page of the gallery, and its sidecar is the
+                        // one authoritative source for it.
+                        try {
+                          const parent = await api(`/api/images/${selected.filled_from}`);
+                          if (parent?.id) setSelected(parent);
+                        } catch (err) {
+                          console.warn("[DiffusionBear] could not open the original:", err);
+                        }
+                      }}
+                      title={t("gallery.showOriginalTitle")}
+                    >
+                      {t("gallery.showOriginalBtn")}
+                    </button>
+                  )}
                 <button
                   onClick={() => handleUpscale(2)}
                   disabled={upscaling}

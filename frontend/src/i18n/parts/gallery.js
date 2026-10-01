@@ -219,6 +219,21 @@ export const galleryStrings = {
     it: "Eliminare questa immagine?",
   },
   "gallery.deleteBtn": { fr: "Supprimer", en: "Delete", de: "Löschen", it: "Elimina" },
+  // A fill creates a new image and leaves the original untouched, so "undo" is just
+  // opening the parent. The lineage was invisible before this, which made a fill look
+  // irreversible.
+  "gallery.showOriginalBtn": {
+    fr: "Voir l\'original",
+    en: "Show original",
+    de: "Original anzeigen",
+    it: "Vedi originale",
+  },
+  "gallery.showOriginalTitle": {
+    fr: "Ouvrir l\'image dont celle-ci est issue",
+    en: "Open the image this one was made from",
+    de: "Das Bild öffnen, aus dem dieses entstanden ist",
+    it: "Apri l\'immagine da cui è stata creata",
+  },
   "gallery.closeBtn": { fr: "Fermer", en: "Close", de: "Schließen", it: "Chiudi" },
 
   "gallery.tagsLabel": { fr: "Étiquettes", en: "Tags", de: "Schlagwörter", it: "Tag" },
