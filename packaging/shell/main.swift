@@ -734,57 +734,6 @@ final class AppWebView: WKWebView {
     /// The file under the cursor as last reported by the page; preferred when present.
     var dragCandidateProvider: (() -> URL?)?
 
-    /// Where the press landed, and which image (if any) it landed on.
-    private var pendingDragImageId: String?
-    private var pendingDragOrigin: NSPoint = .zero
-    /// Below this the gesture is a click, not a drag.
-    private static let dragThreshold: CGFloat = 4
-
-    override func mouseDown(with event: NSEvent) {
-        let location = convert(event.locationInWindow, from: nil)
-        pendingDragOrigin = location
-        pendingDragImageId = imageIdProvider?(location)
-        super.mouseDown(with: event)
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        // The drag starts here rather than in mouseDown because a press is ambiguous: it
-        // may become a click, a text selection or a drag, and only movement past a few
-        // points proves it is the last one. Starting eagerly would make every click on an
-        // image begin a drag, and clicking a cell to open it would stop working.
-        guard let imageId = pendingDragImageId,
-              let handler = dragHandler,
-              let fileURLProvider
-        else { return }
-
-        let location = convert(event.locationInWindow, from: nil)
-        let travelled = hypot(location.x - pendingDragOrigin.x, location.y - pendingDragOrigin.y)
-        guard travelled > Self.dragThreshold else { return }
-
-        pendingDragImageId = nil   // one drag per press
-
-        // The page's answer wins. The rect index is only a fallback for the case where
-        // the pointer never moved after the press, which is rare.
-        guard let url = dragCandidateProvider?() ?? fileURLProvider(imageId),
-              FileManager.default.fileExists(atPath: url.path)
-        else { return }
-
-        let image = NSImage(contentsOf: url) ?? NSImage(size: NSSize(width: 64, height: 64))
-        let maxSide: CGFloat = 220
-        let scale = min(1, maxSide / max(image.size.width, image.size.height, 1))
-
-        let item = NSDraggingItem(pasteboardWriter: url as NSURL)
-        let origin = rectProvider?(imageId) ?? NSRect(origin: location, size: .zero)
-        item.setDraggingFrame(
-            NSRect(x: origin.origin.x,
-                   y: origin.origin.y,
-                   width: image.size.width * scale,
-                   height: image.size.height * scale),
-            contents: image)
-
-        beginDraggingSession(with: [item], event: event, source: handler)
-    }
-
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = super.menu(for: event) ?? NSMenu(title: "")
         let alreadyThere = Set(menu.items.map(\.title))
@@ -872,6 +821,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     private var webView: WKWebView!
     private var nativeBridge: NativeBridge!
     private var nativeDragHandler: ImageDragHandler!
+    private var dragMonitors: [Any] = []
+    /// Where the press landed, in web-view coordinates.
+    private var pressOrigin: NSPoint = .zero
+    private var pressArmed = false
+    private static let dragThreshold: CGFloat = 4
+
+    /// Observes the drag gesture at the AppKit level instead of on the web view.
+    ///
+    /// Overriding mouseDown/mouseDragged on a WKWebView subclass does not work: the view
+    /// hit-tests to an internal content subview, so a press on the page never reaches the
+    /// subclass and no drag is ever started. That is why this produced nothing at all.
+    ///
+    /// A local monitor sees the event before dispatch and can return it UNCHANGED, so the
+    /// page still receives every click, selection and scroll exactly as before. Nothing
+    /// is consumed; the monitor only starts a native drag when a press that began on an
+    /// image turns into a movement.
+    private func installDragMonitor() {
+        let types: NSEvent.EventTypeMask = [.leftMouseDown, .leftMouseDragged, .leftMouseUp]
+
+        dragMonitors.append(NSEvent.addLocalMonitorForEvents(matching: types) { [weak self] event in
+            guard let self, let webView = self.webView as? AppWebView else { return event }
+            switch event.type {
+            case .leftMouseDown:
+                let point = webView.convert(event.locationInWindow, from: nil)
+                self.pressOrigin = point
+                // Armed only if the page says an image is under the cursor. That value is
+                // pushed on pointermove, so it is current at press time.
+                self.pressArmed = self.nativeBridge.currentDragCandidate != nil
+            case .leftMouseDragged:
+                guard self.pressArmed, let handler = self.nativeDragHandler else { break }
+                let point = webView.convert(event.locationInWindow, from: nil)
+                guard hypot(point.x - self.pressOrigin.x, point.y - self.pressOrigin.y) > Self.dragThreshold else { break }
+                guard let url = self.nativeBridge.currentDragCandidate,
+                      FileManager.default.fileExists(atPath: url.path) else { break }
+                self.pressArmed = false   // one drag per press
+                self.beginDrag(url: url, at: point, in: webView, event: event, source: handler)
+            case .leftMouseUp:
+                self.pressArmed = false
+            default:
+                break
+            }
+            return event   // never consumed: the page keeps normal behaviour
+        })
+    }
+
+    private func beginDrag(url: URL, at point: NSPoint, in view: NSView, event: NSEvent, source: NSDraggingSource) {
+        let image = NSImage(contentsOf: url) ?? NSImage(size: NSSize(width: 64, height: 64))
+        let maxSide: CGFloat = 220
+        let scale = min(1, maxSide / max(image.size.width, image.size.height, 1))
+        let item = NSDraggingItem(pasteboardWriter: url as NSURL)
+        item.setDraggingFrame(
+            NSRect(x: point.x, y: point.y, width: image.size.width * scale, height: image.size.height * scale),
+            contents: image)
+        view.beginDraggingSession(with: [item], event: event, source: source)
+    }
     private let backend = BackendProcess()
     private var statusLabel: NSTextField!
     private var activityToken: NSObjectProtocol?
@@ -948,6 +952,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
             guard let self else { return }
             self.setStatus(nil)
             self.wireNativeBridge()
+            self.installDragMonitor()
             self.webView.load(URLRequest(url: backendURL))
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -958,6 +963,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        for monitor in dragMonitors { NSEvent.removeMonitor(monitor) }
+        dragMonitors = []
         // Stop the child first: the SDXL and Qwen engines are its grandchildren and
         // hold ~10 GB each, so an orphaned backend would leak them.
         backend.stop()
