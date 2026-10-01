@@ -418,6 +418,48 @@ export function nativeDragSuppression() {
   return nativeBridge() ? { WebkitUserDrag: "none", WebkitUserDraggable: "no-drag" } : undefined;
 }
 
+/**
+ * Publishes every visible image's on-screen rect and on-disk URL to the shell.
+ *
+ * A drag starts in `mouseDown` and `evaluateJavaScript` is asynchronous, so the shell
+ * cannot ask "what is under this point?" in time. It has to already know, which is what
+ * this index is for. When it is wrong the symptom is deceptive: WebKit still draws a
+ * correct-looking miniature from the element, while the file written to the pasteboard
+ * comes from the shell's stale entry -- a different image.
+ *
+ * NodeList, not Array: a guard of `Array.isArray` here rejected every call and the page
+ * silently told the shell nothing.
+ */
+export function publishDragRectsToShell(nodes) {
+  const bridge = nativeBridge();
+  if (!bridge || !nodes || typeof nodes.length !== "number") return;
+
+  const rects = [];
+  nodes.forEach((node) => {
+    const id = node?.dataset?.mlxImageId;
+    if (!id || !node.isConnected) return;
+    const r = node.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    rects.push({ id, rect: { x: r.left, y: r.top, w: r.width, h: r.height } });
+  });
+
+  const urls = [];
+  nodes.forEach((node) => {
+    const id = node?.dataset?.mlxImageId;
+    if (!id || urls.some((u) => u.imageId === id)) return;
+    const fromCache = fileUrlCache.get(id);
+    const fileUrl = node.dataset.mlxFileUrl || fromCache?.fileUrl;
+    if (fileUrl) urls.push({ imageId: id, fileUrl });
+  });
+
+  try {
+    bridge.postMessage({ action: "dragRects", rects });
+    urls.forEach((u) => bridge.postMessage({ action: "registerImage", ...u }));
+  } catch (err) {
+    console.warn("[dragDrop] could not publish drag rects:", err);
+  }
+}
+
 
 export async function revealImageInFinder(imageOrId) {
   if (!imageOrId) return false;

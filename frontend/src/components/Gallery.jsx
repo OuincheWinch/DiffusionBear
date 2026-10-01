@@ -6,6 +6,7 @@ import {
   revealImageInFinder,
   exportImageNatively,
   nativeDragSuppression,
+  publishDragRectsToShell,
 } from "../utils/dragDrop";
 import LazyGalleryImage from "./LazyGalleryImage";
 import FillBrush from "./FillBrush";
@@ -113,6 +114,37 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   // <a download> fallback is the correct thing to render.
   const hasNativeBridge = () =>
     typeof window !== "undefined" && Boolean(window.webkit?.messageHandlers?.native);
+
+  // Hand the shell the on-screen rect of every image, so a drag can start natively
+  // without a JavaScript round-trip at press time.
+  //
+  // The dependency is a SIGNATURE OF THE IDS, not items.length. That distinction was the
+  // bug reported as "I grab one image and get a different one": a new generation refreshes
+  // the gallery with the same page size, so the length is unchanged, the effect never
+  // re-ran, and the shell kept the previous ids at the previous positions -- which is the
+  // state after every generation. `selected?.id` is included because the detail view's
+  // image sits above the cells and must win the hit test.
+  const imageSignature = `${items.map((it) => it.id).join(",")}|${selected?.id ?? ""}`;
+  useEffect(() => {
+    if (!hasNativeBridge()) return undefined;
+    let timer = null;
+    const publish = () => {
+      timer = null;
+      publishDragRectsToShell(document.querySelectorAll("img[data-mlx-image-id]"));
+    };
+    const schedule = () => {
+      if (timer != null) window.clearTimeout(timer);
+      timer = window.setTimeout(publish, 16);
+    };
+    publish();
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    return () => {
+      if (timer != null) window.clearTimeout(timer);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+    };
+  }, [imageSignature, activeTab]);
 
   // The list rows are the full sidecar dicts, so opening one needs no extra
   // round-trip to /api/images/{id}.

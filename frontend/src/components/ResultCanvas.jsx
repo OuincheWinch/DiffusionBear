@@ -202,36 +202,13 @@ function ResultCanvas({
               src={imageUrl(currentImage.id)}
               alt={currentImage.prompt || t("canvas.image.altFallback")}
               className="canvas-image"
+              data-mlx-image-id={currentImage.id}
+              data-mlx-file-url={currentImage.file_url || ""}
               style={nativeDragSuppression()}
               title={t("canvas.image.dragTitle")}
 {...bindFullImageDrag(currentImage)}
               />
-              {/* The anchor is the drag source, not the <img>. macOS takes the
-                  pasteboard URL from the element being dragged, and an <img> offers its
-                  last-loaded http://127.0.0.1 address, which Finder saves as a .webloc
-                  instead of copying the file. The href is in the DOM from first render,
-                  so there is no press-time race.
-
-                  This is the view users reach for first -- the newest generation -- and it
-                  previously had no anchor at all, so dragging it produced nothing. */}
-              {currentImage.file_url && (
-                <a
-                  className="canvas-drag-anchor"
-                  href={currentImage.file_url}
-                  draggable
-                  onClick={(e) => e.preventDefault()}
-                  onDragStart={(e) => {
-                    try {
-                      e.dataTransfer.setData(
-                        "DownloadURL",
-                        `image/png:${currentImage.file || `${currentImage.id}.png`}:${currentImage.file_url}`,
-                      );
-                    } catch {}
-                  }}
-                  title={t("canvas.image.dragTitle")}
-                />
-              )}
-            <CanvasProgressOverlay
+                          <CanvasProgressOverlay
               busy={busy}
               progress={progress}
               phase={phase}
