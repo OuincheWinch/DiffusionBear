@@ -4218,3 +4218,19 @@ p.warning {
   background: transparent;
   text-decoration: none;
 }
+
+/* Drag source for the current generation on the Generate tab. Same reason as the gallery
+   cells: the dragged element must be a link whose href is the file on disk, or macOS
+   takes the <img>'s http URL and writes a .webloc. */
+.canvas-image-container {
+  position: relative;
+}
+
+.canvas-drag-anchor {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: grab;
+  background: transparent;
+  text-decoration: none;
+}

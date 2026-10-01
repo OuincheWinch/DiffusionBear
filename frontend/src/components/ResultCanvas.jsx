@@ -1,6 +1,6 @@
 import { useState, memo } from "react";
 import { api, downloadImage, fetchImageBlob, imageUrl } from "../api";
-import { bindFullImageDrag } from "../utils/dragDrop";
+import { nativeDragSuppression, bindFullImageDrag } from "../utils/dragDrop";
 import { useI18n } from "../i18n/I18nContext";
 
 function CanvasProgressOverlay({ busy, progress, standalone = false, generatingPrompt = null, phase = null, phaseDetail = null }) {
@@ -202,9 +202,35 @@ function ResultCanvas({
               src={imageUrl(currentImage.id)}
               alt={currentImage.prompt || t("canvas.image.altFallback")}
               className="canvas-image"
+              style={nativeDragSuppression()}
               title={t("canvas.image.dragTitle")}
-              {...bindFullImageDrag(currentImage)}
-            />
+{...bindFullImageDrag(currentImage)}
+              />
+              {/* The anchor is the drag source, not the <img>. macOS takes the
+                  pasteboard URL from the element being dragged, and an <img> offers its
+                  last-loaded http://127.0.0.1 address, which Finder saves as a .webloc
+                  instead of copying the file. The href is in the DOM from first render,
+                  so there is no press-time race.
+
+                  This is the view users reach for first -- the newest generation -- and it
+                  previously had no anchor at all, so dragging it produced nothing. */}
+              {currentImage.file_url && (
+                <a
+                  className="canvas-drag-anchor"
+                  href={currentImage.file_url}
+                  draggable
+                  onClick={(e) => e.preventDefault()}
+                  onDragStart={(e) => {
+                    try {
+                      e.dataTransfer.setData(
+                        "DownloadURL",
+                        `image/png:${currentImage.file || `${currentImage.id}.png`}:${currentImage.file_url}`,
+                      );
+                    } catch {}
+                  }}
+                  title={t("canvas.image.dragTitle")}
+                />
+              )}
             <CanvasProgressOverlay
               busy={busy}
               progress={progress}

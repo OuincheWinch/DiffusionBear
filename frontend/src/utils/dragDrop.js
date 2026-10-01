@@ -418,54 +418,6 @@ export function nativeDragSuppression() {
   return nativeBridge() ? { WebkitUserDrag: "none", WebkitUserDraggable: "no-drag" } : undefined;
 }
 
-/**
- * Publishes every visible gallery image to the shell: where it is on screen, and where
- * the file is on disk.
- *
- * The shell needs both before a drag can begin. A drag starts in mouseDown and
- * `evaluateJavaScript` is asynchronous, so "which image is under this point?" cannot be
- * asked on demand — the page has to have already said. Same for the file URL: a drag has
- * to put a real `file://` on the pasteboard, and there is no time to fetch it mid-gesture.
- *
- * Called after every render, debounced into an animation frame, because posting 24 rects
- * per render is cheap but posting them per image element is not.
- */
-export function publishDragRectsToShell(nodes) {
-  const bridge = nativeBridge();
-  // Not Array.isArray: querySelectorAll returns a NodeList. That guard rejected every
-  // single call, so the page told the shell nothing, the shell's hit index stayed empty,
-  // and its mouseDragged bailed on every attempt -- leaving WebKit's own image drag to
-  // produce the http:// link that had been reported four times.
-  if (!bridge || !nodes || typeof nodes.length !== "number") return;
-
-  const rects = [];
-  nodes.forEach((node) => {
-    const id = node?.dataset?.mlxImageId;
-    if (!id || !node.isConnected) return;
-    const r = node.getBoundingClientRect();
-    if (r.width <= 0 || r.height <= 0) return;
-    rects.push({ id, rect: { x: r.left, y: r.top, w: r.width, h: r.height } });
-  });
-
-  // The file URLs ride along in a separate message. They come from the gallery listing's
-  // `file_url` when present, falling back to the pointerdown preload cache -- the listing
-  // is what makes a first drag work, since a preload has not run yet at that point.
-  const urls = [];
-  nodes.forEach((node) => {
-    const id = node?.dataset?.mlxImageId;
-    if (!id || urls.some((u) => u.imageId === id)) return;
-    const fromCache = fileUrlCache.get(id);
-    const fileUrl = node.dataset.mlxFileUrl || fromCache?.fileUrl;
-    if (fileUrl) urls.push({ imageId: id, fileUrl });
-  });
-
-  try {
-    bridge.postMessage({ action: "dragRects", rects });
-    urls.forEach((u) => bridge.postMessage({ action: "registerImage", ...u }));
-  } catch (err) {
-    console.warn("[dragDrop] could not publish drag rects:", err);
-  }
-}
 
 export async function revealImageInFinder(imageOrId) {
   if (!imageOrId) return false;

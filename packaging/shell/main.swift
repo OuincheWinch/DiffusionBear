@@ -507,21 +507,6 @@ final class DropHostView: NSView {
 /// The web layer sends only an image id. The path is resolved here, from the same backend
 /// that owns the file, so the shell never has to guess a directory or trust a path
 /// supplied by a web page.
-/// One gallery image's position, as last reported by the page.
-///
-/// Cached rather than queried on demand. A drag begins in `mouseDown`, and
-/// `evaluateJavaScript` is asynchronous, so there is no way to ask the page "what is under
-/// this point?" in time. The page therefore pushes rects whenever cells render and the
-/// shell keeps the latest snapshot.
-private struct DragHit: Equatable {
-    let id: String
-    let rect: NSRect
-
-    func contains(_ point: NSPoint) -> Bool { rect.contains(point) }
-}
-
-private var dragHitIndex: [DragHit] = []
-
 final class NativeBridge: NSObject, WKScriptMessageHandler {
     /// Called with an image id. Returns nil if the id is not a plain hex identifier.
     var resolveFileURL: ((String) -> URL?)?
@@ -529,39 +514,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
     var onResult: ((String, Bool, String?) -> Void)?
     /// Supplies the key window for the save panel's sheet presentation.
     var windowProvider: (() -> NSWindow?)?
-    /// Set by the web view so a drag can be started with a real file on the pasteboard.
-    weak var dragHandler: ImageDragHandler?
-    /// Maps a point in web-view coordinates to an image id, from the page's rect index.
-    var imageIdAtPoint: ((NSPoint) -> String?)?
-    /// The rect the drag should appear to start from.
-    var rectForImage: ((String) -> NSRect?)?
-    /// Web-view height, needed to flip page-space rects into view space.
-    var webViewHeightProvider: (() -> CGFloat?)?
-
     private var window: NSWindow? { windowProvider?() }
-
-    /// image id -> on-disk file URL, populated by the page as cells become visible.
-    ///
-    /// Held here rather than in the web view because the two live on different sides of
-    /// the bridge and a drag has to start synchronously from a mouseDown, with no
-    /// round-trip to JavaScript available in time.
-    private var fileURLs: [String: URL] = [:]
-    private let lock = NSLock()
-
-    /// Records the on-disk location of an image so a drag can use it immediately.
-    func noteFileURL(_ imageId: String, _ url: URL) {
-        lock.lock()
-        defer { lock.unlock() }
-        // Bounded: the gallery can hold thousands of images and this map is per-session.
-        if fileURLs.count > 512 { fileURLs.removeAll(keepingCapacity: true) }
-        fileURLs[imageId] = url
-    }
-
-    func fileURL(for imageId: String) -> URL? {
-        lock.lock()
-        defer { lock.unlock() }
-        return fileURLs[imageId]
-    }
 
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
@@ -573,34 +526,6 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
         // `fileUrl` has no imageId of its own on some paths, so resolve it before the
         // shared guard below, which requires one.
         switch action {
-        case "registerImage":
-            guard let imageId = body["imageId"] as? String,
-                  let fileUrl = body["fileUrl"] as? String,
-                  let url = URL(string: fileUrl), url.isFileURL else { return }
-            noteFileURL(imageId, url)
-            return
-
-        case "dragRects":
-            // The page pushes where every visible image sits. A drag starts in mouseDown
-            // and evaluateJavaScript is asynchronous, so there is no way to ask the page
-            // "what is under this point?" in time; the shell has to already know.
-            guard let entries = body["rects"] as? [[String: Any]] else { return }
-            var hits: [DragHit] = []
-            for entry in entries {
-                guard let id = entry["id"] as? String,
-                      let rect = entry["rect"] as? [String: Any],
-                      let x = rect["x"] as? Double, let y = rect["y"] as? Double,
-                      let w = rect["w"] as? Double, let h = rect["h"] as? Double,
-                      w > 0, h > 0
-                else { continue }
-                // Page coordinates are top-left origin; the view is bottom-left, so the
-                // rect has to be flipped. The bridge is not a view and has no bounds of
-                // its own -- the height comes from the web view.
-                let flippedY = (webViewHeightProvider?() ?? y + h) - y - h
-                hits.append(DragHit(id: id, rect: NSRect(x: x, y: flippedY, width: w, height: h)))
-            }
-            dragHitIndex = hits
-            return
 
         case "export":
             guard let imageId = body["imageId"] as? String else { return }
@@ -647,39 +572,6 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
 
 }
 
-/// Starts real file drags out of the web view.
-///
-/// This exists because JavaScript cannot do it. macOS builds a web drag's pasteboard from
-/// the DOM element, so the best a gallery image can be dragged out as is an
-/// `http://127.0.0.1:8001/...` URL. Finder, the Desktop and anything that saves bytes all
-/// treat that as a link and write a `.webloc` stub; only clients that will go and fetch it
-/// over HTTP (a web view, a mail composer embedding a remote image) appear to "work", and
-/// those break the moment the app stops. `DownloadURL` is Safari-only and WKWebView
-/// discards JS-set flavours, so there is no web-layer workaround.
-///
-/// WebKit's own drag is suppressed in CSS (`-webkit-user-drag: none` on the cells) and the
-/// gesture is taken over here, where a real `NSURL` can be put on the pasteboard.
-///
-/// The drag image is the full-resolution file, not the thumbnail: the cell only has the
-/// thumbnail decoded at that point, and dragging a 512px preview is what made this feel
-/// broken even when it worked.
-final class ImageDragHandler: NSObject, NSDraggingSource {
-    func draggingImage(_ url: URL) -> NSImage {
-        if let image = NSImage(contentsOf: url) { return image }
-        return NSImage(size: NSSize(width: 64, height: 64))
-    }
-
-    // MARK: NSDraggingSource
-
-    func draggingSession(_ session: NSDraggingSession,
-                         sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        // Inside our own window a drag means nothing -- there is no in-app drop target for
-        // images -- so it must not animate back. Everywhere else is a copy, because the
-        // drag source is a file on disk and the original is never moved.
-        context == .withinApplication ? [] : .copy
-    }
-}
-
 /// Forwards `WKScriptMessage` to the real handler without retaining it.
 ///
 /// WKUserContentController retains every handler it is given, so registering
@@ -706,63 +598,6 @@ final class ScriptMessageProxy: NSObject, WKScriptMessageHandler {
 /// responder chain decides whether it is enabled -- the actions are greyed out
 /// when the click was not in a text field.
 final class AppWebView: WKWebView {
-    /// Set by the app delegate. Nil disables native dragging entirely, which is what the
-    /// browser dev server does -- there is no bridge, so there is nothing to drag.
-    weak var dragHandler: ImageDragHandler?
-    var imageIdProvider: ((NSPoint) -> String?)?
-    var rectProvider: ((String) -> NSRect?)?
-    /// Resolves an image id to its on-disk file, for the drag source.
-    var fileURLProvider: ((String) -> URL?)?
-
-    /// Where the press landed, and which image (if any) it landed on.
-    private var pendingDragImageId: String?
-    private var pendingDragOrigin: NSPoint = .zero
-    /// Below this the gesture is a click, not a drag.
-    private static let dragThreshold: CGFloat = 4
-
-    override func mouseDown(with event: NSEvent) {
-        let location = convert(event.locationInWindow, from: nil)
-        pendingDragOrigin = location
-        pendingDragImageId = imageIdProvider?(location)
-        super.mouseDown(with: event)
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        // The drag starts here rather than in mouseDown because a press is ambiguous: it
-        // may become a click, a text selection or a drag, and only movement past a few
-        // points proves it is the last one. Starting eagerly would make every click on an
-        // image begin a drag, and clicking a cell to open it would stop working.
-        guard let imageId = pendingDragImageId,
-              let handler = dragHandler,
-              let fileURLProvider
-        else { return }
-
-        let location = convert(event.locationInWindow, from: nil)
-        let travelled = hypot(location.x - pendingDragOrigin.x, location.y - pendingDragOrigin.y)
-        guard travelled > Self.dragThreshold else { return }
-
-        pendingDragImageId = nil   // one drag per press
-
-        guard let url = fileURLProvider(imageId),
-              FileManager.default.fileExists(atPath: url.path)
-        else { return }
-
-        let image = NSImage(contentsOf: url) ?? NSImage(size: NSSize(width: 64, height: 64))
-        let maxSide: CGFloat = 220
-        let scale = min(1, maxSide / max(image.size.width, image.size.height, 1))
-
-        let item = NSDraggingItem(pasteboardWriter: url as NSURL)
-        let origin = rectProvider?(imageId) ?? NSRect(origin: location, size: .zero)
-        item.setDraggingFrame(
-            NSRect(x: origin.origin.x,
-                   y: origin.origin.y,
-                   width: image.size.width * scale,
-                   height: image.size.height * scale),
-            contents: image)
-
-        beginDraggingSession(with: [item], event: event, source: handler)
-    }
-
     override func menu(for event: NSEvent) -> NSMenu? {
         let menu = super.menu(for: event) ?? NSMenu(title: "")
         let alreadyThere = Set(menu.items.map(\.title))
@@ -849,7 +684,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     private var window: NSWindow!
     private var webView: WKWebView!
     private var nativeBridge: NativeBridge!
-    private var nativeDragHandler: ImageDragHandler!
     private let backend = BackendProcess()
     private var statusLabel: NSTextField!
     private var activityToken: NSObjectProtocol?
@@ -978,23 +812,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         webView.uiDelegate = self
         webView.autoresizingMask = [.width, .height]
 
-        // Native drag wiring. `imageIdProvider` asks the page what is under a point, which
-        // is the only way to map a mouse position to a gallery cell: WKWebView has no DOM
-        // for hit-testing.
-        let dragHandler = ImageDragHandler()
-        nativeDragHandler = dragHandler
-        if let appWebView = webView as? AppWebView {
-            appWebView.dragHandler = dragHandler
-            appWebView.imageIdProvider = { [weak self] point in
-                self?.nativeBridge.imageIdAtPoint?(point) ?? nil
-            }
-            appWebView.rectProvider = { [weak self] imageId in
-                self?.nativeBridge.rectForImage?(imageId) ?? nil
-            }
-            appWebView.fileURLProvider = { [weak self] imageId in
-                self?.nativeBridge.fileURL(for: imageId)
-            }
-        }
 
         let content = DropHostView(frame: NSRect(x: 0, y: 0, width: 1280, height: 840))
         content.onDrop = { [weak self] paths in
@@ -1055,7 +872,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 /// (DIFFUSIONBEAR_DATA_DIR). Asking keeps one source of truth and means a path can never
 /// disagree with where the file actually is.
 private func wireNativeBridge() {
-    nativeBridge.dragHandler = nativeDragHandler
 
     /// Asks the page which image sits under a point in web-view coordinates.
     ///
@@ -1063,16 +879,6 @@ private func wireNativeBridge() {
     /// a drag cannot wait for a JavaScript round-trip. So the page keeps a small in-memory
     /// index of "element rect -> image id" updated as cells render, and this reads it via a
     /// cached snapshot rather than evaluating JavaScript.
-    nativeBridge.imageIdAtPoint = { point in
-        dragHitIndex.first(where: { $0.contains(point) })?.id
-    }
-    nativeBridge.webViewHeightProvider = { [weak self] in
-        guard let view = self?.webView else { return nil }
-        return view.bounds.height
-    }
-    nativeBridge.rectForImage = { imageId in
-        dragHitIndex.first(where: { $0.id == imageId })?.rect
-    }
 
     nativeBridge.resolveFileURL = { imageId in
         guard let data = try? Data(contentsOf: backendURL.appendingPathComponent("api/images/\(imageId)/file-url")),

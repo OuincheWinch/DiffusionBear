@@ -5,7 +5,6 @@ import {
   copyFullImageToClipboard,
   revealImageInFinder,
   exportImageNatively,
-  publishDragRectsToShell,
   nativeDragSuppression,
 } from "../utils/dragDrop";
 import LazyGalleryImage from "./LazyGalleryImage";
@@ -114,35 +113,6 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   // <a download> fallback is the correct thing to render.
   const hasNativeBridge = () =>
     typeof window !== "undefined" && Boolean(window.webkit?.messageHandlers?.native);
-
-  // Hand the shell the on-screen position of every gallery image, so a drag can be
-  // started natively. A drag begins in mouseDown and the shell cannot call back into
-  // JavaScript in time (evaluateJavaScript is async), so it has to already know where the
-  // images are. Debounced to one animation frame because a render can add many cells at
-  // once and posting a rect per cell per render is pure overhead.
-  useEffect(() => {
-    if (!hasNativeBridge()) return undefined;
-    let timer = null;
-    const publish = () => {
-      timer = null;
-      publishDragRectsToShell(document.querySelectorAll("img[data-mlx-image-id]"));
-    };
-    const schedule = () => {
-      // setTimeout, not requestAnimationFrame: rAF is throttled to a stop in a web view
-      // that is not on screen, which left the shell with an empty hit index and no drag
-      // at all. Verified with a headless probe -- rAF never fired there.
-      if (timer != null) window.clearTimeout(timer);
-      timer = window.setTimeout(publish, 16);
-    };
-    publish();
-    window.addEventListener("resize", schedule);
-    window.addEventListener("scroll", schedule, true);
-    return () => {
-      if (timer != null) window.clearTimeout(timer);
-      window.removeEventListener("resize", schedule);
-      window.removeEventListener("scroll", schedule, true);
-    };
-  }, [items.length, activeTab]);
 
   // The list rows are the full sidecar dicts, so opening one needs no extra
   // round-trip to /api/images/{id}.
