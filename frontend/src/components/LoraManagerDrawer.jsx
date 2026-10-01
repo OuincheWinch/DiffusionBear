@@ -83,7 +83,8 @@ export default function LoraManagerDrawer({
   }
 
   return (
-    <fieldset className="lora-section">
+    <fieldset className={`lora-section${loras.length ? "" : " is-empty"}`}>
+      {loras.length > 0 && (
       <legend className="lora-legend">
         <span>{t("lora.activeLegend", { count: loras.length })}</span>
         <button
@@ -96,6 +97,7 @@ export default function LoraManagerDrawer({
           {syncingCivitai ? t("lora.syncing") : t("lora.syncBtn")}
         </button>
       </legend>
+      )}
 
       {loras.map((l, i) => {
         const regEntry = findLoraEntry(l, loraRegistry);
@@ -181,6 +183,7 @@ export default function LoraManagerDrawer({
       })}
 
       <select
+        className={`lora-add-select${loras.length ? "" : " is-slim"}`}
         value=""
         onChange={(e) => e.target.value && addLoraFromRegistry(e.target.value)}
         disabled={compatibleLoras.length === 0}

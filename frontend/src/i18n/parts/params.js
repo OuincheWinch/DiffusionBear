@@ -1,7 +1,66 @@
 // GenerationParams.jsx. French is the reference language, as in strings.js.
 export const paramsStrings = {
-  "params.size.label": { fr: "Taille", en: "Size", de: "Größe", it: "Dimensione" },
-  "params.size.customOption": {
+    "params.size.label": { fr: "Taille", en: "Size", de: "Größe", it: "Dimensione" },
+    // SizeSelector.jsx. Base = detail level, ratio = shape, chosen separately.
+    "params.size.baseLabel": {
+      fr: "Résolution de base",
+      en: "Base resolution",
+      de: "Grundauflösung",
+      it: "Risoluzione base",
+    },
+    "params.size.baseTitle": {
+      fr: "Base {base} px",
+      en: "Base {base} px",
+      de: "Basis {base} px",
+      it: "Base {base} px",
+    },
+    "params.size.ratioLabel": {
+      fr: "Format d’image",
+      en: "Aspect ratio",
+      de: "Bildformat",
+      it: "Proporzioni",
+    },
+    "params.size.ratioTitle": {
+      fr: "Format {ratio}",
+      en: "{ratio} aspect ratio",
+      de: "Format {ratio}",
+      it: "Proporzione {ratio}",
+    },
+    "params.size.customShort": { fr: "Perso", en: "Custom", de: "Eigen", it: "Personalizzato" },
+    "params.size.customTitle": {
+      fr: "Saisir une largeur et une hauteur exactes",
+      en: "Enter exact width and height",
+      de: "Exakte Breite und Höhe eingeben",
+      it: "Inserisci larghezza e altezza esatte",
+    },
+    "params.size.widthLabel": { fr: "Largeur", en: "Width", de: "Breite", it: "Larghezza" },
+    "params.size.heightLabel": { fr: "Hauteur", en: "Height", de: "Höhe", it: "Altezza" },
+    "params.size.backToGrid": { fr: "Grille", en: "Grid", de: "Raster", it: "Griglia" },
+    "params.size.backToGridTitle": {
+      fr: "Revenir au choix par résolution et format",
+      en: "Go back to choosing by resolution and ratio",
+      de: "Zurück zur Auswahl über Auflösung und Format",
+      it: "Torna alla scelta per risoluzione e proporzione",
+    },
+    "params.size.budgetWarning": {
+      fr: "Au-delà de {max} px : la génération peut échouer. Réduisez la taille ou ajustez la limite dans les réglages avancés.",
+      en: "Over {max} px — generation may fail. Use a smaller size or raise the cap in Advanced Settings.",
+      de: "Über {max} px – die Erzeugung kann fehlschlagen. Kleinere Größe wählen oder das Limit in den erweiterten Einstellungen anheben.",
+      it: "Oltre {max} px: la generazione può fallire. Usa una dimensione minore o aumenta il limite nelle impostazioni avanzate.",
+    },
+    "params.size.budgetHint": {
+      fr: "Les dimensions sont ajustées au multiple de 16 le plus proche, minimum 256.",
+      en: "Dimensions are snapped to the nearest multiple of 16, minimum 256.",
+      de: "Abmessungen werden auf das nächste Vielfache von 16 gerundet, mindestens 256.",
+      it: "Le dimensioni sono arrotondate al multiplo più vicino di 16, minimo 256.",
+    },
+    "params.advanced.label": {
+      fr: "Réglages avancés",
+      en: "Advanced Settings",
+      de: "Erweiterte Einstellungen",
+      it: "Impostazioni avanzate",
+    },
+    "params.size.customOption": {
     fr: "✦ {width} × {height} (Préréglage)",
     en: "✦ {width} × {height} (preset)",
     de: "✦ {width} × {height} (Voreinstellung)",

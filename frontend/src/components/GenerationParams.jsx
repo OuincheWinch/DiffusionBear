@@ -1,5 +1,4 @@
 import { memo } from "react";
-import { STANDARD_SIZES } from "../constants/sizes";
 import { useI18n } from "../i18n/I18nContext";
 
 function clampRefStrength(v) {
@@ -43,15 +42,6 @@ function GenerationParams({
    const { t } = useI18n();
    const maxRefImages = Math.max(1, Number(maxReferenceImages) || 1);
 
-   const haveHardCap = Boolean(maxPixels && modelInfo.max_pixels);
-   // Filter the size dropdown to resolutions that fit the editable hard cap (win/win:
-   // protects the VAE decode budget while still letting users loosen the cap).
-   const cappedSizes = haveHardCap
-     ? STANDARD_SIZES.filter((s) => {
-         const [w, h] = s.value.split("x").map(Number);
-         return w * h <= Number(maxPixels);
-       })
-     : STANDARD_SIZES;
 
   function randomizeSeed() {
     setSeed("");
@@ -66,44 +56,16 @@ function GenerationParams({
 
   return (
     <div className="generation-params-container">
+      {/* Collapsed by default. These five (plus negative prompt, DeepCache and the
+          pixel cap, which are advanced by nature) are the controls people reach for
+          rarely; leaving them open is what made the primary path feel heavy. */}
+      <details className="advanced-settings">
+        <summary className="advanced-settings-summary">
+          <span className="advanced-settings-chevron" aria-hidden="true" />
+          {t("params.advanced.label")}
+        </summary>
+      <div className="advanced-settings-body">
       <div className="param-grid">
-        <label>
-          {t("params.size.label")}
-          <div className="size-row">
-            <select
-              value={`${width}x${height}`}
-              onChange={(e) => {
-                const [w, h] = e.target.value.split("x").map(Number);
-                setWidth(w);
-                setHeight(h);
-              }}
-            >
-              {!cappedSizes.some((s) => s.value === `${width}x${height}`) && (
-                <option value={`${width}x${height}`}>
-                  {t("params.size.customOption", { width, height })}
-                </option>
-              )}
-              {cappedSizes.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <span className="shape-preview" title={t("params.size.shapePreviewTitle", { width, height })}>
-              <span
-                className="shape"
-                style={(() => {
-                  const max = 22;
-                  const r = width / height;
-                  return r >= 1
-                    ? { width: `${max}px`, height: `${Math.max(4, Math.round(max / r))}px` }
-                    : { width: `${Math.max(4, Math.round(max * r))}px`, height: `${max}px` };
-                })()}
-              />
-            </span>
-          </div>
-        </label>
-
         {modelInfo.max_pixels ? (
           <label>
             <span className="step-label-header">
@@ -258,15 +220,19 @@ function GenerationParams({
           </select>
         </label>
       )}
+      </div>
+      </details>
 
       {supportsRef && (
-        <fieldset className="ref-section">
-          <legend>
-            {t("params.ref.legend", { count: refImages.length, max: maxRefImages })}
-            {supportsMultiRef && <span className="ref-badge-pill">{t("params.ref.inContextBadge")}</span>}
-          </legend>
+        <fieldset className={`ref-section${refImages.length ? "" : " is-empty"}`}>
+          {refImages.length > 0 && (
+            <legend>
+              {t("params.ref.legend", { count: refImages.length, max: maxRefImages })}
+              {supportsMultiRef && <span className="ref-badge-pill">{t("params.ref.inContextBadge")}</span>}
+            </legend>
+          )}
 
-          <div className="ref-gallery-row">
+          <div className={`ref-gallery-row${refImages.length ? "" : " is-empty"}`}>
             {refImages.map((img, idx) => (
               <div className="ref-card" key={img.id || img.path}>
                 <div className="ref-thumb-wrapper">
@@ -300,7 +266,10 @@ function GenerationParams({
             ))}
 
             {refImages.length < maxRefImages && (
-              <label className="ref-add-card" title={t("params.ref.addCardTitle")}>
+              <label
+                className={`ref-add-card${refImages.length ? "" : " is-slim"}`}
+                title={t("params.ref.addCardTitle")}
+              >
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,.heic,.HEIC,image/heic,image/heif"
@@ -380,7 +349,7 @@ function GenerationParams({
               </div>
             </div>
           )}
-          {supportsMultiRef && (
+          {supportsMultiRef && refImages.length > 0 && (
             <p className="hint">
               💡 <strong>{t("params.ref.multiRefHintLead")}</strong> {t("params.ref.multiRefHintBody")}
             </p>

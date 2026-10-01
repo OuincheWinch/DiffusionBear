@@ -7,6 +7,7 @@ import UniversalDownloader from "./UniversalDownloader";
 import LoraManagerDrawer from "./LoraManagerDrawer";
 import ModelInstaller from "./ModelInstaller";
 import GenerationParams from "./GenerationParams";
+import SizeSelector from "./SizeSelector";
 import { findLoraEntry, getModelBase, isKreaDistillLora } from "../utils/loraUtils";
 import { normalizeRequest, referenceItems, resolveRequestModel } from "../utils/requestUtils";
 import { useGenerationJob } from "../hooks/useGenerationJob";
@@ -878,22 +879,6 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
     submittedParams !== null &&
     currentParams() !== submittedParams;
 
-  const PRESETS = Object.fromEntries(
-    (modelInfo.presets.length
-      ? modelInfo.presets
-      : [{ id: "default", label: t("generate.preset.defaultLabel"), width: 1024, height: 1024, steps: modelInfo.default_steps }]
-    ).map((p) => [p.id, p])
-  );
-  const activePreset =
-    Object.entries(PRESETS).find(
-      ([, p]) =>
-        p.width === Number(width) &&
-        p.height === Number(height) &&
-        p.steps === Number(steps) &&
-        (p.sampler === undefined || p.sampler === sampler) &&
-        (p.cache_interval === undefined || p.cache_interval === cacheInterval)
-    )?.[0] ?? null;
-
   return (
     <div className="studio-layout">
       <div className="studio-form-pane">
@@ -1128,30 +1113,60 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                 onInstalled={refreshModels}
               />
             )}
-            {Object.entries(PRESETS).map(([key, p]) => (
-              <button
-                key={key}
-                type="button"
-                className={`preset-btn${activePreset === key ? " active" : ""}`}
-                onClick={() => {
-                  setWidth(p.width);
-                  setHeight(p.height);
-                  setSteps(p.steps);
-                  if (p.guidance !== undefined) setGuidance(p.guidance);
-                  if (p.sampler !== undefined) setSampler(p.sampler);
-                  setCacheInterval(p.cache_interval ?? 1);
-                   if (getModelBase(modelInfo, model) === "krea2") {
-                     setLoras(kreaDistillUpdater(p.steps, loraRegistry));
-                   }
-
-                }}
-                title={t("generate.preset.title", { width: p.width, height: p.height, steps: p.steps })
-                  + (p.sampler ? `, ${p.sampler}` : "")}
-              >
-                {p.label}
-              </button>
-            ))}
           </div>
+      <div className="generate-btn-row generate-btn-row-primary">
+        <button
+          type="submit"
+          className="generate-btn"
+           disabled={modelsLoading || Boolean(modelsError) || !model || (busy && !dirty) || modelInfo?.installed === false}
+
+          title={
+            modelInfo?.installed === false
+              ? t("generate.btn.downloadFirstTitle")
+              : undefined
+          }
+        >
+          {busy
+            ? dirty
+              ? t("generate.btn.queueWithNewParams")
+              : status === "queued"
+                ? t("generate.btn.queued")
+                : jobPhase === "downloading"
+                  ? t("generate.btn.downloadingModel")
+                  : jobPhase === "loading_model"
+                    ? t("generate.btn.loadingMemory")
+                    : jobPhase === "compiling"
+                      ? t("generate.btn.compilingShaders")
+                      : jobPhase === "saving"
+                        ? t("generate.btn.finalizingImage")
+                        : progress && progress.steps > 0
+                          ? t("generate.btn.stepProgress", { step: progress.step, steps: progress.steps })
+                          : t("generate.btn.generating")
+            : t("generate.btn.generate")}
+        </button>
+        {busy && (
+          <button
+            type="button"
+            className="cancel-action-btn"
+            title={t("generate.btn.cancelTitle")}
+            onClick={async () => {
+              await cancelJob();
+            }}
+          >
+            {t("generate.btn.cancel")}
+          </button>
+        )}
+      </div>
+
+          <SizeSelector
+            width={width}
+            setWidth={setWidth}
+            height={height}
+            setHeight={setHeight}
+            maxPixels={maxPixels}
+            modelInfo={modelInfo}
+          />
+
           <GenerationParams
             modelInfo={modelInfo}
             width={width}
@@ -1246,49 +1261,6 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
         <p className="hint">{t("generate.lora.unavailableHint", { model: modelInfo.label })}</p>
       )}
 
-      <div className="generate-btn-row">
-        <button
-          type="submit"
-          className="generate-btn"
-           disabled={modelsLoading || Boolean(modelsError) || !model || (busy && !dirty) || modelInfo?.installed === false}
-
-          title={
-            modelInfo?.installed === false
-              ? t("generate.btn.downloadFirstTitle")
-              : undefined
-          }
-        >
-          {busy
-            ? dirty
-              ? t("generate.btn.queueWithNewParams")
-              : status === "queued"
-                ? t("generate.btn.queued")
-                : jobPhase === "downloading"
-                  ? t("generate.btn.downloadingModel")
-                  : jobPhase === "loading_model"
-                    ? t("generate.btn.loadingMemory")
-                    : jobPhase === "compiling"
-                      ? t("generate.btn.compilingShaders")
-                      : jobPhase === "saving"
-                        ? t("generate.btn.finalizingImage")
-                        : progress && progress.steps > 0
-                          ? t("generate.btn.stepProgress", { step: progress.step, steps: progress.steps })
-                          : t("generate.btn.generating")
-            : t("generate.btn.generate")}
-        </button>
-        {busy && (
-          <button
-            type="button"
-            className="cancel-action-btn"
-            title={t("generate.btn.cancelTitle")}
-            onClick={async () => {
-              await cancelJob();
-            }}
-          >
-            {t("generate.btn.cancel")}
-          </button>
-        )}
-      </div>
       {busy && progress && progress.steps > 0 && (
         <div className="progress-box">
           <p className="hint">

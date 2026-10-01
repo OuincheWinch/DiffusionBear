@@ -4212,3 +4212,252 @@ body.native-shell * {
   -webkit-user-drag: none;
   -webkit-user-draggable: no-drag;
 }
+
+/* ============================================================================
+   SizeSelector — base resolution and aspect ratio chosen independently.
+
+   Replaces a 25-entry dropdown of fused "1024 × 1024 (1:1)" strings plus
+   per-model preset buttons. Two orthogonal decisions (how much detail, what
+   shape) read far faster as two short rows of buttons than as one long menu.
+   ========================================================================== */
+
+.size-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.size-selector-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.size-selector-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* The resolved pixel size is the outcome of two button presses, so it is shown
+   explicitly rather than left for the user to infer. */
+.size-selector-readout {
+  font-size: 0.78rem;
+  color: var(--text-dim, var(--muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.size-base-row,
+.size-ratio-row {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.size-base-btn,
+.size-ratio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 1.9rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.size-base-btn:hover,
+.size-ratio-btn:hover {
+  border-color: var(--accent-text);
+  background: rgba(124, 92, 255, 0.12);
+}
+
+.size-base-btn.active,
+.size-ratio-btn.active {
+  border-color: var(--accent);
+  background: rgba(124, 92, 255, 0.2);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.size-base-btn:focus-visible,
+.size-ratio-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.size-custom-btn {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* The ratio glyph is the actual shape, so the buttons are scannable without
+   reading "16:9" and mentally dividing. */
+.size-ratio-glyph {
+  display: block;
+  height: 0.85rem;
+  max-width: 1.6rem;
+  background: currentColor;
+  border-radius: 1.5px;
+  opacity: 0.75;
+}
+
+.size-ratio-btn.active .size-ratio-glyph {
+  opacity: 1;
+}
+
+.size-ratio-text {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.size-custom-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.size-custom-field {
+  flex: 1 1 6rem;
+  min-width: 0;
+}
+
+.size-custom-field input {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.size-budget-warning {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--danger);
+}
+
+.size-budget-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* ============================================================================
+   Progressive disclosure for the rarely-touched controls.
+
+   Steps, guidance, seed, batch and sampler (plus negative prompt, DeepCache and
+   the pixel cap, which are advanced by nature) are collapsed by default. The
+   primary path is now prompt -> model -> size -> Generate.
+   ========================================================================== */
+
+.advanced-settings {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(28, 28, 40, 0.5);
+}
+
+.advanced-settings-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  list-style: none;
+  border-radius: 8px;
+}
+
+.advanced-settings-summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-settings-summary:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.advanced-settings-summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* Chevron drawn with borders so it needs no icon asset and inherits colour. */
+.advanced-settings-chevron {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 140ms ease;
+  opacity: 0.8;
+}
+
+.advanced-settings[open] .advanced-settings-chevron {
+  transform: rotate(45deg);
+}
+
+.advanced-settings-body {
+  padding: 0.15rem 0.7rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* ============================================================================
+   Attachment panels are strictly state-driven.
+
+   With nothing attached they collapse to a single slim row holding only the
+   add control. An empty bordered fieldset with a legend was costing ~70px of
+   vertical space per panel and communicating nothing.
+   ========================================================================== */
+
+.ref-section.is-empty,
+.lora-section.is-empty {
+  border-style: dashed;
+  padding: 0.3rem;
+  background: transparent;
+}
+
+.ref-gallery-row.is-empty {
+  display: block;
+  padding: 0;
+}
+
+.ref-add-card.is-slim,
+.lora-add-select.is-slim {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.25rem 0.4rem;
+  min-height: 1.75rem;
+}
+
+.ref-add-card.is-slim:hover,
+.lora-add-select.is-slim:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.ref-add-card.is-slim .ref-add-text {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.lora-add-select.is-slim {
+  width: auto;
+  max-width: 18rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* Respect a stated preference for less motion rather than animating the
+   disclosure open. */
+@media (prefers-reduced-motion: reduce) {
+  .advanced-settings-chevron {
+    transition: none;
+  }
+}
