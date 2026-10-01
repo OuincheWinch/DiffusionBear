@@ -11,6 +11,48 @@ const inFlightPromises = new Map();
  * Because MLX-DIFFUSION runs locally on localhost:8001, loopback fetch takes <8ms,
  * ensuring the File is ready in memory before human drag movement reaches dragstart.
  */
+// Cache for the on-disk file:// URL used by the macOS Finder drag channel.
+// Key: image_id -> { fileUrl: string, filename: string, timestamp: number }
+const fileUrlCache = new Map();
+const MAX_FILE_URL_CACHE = 60;
+
+/**
+ * Resolves the image's real path on disk as a file:// URL.
+ *
+ * This is what makes dragging a card onto the Desktop or into a Finder window produce
+ * the actual picture. The alternative -- putting the loopback http URL in DownloadURL --
+ * does not work: macOS reads the scheme and treats http as a web link, so the drop
+ * created a link stub pointing back at the backend instead of copying the image.
+ *
+ * Prefetched on pointerdown for the same reason the File is: the whole press-to-drag
+ * gesture is the budget, and this is a loopback round-trip.
+ */
+export async function preloadFileUrl(imageOrId) {
+  if (!imageOrId) return null;
+  const id = typeof imageOrId === "string" ? imageOrId : imageOrId.id;
+  if (!id) return null;
+
+  const cached = fileUrlCache.get(id);
+  if (cached) {
+    cached.timestamp = Date.now();
+    return cached;
+  }
+
+  try {
+    const data = await api(`/api/images/${id}/file-url`);
+    if (!data?.file_url) return null;
+    const entry = { fileUrl: data.file_url, filename: data.filename, timestamp: Date.now() };
+    if (fileUrlCache.size >= MAX_FILE_URL_CACHE) {
+      fileUrlCache.delete(fileUrlCache.keys().next().value);
+    }
+    fileUrlCache.set(id, entry);
+    return entry;
+  } catch (err) {
+    console.warn(`[dragDrop] Failed resolving file:// URL for ${id}:`, err);
+    return null;
+  }
+}
+
 export async function preloadFullImageFile(imageOrId) {
   if (!imageOrId) return null;
   const id = typeof imageOrId === "string" ? imageOrId : imageOrId.id;
@@ -122,6 +164,10 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
   const handleInteraction = (e) => {
     ensureFullResolutionImage(e, id);
     preloadFullImageFile(image);
+    // Resolved here, read at dragstart. onDragStart is synchronous -- the pasteboard has
+    // to be fully populated before it returns -- so anything awaited there would land too
+    // late. The round-trip completes during the press, and dragstart reads the cache.
+    preloadFileUrl(image);
   };
 
   return {
@@ -154,10 +200,22 @@ export function bindFullImageDrag(image, extraHandlers = {}) {
         }
       }
 
-      // Channel 2: DownloadURL for macOS Finder / Desktop / Local folders
+      // Channel 2: DownloadURL for macOS Finder / Desktop / Local folders.
+      //
+      // MUST be a file:// URL. macOS reads the scheme to decide what the drag is: an
+      // http:// DownloadURL is a web link, and dropping one on the Desktop writes a
+      // link stub to the backend instead of the image -- which also breaks the moment
+      // the app quits. The file:// form makes Finder copy the real bytes.
+      //
+      // Falls back to the loopback URL if the path could not be resolved, which is
+      // still better than no DownloadURL at all: some targets will fetch it, and the
+      // File object above still covers web dropzones either way.
       const mime = cached?.file?.type || (filename.endsWith(".jpeg") || filename.endsWith(".jpg") ? "image/jpeg" : "image/png");
+      const onDisk = fileUrlCache.get(id);
+      const downloadTarget = onDisk?.fileUrl || fullUrl;
+      const downloadName = onDisk?.filename || filename;
       try {
-        e.dataTransfer.setData("DownloadURL", `${mime}:${filename}:${fullUrl}`);
+        e.dataTransfer.setData("DownloadURL", `${mime}:${downloadName}:${downloadTarget}`);
       } catch {}
 
       // Channel 3: Direct URL list for browser tabs & URL dropzones

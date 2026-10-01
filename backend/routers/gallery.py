@@ -265,6 +265,33 @@ def image_file(image_id: str, thumb: bool = False):
     raise HTTPException(404, "not found")
 
 
+@router.get("/api/images/{image_id}/file-url")
+def image_file_url(image_id: str):
+    """A file:// URL for the full-resolution image, for drag-out to Finder.
+
+    macOS decides what a drag *is* from the URL scheme. An `http://127.0.0.1:8001/...`
+    DownloadURL is treated as a web link, so dropping a gallery card on the Desktop
+    wrote a link stub pointing back at the backend rather than the picture -- and a stub
+    whose target dies with the app. A `file://` URL is a file, and Finder copies it.
+
+    The loopback route still works for everything browser-shaped (a tab, a web dropzone,
+    an <img>), which is why this is an addition and not a replacement.
+
+    Exposes only a path inside GENERATED_DIR, so it discloses nothing the SPA could not
+    already fetch by id. Percent-encoded, because the data dir can sit on a volume whose
+    name contains a space -- an unencoded space truncates the path at the first one.
+    """
+    _validate_image_id(image_id)
+    if _image_is_deleted(image_id):
+        raise HTTPException(404, "not found")
+    generated_root = GENERATED_DIR.resolve()
+    for suffix in (".png", ".jpeg", ".jpg"):
+        path = (GENERATED_DIR / f"{image_id}{suffix}").resolve()
+        if path.is_relative_to(generated_root) and path.is_file():
+            return {"file_url": path.as_uri(), "filename": path.name, "path": str(path)}
+    raise HTTPException(404, "not found")
+
+
 @router.post("/api/images/{image_id}/reveal")
 def reveal_image(image_id: str):
     _validate_image_id(image_id)

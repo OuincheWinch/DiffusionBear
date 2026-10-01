@@ -590,3 +590,101 @@ class FillProgressShapeTests(unittest.TestCase):
         self.assertEqual(steps[-1]["steps"], 4)
         self.assertIsNotNone(steps[-1].get("eta_seconds"))
         self.assertEqual(steps[-1]["eta_seconds"], 0.0)
+
+
+class FileUrlRouteTests(unittest.TestCase):
+    """GET /api/images/{id}/file-url -- the drag-out-to-Finder contract.
+
+    Found by the user: dragging a gallery card onto the Desktop produced a link to
+    http://127.0.0.1:8001/... instead of the image. macOS decides what a drag is from the
+    URL scheme, and it reads an http DownloadURL as a web link, so the drop wrote a link
+    stub pointing back at the backend -- a stub that also dies with the app.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        # A directory name WITH A SPACE, because the real data dir lives on a volume
+        # whose name has one and an unencoded space truncates the path.
+        self.root = Path(self.tmp.name) / "My Data dir"
+        self.root.mkdir()
+        self._saved = (fill.GENERATED_DIR, fill.DATA_DIR)
+        fill.GENERATED_DIR = self.root
+        fill.DATA_DIR = self.root
+        import state
+        self._saved_state_gen = state.GENERATED_DIR
+        state.GENERATED_DIR = self.root
+        self._saved_router_gen = gallery_router.GENERATED_DIR
+        gallery_router.GENERATED_DIR = self.root
+
+        self.image_id = "c" * 32
+        Image.new("RGB", (32, 32), (200, 30, 40)).save(self.root / f"{self.image_id}.png")
+        (self.root / f"{self.image_id}.json").write_text(
+            '{"id": "%s", "format": "png", "width": 32, "height": 32}' % self.image_id,
+            encoding="utf-8",
+        )
+
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(gallery_router.router)
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        import state
+        state.GENERATED_DIR = self._saved_state_gen
+        gallery_router.GENERATED_DIR = self._saved_router_gen
+        fill.GENERATED_DIR, fill.DATA_DIR = self._saved
+        self.tmp.cleanup()
+
+    def test_it_returns_a_file_scheme_url(self):
+        r = self.client.get(f"/api/images/{self.image_id}/file-url")
+        self.assertEqual(r.status_code, 200, r.text)
+        url = r.json()["file_url"]
+        self.assertTrue(
+            url.startswith("file://"),
+            f"macOS needs a file:// DownloadURL or the drop writes a link stub; got {url!r}",
+        )
+
+    def test_the_path_survives_a_space_in_the_directory_name(self):
+        """The regression this route exists beside: /Volumes/Externe/IA/MLX-DIFFUSION
+        OpenCode. An unencoded space truncates the path at the first one, and Finder
+        would silently receive a path that does not exist."""
+        r = self.client.get(f"/api/images/{self.image_id}/file-url")
+        url = r.json()["file_url"]
+        self.assertNotIn(" ", url, f"the file URL must be percent-encoded: {url!r}")
+        self.assertIn("%20", url, "the space must be encoded, not dropped")
+
+    def test_the_url_actually_resolves_to_the_file_on_disk(self):
+        from urllib.parse import unquote, urlparse
+
+        r = self.client.get(f"/api/images/{self.image_id}/file-url")
+        url = r.json()["file_url"]
+        path = Path(unquote(urlparse(url).path))
+        self.assertTrue(path.is_file(), f"{path} does not exist")
+        self.assertEqual(path.name, f"{self.image_id}.png")
+
+    def test_it_reports_the_real_filename(self):
+        body = self.client.get(f"/api/images/{self.image_id}/file-url").json()
+        self.assertEqual(body["filename"], f"{self.image_id}.png")
+
+    def test_a_missing_image_is_404(self):
+        self.assertEqual(self.client.get(f"/api/images/{'f' * 32}/file-url").status_code, 404)
+
+    def test_a_malformed_id_is_rejected(self):
+        self.assertIn(
+            self.client.get("/api/images/..%2Fetc/file-url").status_code,
+            (400, 404, 422),
+        )
+
+    def test_it_never_points_outside_the_gallery(self):
+        """Discloses nothing the SPA could not already fetch by id."""
+        from urllib.parse import unquote, urlparse
+
+        for name in ("../../etc/passwd", "..", "/etc/hosts"):
+            r = self.client.get(f"/api/images/{name}/file-url")
+            if r.status_code == 200:
+                path = Path(unquote(urlparse(r.json()["file_url"]).path)).resolve()
+                self.assertTrue(
+                    path.is_relative_to(self.root.resolve()),
+                    f"{name} escaped the gallery: {path}",
+                )
