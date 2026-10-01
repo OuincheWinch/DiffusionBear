@@ -390,7 +390,16 @@ class FillImageTests(unittest.TestCase):
         )
         ref = captured["pixels"]
         px = ref.load()          # .load() gives the pixel accessor; the Image is not subscriptable
-        inside = [px[x, y] for y in range(14, 34) for x in range(14, 34)]  # full mask interior
+        # The reference is rendered at the region's render size, NOT the source size,
+        # so the mask box has to be mapped into reference coordinates. Hardcoding 14..34
+        # silently sampled the top-left corner of a 128x128 reference -- unmasked flat
+        # red -- and reported a healthy hole as "flat".
+        sx, sy = ref.width / mask.width, ref.height / mask.height
+        mb = mask.getbbox()
+        inset = 2
+        x0, y0 = int(mb[0] * sx) + inset, int(mb[1] * sy) + inset
+        x1, y1 = int(mb[2] * sx) - inset, int(mb[3] * sy) - inset
+        inside = [px[x, y] for y in range(y0, y1) for x in range(x0, x1)]
         tones = {c for pix in inside for c in pix}
         self.assertGreater(
             len(tones), 12,
@@ -503,3 +512,364 @@ class FillImageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RenderPlanTests(unittest.TestCase):
+    """The render budget, which is what stops a large source from hanging.
+
+    Measured on flux2-klein-4b 4 steps: 590k px costs ~197s, and cost is linear in
+    pixel count. So a 1536x1536 source rendered whole would be ~789s and a 3072x3072
+    one ~3156s. These tests pin the arithmetic that bounds it, without loading a model.
+    """
+
+    @staticmethod
+    def _mask(size, frac):
+        w, h = size
+        m = Image.new("L", (w, h), 0)
+        side = max(2, int(min(w, h) * (frac ** 0.5)))
+        cx, cy = w // 2, h // 2
+        for x in range(cx - side // 2, cx + side // 2):
+            for y in range(cy - side // 2, cy + side // 2):
+                m.putpixel((x, y), 255)
+        return m
+
+    def test_a_small_edit_to_a_huge_image_renders_small(self):
+        """The whole point: cost tracks what was painted, not the source size."""
+        mask = self._mask((3072, 3072), 0.05)
+        plan = fill._render_plan(mask, fill.mask_bounding_box(mask))
+        rw, rh = plan["render"]
+        self.assertLessEqual(rw * rh, fill.FILL_RENDER_MAX_PIXELS)
+
+    def test_the_budget_is_never_exceeded(self):
+        for size in [(512, 512), (768, 768), (1536, 1536), (3072, 3072), (4096, 4096)]:
+            for frac in (0.05, 0.25, 0.5, 1.0):
+                with self.subTest(size=size, frac=frac):
+                    mask = self._mask(size, frac)
+                    plan = fill._render_plan(mask, fill.mask_bounding_box(mask))
+                    rw, rh = plan["render"]
+                    self.assertLessEqual(
+                        rw * rh,
+                        fill.FILL_RENDER_MAX_PIXELS,
+                        f"{size} at {frac:.0%} renders {rw}x{rh}, over budget",
+                    )
+
+    def test_the_crop_always_contains_the_painted_region(self):
+        """Cropping must never cut into the mask -- that would drop part of the fill."""
+        for size in [(512, 512), (1536, 1536), (3072, 3072)]:
+            for frac in (0.05, 0.4, 1.0):
+                with self.subTest(size=size, frac=frac):
+                    mask = self._mask(size, frac)
+                    box = fill.mask_bounding_box(mask)
+                    crop = fill._render_plan(mask, box)["crop"]
+                    self.assertLessEqual(crop[0], box[0])
+                    self.assertLessEqual(crop[1], box[1])
+                    self.assertGreaterEqual(crop[2], box[2])
+                    self.assertGreaterEqual(crop[3], box[3])
+
+    def test_the_crop_stays_inside_the_image(self):
+        for size in [(512, 512), (1536, 1536)]:
+            for frac in (0.05, 0.9, 1.0):
+                with self.subTest(size=size, frac=frac):
+                    mask = self._mask(size, frac)
+                    crop = fill._render_plan(mask, fill.mask_bounding_box(mask))["crop"]
+                    self.assertGreaterEqual(crop[0], 0)
+                    self.assertGreaterEqual(crop[1], 0)
+                    self.assertLessEqual(crop[2], size[0])
+                    self.assertLessEqual(crop[3], size[1])
+
+    def test_a_small_image_is_not_upscaled(self):
+        """Never render larger than the source: that costs time and invents detail."""
+        mask = self._mask((256, 256), 0.5)
+        plan = fill._render_plan(mask, fill.mask_bounding_box(mask))
+        self.assertLessEqual(plan["render"][0], 256)
+        self.assertLessEqual(plan["render"][1], 256)
+        self.assertEqual(plan["scale"], 1.0)
+
+    def test_a_full_frame_mask_gets_context_but_stays_bounded(self):
+        """A full-frame fill is legitimate and expensive; it must still fit the budget."""
+        w, h = 1536, 1536
+        mask = Image.new("L", (w, h), 255)
+        plan = fill._render_plan(mask, (0, 0, w, h))
+        rw, rh = plan["render"]
+        self.assertLessEqual(rw * rh, fill.FILL_RENDER_MAX_PIXELS)
+        self.assertGreater(plan["scale"], 0.0)
+
+
+class RenderedSizeTests(unittest.TestCase):
+    """A downscaled render must still composite to full source resolution."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self._gen, self._data = fill.GENERATED_DIR, fill.DATA_DIR
+        fill.GENERATED_DIR = self.root
+        fill.DATA_DIR = self.root
+
+    def tearDown(self):
+        fill.GENERATED_DIR, fill.DATA_DIR = self._gen, self._data
+        self.tmp.cleanup()
+
+    def test_the_output_is_always_the_full_source_size(self):
+        """Whatever the render was scaled to, the result is source-sized."""
+        size = (1024, 1024)
+        image_id = "e" * 32
+        Image.new("RGB", size, (200, 30, 40)).save(self.root / f"{image_id}.png")
+        (self.root / f"{image_id}.json").write_text(
+            '{"id": "%s", "format": "png"}' % image_id, encoding="utf-8"
+        )
+
+        m = Image.new("L", size, 0)
+        d = ImageDraw.Draw(m)
+        d.rectangle([300, 420, 700, 600], fill=255)
+        buf = io.BytesIO(); m.save(buf, format="PNG")
+        payload = base64.b64encode(buf.getvalue()).decode("ascii")
+
+        def gen(**kwargs):
+            # Answer with whatever size was asked for, then a different tone, so the
+            # composite is visibly the generated one.
+            w, h = kwargs["width"], kwargs["height"]
+            new_id = "f" * 32
+            Image.new("RGB", (w, h), (10, 220, 90)).save(self.root / f"{new_id}.png")
+            (self.root / f"{new_id}.json").write_text('{"id": "%s"}' % new_id, encoding="utf-8")
+            return {"id": new_id, "format": "png", "seed": 1, "steps": 4}
+
+        meta = fill.fill_image(image_id, payload, "pink sunglasses", generate_fn=gen)
+        with Image.open(self.root / f"{meta['id']}.png") as out:
+            self.assertEqual(out.size, size, "the fill must be source-sized")
+        self.assertLess(meta["fill_render_size"][0] * meta["fill_render_size"][1], size[0] * size[1])
+        out = Image.open(self.root / f"{meta['id']}.png").convert("RGB")
+        px = out.load()
+        self.assertEqual(px[2, 2], (200, 30, 40), "outside the mask must be untouched")
+        # Inside the mask the result must differ from the source. Poisson blending
+        # shifts colour to match the destination gradient, so the interior is NOT the
+        # raw generated RGB -- asserting that exact value would fail on a correct
+        # implementation. What matters is that the region changed at all.
+        self.assertNotEqual(
+            px[500, 510], (200, 30, 40),
+            "inside the mask must not be the untouched source",
+        )
+
+
+class HaloMustNotReachTheOutputTests(unittest.TestCase):
+    """The brush's dark halo is visualisation, not mask.
+
+    The brush strokes a dark ring around each dab so a selection is visible on a
+    white image. It lives in the same canvas as the mask, so without hard
+    thresholding it arrived as a partial mask value and was composited into the
+    result as a dark border around every fill. Users reported exactly that.
+    """
+
+    HALO = 60      # a plausible halo luma
+    CORE = 255
+
+    def _stroke_with_halo(self, size=(96, 96), core=30, halo=45):
+        m = Image.new("L", size, 0)
+        cx = cy = size[0] // 2
+        # core disc
+        for x in range(cx - core, cx + core):
+            for y in range(cy - core, cy + core):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= core ** 2:
+                    m.putpixel((x, y), self.CORE)
+        # halo ring
+        for x in range(cx - halo, cx + halo):
+            for y in range(cy - halo, cy + halo):
+                d2 = (x - cx) ** 2 + (y - cy) ** 2
+                if core ** 2 < d2 <= halo ** 2:
+                    m.putpixel((x, y), self.HALO)
+        return m
+
+    def test_the_halo_is_stripped_by_the_decoder(self):
+        decoded = _decode_mask(b64_png(self._stroke_with_halo()), (96, 96))
+        self.assertEqual(decoded.getpixel((48, 48)), 255, "core must still select")
+        # A point in the ring but well outside the core.
+        ring = decoded.getpixel((48 + 38, 48))
+        self.assertEqual(ring, 0, "the dark halo must not survive as a mask value")
+
+    def test_the_bounding_box_ignores_the_halo(self):
+        decoded = _decode_mask(b64_png(self._stroke_with_halo()), (96, 96))
+        box = mask_bounding_box(decoded)
+        self.assertIsNotNone(box)
+        cx = cy = 48
+        # The box should hug the core, not the halo.
+        self.assertLessEqual(box[2] - box[0], 2 * 31)
+
+    def test_a_halo_only_stroke_does_not_mask_anything(self):
+        """The failure mode if the threshold were ever lost: the whole ring becomes
+        part of the mask and the fill silently regenerates a ring-shaped region."""
+        m = Image.new("L", (64, 64), 0)
+        for x in range(8, 56):
+            for y in range(8, 56):
+                if not (20 < x < 44 and 20 < y < 44):
+                    m.putpixel((x, y), self.HALO)
+        decoded = _decode_mask(b64_png(m), (64, 64))
+        self.assertIsNone(
+            mask_bounding_box(decoded),
+            "a halo with no white core must not produce a fill region",
+        )
+
+
+class SeamTests(unittest.TestCase):
+    """A fill must not leave a visible rectangle where the region was replaced."""
+
+    def _scene(self, size=(160, 160)):
+        """A smooth background, so any seam shows up as a step in the gradient."""
+        img = Image.new("RGB", (size[0], size[1]))
+        px = img.load()
+        for y in range(size[1]):
+            for x in range(size[0]):
+                v = 60 + (x * 120) // size[0]
+                px[x, y] = (v, v, v)
+        return img
+
+    def _square_mask(self, size=(160, 160), box=(48, 48, 112, 112)):
+        return mask_image(size, box)
+
+    def test_seamless_composite_is_used(self):
+        original = self._scene()
+        generated = self._scene()
+        gp = generated.load()
+        for y in range(48, 112):                 # a distinctly different interior
+            for x in range(48, 112):
+                gp[x, y] = (240, 30, 30)
+        mask = self._square_mask()
+        out = fill._seamless_composite(original, generated, mask)
+        self.assertEqual(out.size, original.size)
+
+    def test_nothing_outside_the_mask_changes(self):
+        original = self._scene()
+        generated = self._scene()
+        gp = generated.load()
+        for y in range(48, 112):
+            for x in range(48, 112):
+                gp[x, y] = (240, 30, 30)
+        mask = self._square_mask()
+        out = fill._seamless_composite(original, generated, mask)
+        op, xp = original.load(), out.load()
+        for y in (0, 20, 47, 113, 140, 159):
+            for x in range(160):
+                self.assertEqual(xp[x, y], op[x, y], f"row {y} outside the mask changed")
+        for x in (0, 20, 47, 113, 140, 159):
+            for y in range(160):
+                self.assertEqual(xp[x, y], op[x, y], f"col {x} outside the mask changed")
+
+    def test_the_interior_actually_changed(self):
+        original = self._scene()
+        generated = self._scene()
+        gp = generated.load()
+        for y in range(48, 112):
+            for x in range(48, 112):
+                gp[x, y] = (240, 30, 30)
+        out = fill._seamless_composite(original, generated, self._square_mask())
+        self.assertNotEqual(out.load()[80, 80], original.load()[80, 80])
+
+    def test_poisson_blending_beats_a_hard_alpha_edge(self):
+        """The reason seamlessClone is used: measure the step at the boundary.
+
+        A feathered alpha composite leaves a colour step where the generated content
+        meets the preserved pixels. Poisson blending solves for a smooth transition,
+        so the largest single-pixel jump across the boundary should be much smaller.
+        """
+        original = self._scene()
+        generated = self._scene()
+        gp = generated.load()
+        for y in range(48, 112):
+            for x in range(48, 112):
+                gp[x, y] = (240, 30, 30)
+        mask = self._square_mask()
+
+        def max_step_horizontal(img):
+            px = img.load()
+            return max(
+                sum(abs(px[x + 1, y][c] - px[x, y][c]) for c in range(3))
+                for y in range(img.size[1])
+                for x in range(img.size[0] - 1)
+            )
+
+        alpha = fill.composite_fill(original, generated, mask, feather_px=12)
+        poisson = fill._seamless_composite(original, generated, mask)
+        self.assertLess(
+            max_step_horizontal(poisson),
+            max_step_horizontal(alpha),
+            "Poisson blending should show a smaller step at the boundary than an "
+            "alpha composite",
+        )
+
+
+class RenderFloorTests(unittest.TestCase):
+    """The engine rejects any dimension under 128 (generator._validate_dimensions).
+
+    A thin selection is the common case -- sunglasses are a band -- so this is not a
+    theoretical edge. Measured: a 54px-tall band over a 768px image rendered 507x81
+    and the whole fill failed with ValueError.
+    """
+
+    SHAPES = [
+        ("thin band", (768, 768), (215, 307, 553, 361)),
+        ("wide band", (512, 512), (120, 180, 392, 240)),
+        ("small blob", (768, 768), (360, 360, 400, 392)),
+        ("corner blob", (768, 768), (0, 0, 40, 32)),
+        ("portrait band", (512, 768), (100, 300, 400, 320)),
+        ("huge source", (3072, 3072), (1400, 1500, 1600, 1520)),
+    ]
+
+    @staticmethod
+    def _mask(size, box):
+        m = Image.new("L", size, 0)
+        ImageDraw.Draw(m).rounded_rectangle(list(box), radius=20, fill=255)
+        return m
+
+    def test_every_shape_clears_the_engine_floor(self):
+        for name, size, box in self.SHAPES:
+            with self.subTest(shape=name):
+                m = self._mask(size, box)
+                rw, rh = fill._render_plan(m, fill.mask_bounding_box(m))["render"]
+                self.assertGreaterEqual(rw, fill.MIN_RENDER_SIDE, f"{name}: width {rw}")
+                self.assertGreaterEqual(rh, fill.MIN_RENDER_SIDE, f"{name}: height {rh}")
+
+    def test_every_shape_stays_within_the_pixel_budget(self):
+        for name, size, box in self.SHAPES:
+            with self.subTest(shape=name):
+                m = self._mask(size, box)
+                rw, rh = fill._render_plan(m, fill.mask_bounding_box(m))["render"]
+                self.assertLessEqual(rw * rh, fill.FILL_RENDER_MAX_PIXELS, name)
+
+    def test_the_crop_never_cuts_the_mask(self):
+        for name, size, box in self.SHAPES:
+            with self.subTest(shape=name):
+                m = self._mask(size, box)
+                b = fill.mask_bounding_box(m)
+                c = fill._render_plan(m, b)["crop"]
+                self.assertLessEqual(c[0], b[0], f"{name}: crop cuts the mask")
+                self.assertLessEqual(c[1], b[1], f"{name}: crop cuts the mask")
+                self.assertGreaterEqual(c[2], b[2], f"{name}: crop cuts the mask")
+                self.assertGreaterEqual(c[3], b[3], f"{name}: crop cuts the mask")
+
+    def test_a_full_frame_fill_is_still_bounded(self):
+        w, h = 1536, 1536
+        m = Image.new("L", (w, h), 255)
+        rw, rh = fill._render_plan(m, (0, 0, w, h))["render"]
+        self.assertGreaterEqual(rw, fill.MIN_RENDER_SIDE)
+        self.assertGreaterEqual(rh, fill.MIN_RENDER_SIDE)
+        self.assertLessEqual(rw * rh, fill.FILL_RENDER_MAX_PIXELS)
+
+
+class ContextPaddingTests(unittest.TestCase):
+    """Padding is the adherence/context trade-off, and 0.6 leaked content.
+
+    At 0.6 the model was shown the selection plus 60% extra on every side, so a pair
+    of sunglasses painted across the eyes was drawn considerably wider than the
+    selection and the composite clipped it at the mask edge -- a hat ending in a
+    straight line, lenses cut off. Tighter crop = better adherence; Poisson blending
+    now compensates for the missing context at the seam.
+    """
+
+    def test_padding_is_tight_enough_for_the_model_to_obey_the_selection(self):
+        self.assertLessEqual(
+            fill.FILL_CONTEXT_PAD_RATIO, 0.35,
+            "a wide pad gives the model room to draw outside the selection, which the "
+            "composite then clips into a visible hard edge",
+        )
+
+    def test_padding_is_not_zero(self):
+        """Some context is still needed or the model has nothing to blend against."""
+        self.assertGreater(fill.FILL_CONTEXT_PAD_RATIO, 0.0)

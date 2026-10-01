@@ -233,6 +233,18 @@ cp "$SHELL_TMP" "$APP/Contents/MacOS/$APP_NAME"
 chmod +x "$APP/Contents/MacOS/$APP_NAME"
 
 # ---------------------------------------------------------------- plist
+say "installing app icon"
+# The app had no icon at all: there was no .icns anywhere in the bundle, so Finder and
+# the Dock showed a generic placeholder. packaging/icon/DiffusionBear.icns is the
+# checked-in source artwork; it is built with a squircle alpha (transparent corners),
+# a soft drop shadow and a restrained top gloss, which is the macOS Big Sur+ shape.
+[ -f "$REPO/packaging/icon/DiffusionBear.icns" ] || {
+  echo "missing packaging/icon/DiffusionBear.icns -- refusing to ship a generic icon" >&2
+  exit 1
+}
+cp "$REPO/packaging/icon/DiffusionBear.icns" "$APP/Contents/Resources/AppIcon.icns"
+echo "  AppIcon.icns installed"
+
 say "writing Info.plist"
 # No XML DOCTYPE: it is a legacy prolog that macOS does not need, and its
 # apple.com DTD URL trips test_outbound_hosts_are_allowlisted for no benefit.
@@ -243,6 +255,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key>                  <string>$APP_NAME</string>
   <key>CFBundleDisplayName</key>           <string>$APP_NAME</string>
   <key>CFBundleExecutable</key>            <string>$APP_NAME</string>
+  <key>CFBundleIconFile</key>              <string>AppIcon</string>
   <key>CFBundleIdentifier</key>            <string>$BUNDLE_ID</string>
   <key>CFBundlePackageType</key>           <string>APPL</string>
   <key>CFBundleShortVersionString</key>    <string>$VERSION</string>
@@ -409,4 +422,12 @@ du -sh "$APP/Contents/Resources/frontend"    | sed 's/^/  frontend   /'
 du -sh "$APP/Contents/MacOS/$APP_NAME"      | sed 's/^/  shell      /'
 echo
 echo "  models stay external: ~/Library/Application Support/DiffusionBear/data"
-echo "  install with: ditto $APP /Applications/"
+# NOT ditto. On this machine (APFS over USB, 35k files, ~39k extended-attribute
+# entries) `ditto $APP /Applications/` exits 0, copies nothing, and leaves no
+# destination at all -- a silent no-op that reads as success. It also MERGES into an
+# existing bundle instead of replacing it, which produced a hybrid with a broken seal
+# and a stale Info.plist. cp -R is reliable here, so say so and spell out the remove:
+# an in-place copy over a running install is how the stale hybrid happened.
+echo "  install with:"
+echo "    rm -rf /Applications/$APP_NAME.app"
+echo "    cp -R \"$APP\" /Applications/"

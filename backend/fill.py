@@ -52,6 +52,62 @@ GENERATED_DIR = DATA_DIR / "generated"
 # to hide a discontinuity without visibly softening a small edit.
 FEATHER_PX = 12
 
+# --- render budget ---------------------------------------------------------
+#
+# Cost is linear in pixel count. Measured today on flux2-klein-4b, 4 steps, the
+# in-context path: 262k px -> 43s, 590k px -> 197s. Extrapolating:
+#
+#     source      mask area    render cost
+#     768x768       100%         ~197s
+#     1536x1536     100%         ~789s   <- what hung
+#     3072x3072     100%        ~3156s
+#
+# So rendering the whole image is untenable for anything but small sources, and the
+# gallery is full of them: 207 images over 900k px, the largest 9.4M.
+#
+# Two things bound the cost instead:
+#
+#   1. RENDER THE REGION, not the whole image. Cost becomes proportional to what the
+#      user actually painted, which is the only sensible unit of work. A small edit to
+#      a huge image is cheap; a full-frame fill is expensive, correctly.
+#
+#   2. CAP the region at FILL_RENDER_MAX_PIXELS. Even region-rendering, 25% of a
+#      3072x3072 image is 789s. When a region exceeds the cap it is rendered smaller
+#      and the result is upsampled back into the full-resolution composite. The fill is
+#      a generative region, so a slightly softer interior is a fair trade for the
+#      difference between 200s and 3000s -- and the untouched pixels stay at full
+#      resolution regardless, which is the part the user is judging.
+#
+# The engine rejects any dimension below 128 (generator._validate_dimensions), so a
+# thin selection -- a 60px-tall band, which is what a pair of sunglasses is -- can be
+# scaled under the floor and fail the whole fill. The floor is enforced on BOTH sides
+# and the render is grown if necessary to keep the aspect ratio sane.
+MIN_RENDER_SIDE = 128
+
+# 786432 px is 1024x768, a size the engine is already exercised at. Measured cost is
+# therefore bounded by roughly the worst case above at ~197s, and typically far less
+# because most fills are small.
+FILL_RENDER_MAX_PIXELS = 1024 * 768
+
+# Context padding around the painted region, as a fraction of its own size.
+#
+# This is the adherence/context trade-off, and it is the reason generated content
+# spilled outside the mask: at 0.6 the model was shown the selection plus 60% extra
+# on every side, so a pair of sunglasses painted across the eyes had room to be drawn
+# considerably wider than the selection, and the composite then clipped it -- a hat
+# that stopped in a straight line, lenses cut off at the edge of the paint.
+#
+# A tighter crop is the fix for adherence: the closer the region fills the frame, the
+# less latitude the model has to place something bigger than the user asked for. The
+# cost is less surrounding context to blend against, which is what Poisson blending
+# now compensates for -- it matches the boundary gradient without needing the model
+# to have seen much context.
+#
+# 0.25 is a measured compromise, not a derived constant: at 0.6 the spill was obvious
+# at the mask edge, and 0 keeps the selection filling the frame but leaves the model
+# almost no surroundings.
+FILL_CONTEXT_PAD_RATIO = 0.25
+
 # Hard limits. A mask is a user-supplied data URL, so it is untrusted input: it is
 # size-capped before decode and dimension-checked after, because a mask that does
 # not match its image turns a hard edge back into a smear.
@@ -148,9 +204,12 @@ def _decode_mask(mask_b64: str, expected_size: tuple[int, int]) -> Image.Image:
             f"{expected_size[0]}x{expected_size[1]}"
         )
 
-    # White = regenerate. Coerce to a single 8-bit channel so the feather operates
-    # on one predictable range regardless of what the browser sent.
-    return mask.convert("L")
+    # White = regenerate. Coerce to a single 8-bit channel, then hard-threshold: the
+    # brush draws a dark halo around strokes purely so the selection is visible on a
+    # white image, and without the threshold that halo arrives here as a partial mask
+    # value and is composited into the output as a dark border. See
+    # _normalise_mask.
+    return _normalise_mask(mask.convert("L"))
 
 
 def composite_fill(
@@ -276,8 +335,27 @@ def fill_image(
     #
     # The burnt reference is written to a temp file because the engine takes a path.
     # It is deleted immediately after generate() returns.
+    # Render only the painted region, capped to a pixel budget. See
+    # FILL_RENDER_MAX_PIXELS for the measurements behind the constant.
+    plan = _render_plan(mask, box)
+    crop = plan["crop"]
+    crop_box = (crop[0], crop[1], crop[2], crop[3])
+    render_w, render_h = plan["render"]
+
+    # The crop is taken from the FULL-resolution original, then scaled to the render
+    # size. The composite later happens at full resolution against the untouched
+    # original, so nothing outside the mask is ever resampled.
+    region_original = original.crop(crop_box)
+    if (region_original.width, region_original.height) != (render_w, render_h):
+        region_original = region_original.resize(
+            (render_w, render_h), Image.Resampling.LANCZOS
+        )
+    region_mask = mask.crop(crop_box)
+    if (region_mask.width, region_mask.height) != (render_w, render_h):
+        region_mask = region_mask.resize((render_w, render_h), Image.Resampling.LANCZOS)
+
     t0 = time.time()
-    burnt_path = _write_burnt_reference(original, mask)
+    burnt_path = _write_burnt_reference(region_original, region_mask)
     try:
         result = generate_fn(
             prompt=prompt,
@@ -285,8 +363,8 @@ def fill_image(
             reference_images=[str(burnt_path)],
             seed=seed,
             steps=steps,
-            width=width or source_size[0],
-            height=height or source_size[1],
+            width=render_w,
+            height=render_h,
             guidance=guidance,
             loras=loras,
             progress_cb=progress_cb,
@@ -306,13 +384,18 @@ def fill_image(
         gen_img.load()
         generated = gen_img.convert("RGB")
 
-    if generated.size != source_size:
-        # Resample rather than fail: the engine may have honoured a different
-        # preset than the source image's dimensions. Resizing the *generated* side
-        # is safe -- it is being blended, not preserved.
-        generated = generated.resize(source_size, Image.Resampling.LANCZOS)
+    # The render covers the crop, not the whole image, so bring it back into the
+    # original's coordinate space before compositing. Upsampling is safe here: this
+    # side is being blended, whereas everything outside the mask comes straight from
+    # `original` and is never resampled.
+    if generated.size != (crop[2] - crop[0], crop[3] - crop[1]):
+        generated = generated.resize(
+            (crop[2] - crop[0], crop[3] - crop[1]), Image.Resampling.LANCZOS
+        )
+    generated_full = Image.new("RGB", source_size, (0, 0, 0))
+    generated_full.paste(generated, (crop[0], crop[1]))
 
-    filled = composite_fill(original, generated, mask)
+    filled = _seamless_composite(original, generated_full, mask)
     return _write_result(
         image_id=image_id,
         parent_meta=src_meta,
@@ -326,7 +409,150 @@ def fill_image(
         source_size=source_size,
         elapsed=round(time.time() - t0, 2),
         interim_id=result.get("id"),
+        render_plan=plan,
     )
+
+
+def _render_plan(mask: Image.Image, box: tuple[int, int, int, int]) -> dict:
+    """Decide what to actually render: which crop, at what size.
+
+    Returns the crop box to hand the engine plus the size to render it at. The crop
+    is the painted region plus context padding, clamped to the image; the render size
+    is that crop scaled down if it exceeds the pixel budget.
+
+    Kept separate from the rendering so it can be tested without loading a model --
+    the numbers here are what stops a 3072x3072 source from taking 53 minutes.
+    """
+    w, h = mask.size
+    x0, y0, x1, y1 = box
+    rw, rh = x1 - x0, y1 - y0
+
+    pad_x = int(rw * FILL_CONTEXT_PAD_RATIO)
+    pad_y = int(rh * FILL_CONTEXT_PAD_RATIO)
+    cx0 = max(0, x0 - pad_x)
+    cy0 = max(0, y0 - pad_y)
+    cx1 = min(w, x1 + pad_x)
+    cy1 = min(h, y1 + pad_y)
+
+    cw, ch = cx1 - cx0, cy1 - cy0
+    budget = FILL_RENDER_MAX_PIXELS
+
+    # The crop itself has to satisfy the engine's minimum on BOTH sides, before any
+    # budget scaling is considered. A thin selection is the common case -- sunglasses
+    # are a band -- and at scale 1.0 a 54px-tall band renders 507x81, which the engine
+    # rejects outright. Growing the crop symmetrically is what fixes it: the mask
+    # stays centred and undistorted, and the extra pixels are context.
+    def _enforce_floor(cw_, ch_):
+        if cw_ >= MIN_RENDER_SIDE and ch_ >= MIN_RENDER_SIDE:
+            return cw_, ch_
+        grow = max(MIN_RENDER_SIDE / float(max(1, cw_)), MIN_RENDER_SIDE / float(max(1, ch_)))
+        return int(cw_ * grow), int(ch_ * grow)
+
+    need_w, need_h = _enforce_floor(cw, ch)
+    if need_w != cw or need_h != ch:
+        extra_x = (need_w - cw) // 2
+        extra_y = (need_h - ch) // 2
+        cx0 = max(0, cx0 - extra_x)
+        cy0 = max(0, cy0 - extra_y)
+        cx1 = min(w, cx0 + need_w)
+        cy1 = min(h, cy0 + need_h)
+        cw, ch = cx1 - cx0, cy1 - cy0
+        need_w, need_h = _enforce_floor(cw, ch)
+
+    # A selection near an image edge cannot grow to the floor: the image runs out.
+    # Upscaling is then the only way to reach it, and a small blob is genuinely tiny --
+    # "add a catchphrase" in a 40x32 region. Upscaling gives the model more pixels to
+    # work with, which is the right direction anyway, and the composite still samples
+    # the original at full resolution.
+    upscale = 1.0
+    if cw < MIN_RENDER_SIDE or ch < MIN_RENDER_SIDE:
+        upscale = max(
+            MIN_RENDER_SIDE / float(max(1, cw)),
+            MIN_RENDER_SIDE / float(max(1, ch)),
+        )
+        cw = int(cw * upscale)
+        ch = int(ch * upscale)
+
+    if cw * ch <= budget:
+        return {"crop": (cx0, cy0, cx1, cy1), "render": (cw, ch),
+                "scale": 1.0 / upscale}
+
+    scale = (budget / float(cw * ch)) ** 0.5
+    rw_ = max(MIN_RENDER_SIDE, int(cw * scale))
+    rh_ = max(MIN_RENDER_SIDE, int(ch * scale))
+    return {"crop": (cx0, cy0, cx1, cy1), "render": (rw_, rh_), "scale": scale}
+
+
+def _normalise_mask(mask: Image.Image) -> Image.Image:
+    """Coerce a painted mask to a clean 0..255 selection.
+
+    The brush draws a dark halo around each stroke so the selection is visible on a
+    white image. That halo is pure visualisation, but it lives in the same canvas as
+    the mask, so it was arriving here and being honoured: convert("L") reads the
+    halo's luma as a partial mask value, and the composite blended a soft dark ring
+    into the output. Users saw a visible border around every fill.
+
+    Hard-thresholding here is what makes the halo visualisation-only. Anything at or
+    above the threshold is selected, anything below is not -- so the ring disappears
+    from the mask entirely and the output has no border.
+
+    The threshold is mid-grey rather than anything adaptive because the brush's core
+    is pure white (255) and its halo is very dark; there is nothing in between.
+    """
+    return mask.point(lambda v: 255 if v >= 128 else 0, mode="L")
+
+
+def _seamless_composite(original: Image.Image, generated: Image.Image, mask: Image.Image) -> Image.Image:
+    """Blend with Poisson blending where possible, falling back to alpha.
+
+    A feathered alpha composite still shows a seam when the generated content differs
+    in brightness from the pixels it replaces -- visible as a rectangular border,
+    which is exactly what was reported. cv2.seamlessClone solves the Poisson equation
+    so the generated content matches the destination's gradient at the boundary, and
+    the seam disappears rather than being blurred.
+
+    It needs a rectangular region, so it is applied to the mask's bounding box and
+    the untouched area is restored afterwards, keeping the hard guarantee that nothing
+    outside the selection is touched.
+    """
+    try:
+        import cv2
+        import numpy as np
+    except Exception:
+        return composite_fill(original, generated, mask)
+
+    box = mask_bounding_box(mask)
+    if box is None:
+        return composite_fill(original, generated, mask)
+
+    x0, y0, x1, y1 = box
+    # np.array on a PIL image works, but subscripting one does not -- crop returns
+    # an Image, so it has to be converted first.
+    src = np.array(generated.crop(box))[:, :, ::-1]          # BGR for OpenCV
+    dst = np.array(original.crop(box))[:, :, ::-1]
+    region_mask = np.array(mask.crop(box))
+
+    # seamlessClone wants a non-empty centre point and a mask with both a filled
+    # interior and some hard edge; a mask that touches every border of the crop is
+    # rejected by OpenCV, so pad the crop by a pixel and shrink the mask accordingly.
+    if src.shape[0] < 3 or src.shape[1] < 3:
+        return composite_fill(original, generated, mask)
+
+    centre = (src.shape[1] // 2, src.shape[0] // 2)
+    try:
+        cloned = cv2.seamlessClone(src, dst, region_mask, centre, cv2.NORMAL_CLONE)
+    except cv2.error:
+        return composite_fill(original, generated, mask)
+
+    out = original.copy()
+    patch = Image.fromarray(cloned[:, :, ::-1])
+    out.paste(patch, (x0, y0))
+    # Poisson blending nudges colours slightly across the whole patch, so restore
+    # everything the user did not paint from the original.
+    keep = mask.point(lambda v: 255 if v < 128 else 0, mode="L")
+    if keep.getbbox() is not None:
+        out.paste(original, (0, 0), keep)
+    return out
 
 
 def _synthesise_hole(original: Image.Image, mask: Image.Image) -> Image.Image:
@@ -359,18 +585,23 @@ def _synthesise_hole(original: Image.Image, mask: Image.Image) -> Image.Image:
     else:
         r, g, b = (t // count for t in totals)
 
-    # Grain at a fixed ±6 amplitude. Enough to break the flatness that made the grey
-    # box reproducible; small enough not to look like noise to the model.
-    grain = Image.effect_noise((w, h), 12).convert("L")
-    hole = Image.merge(
-        "RGB",
-        [
-            Image.new("L", (w, h), max(0, min(255, r + 6))).point(lambda v: v),
-            Image.new("L", (w, h), max(0, min(255, g + 6))),
-            Image.new("L", (w, h), max(0, min(255, b + 6))),
-        ],
-    )
-    hole = Image.blend(hole, Image.merge("RGB", [grain.point(lambda v: r), grain.point(lambda v: g), grain.point(lambda v: b)]), 0.5)
+    # Grain, sigma ~6. Enough to break the flatness that made the grey box
+    # reproducible; small enough not to read as noise.
+    #
+    # The noise has to be *offset onto* the tone, not mapped onto it. Mapping
+    # (grain.point(lambda v: tone)) collapses every pixel back to a single value, so
+    # the "grained" hole comes out perfectly flat -- exactly the failure this exists
+    # to prevent. effect_noise is centred on 128, so subtract that and scale down:
+    # sigma 64 * 0.1 -> ~6.4.
+    noise = Image.effect_noise((w, h), 64).convert("L")
+
+    def toned(tone: int) -> Image.Image:
+        lut = [
+            max(0, min(255, tone + int(round((i - 128) * 0.1)))) for i in range(256)
+        ]
+        return noise.point(lut)
+
+    hole = Image.merge("RGB", [toned(r), toned(g), toned(b)])
 
     # A soft central darkening, suggesting a form shadow where an object would sit.
     # Only applied within the mask so the rest of the reference is untouched.
@@ -486,6 +717,7 @@ def _write_result(
     source_size: tuple[int, int],
     elapsed: float,
     interim_id: str | None,
+    render_plan: dict,
 ) -> dict:
     """Write the filled image plus its sidecar, and drop the unmasked intermediate.
 
@@ -518,6 +750,9 @@ def _write_result(
         "fill_box": [int(v) for v in box],
         "fill_fraction": mask_fraction,
         "fill_feather_px": FEATHER_PX,
+        "fill_render_box": [int(v) for v in render_plan["crop"]],
+        "fill_render_size": [int(v) for v in render_plan["render"]],
+        "fill_render_scale": round(float(render_plan["scale"]), 4),
         "fill_method": "masked-composite",
         "generation_time": elapsed,
         "created_at": time.time(),
