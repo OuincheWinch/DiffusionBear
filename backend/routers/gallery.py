@@ -490,7 +490,14 @@ def fill(image_id: str, req: FillRequest):
     fill_mod.register_fill(token, cancel_event)
     try:
         with fill_mod._FILL_SLOT:
-            def on_step(t, _total=req.steps):
+            # A fill's step count comes from the ENGINE's default when the caller
+            # omitted `steps` (4 for FLUX.2-klein), so req.steps is None here. The
+            # readout showed "Denoising step 2/?" and eta_seconds was dead, because
+            # there was no total to divide by. Resolve it once, the same way the
+            # text-to-image worker does, so the progress bar and ETA are real.
+            total_steps = fill_mod.effective_steps(req.model, req.steps)
+
+            def on_step(t, _total=total_steps):
                 done = t + 1
                 elapsed = time.monotonic() - started
                 eta = elapsed / done * (_total - done) if done and _total else None

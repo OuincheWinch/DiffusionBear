@@ -482,3 +482,111 @@ class FillProgressRouteTests(unittest.TestCase):
             json={"mask": mask_data_url(), "prompt": "x", "token": "bad token!"},
         )
         self.assertEqual(r.status_code, 422, r.text)
+
+
+class FillProgressShapeTests(unittest.TestCase):
+    """The progress payload must carry everything the UI needs to render a bar.
+
+    Found by running it for real: the readout said "Denoising step 2/?" and the ETA was
+    absent, because the fill's request omits `steps` (the engine's own default applies)
+    and the route divided by req.steps -- which is None.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self._saved = (fill.GENERATED_DIR, fill.DATA_DIR)
+        fill.GENERATED_DIR = self.root
+        fill.DATA_DIR = self.root
+        import state
+        self._saved_state_gen = state.GENERATED_DIR
+        state.GENERATED_DIR = self.root
+        self._saved_router_gen = gallery_router.GENERATED_DIR
+        gallery_router.GENERATED_DIR = self.root
+
+        self.image_id = "c" * 32
+        Image.new("RGB", (32, 32), (200, 30, 40)).save(self.root / f"{self.image_id}.png")
+        (self.root / f"{self.image_id}.json").write_text(
+            '{"id": "%s", "format": "png", "width": 32, "height": 32}' % self.image_id,
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        import state
+        state.GENERATED_DIR = self._saved_state_gen
+        gallery_router.GENERATED_DIR = self._saved_router_gen
+        fill.GENERATED_DIR, fill.DATA_DIR = self._saved
+        self.tmp.cleanup()
+
+    def test_effective_steps_falls_back_to_the_model_default(self):
+        # omitted by the caller, as the UI does
+        self.assertEqual(fill.effective_steps("flux2-klein-4b", None), 4)
+        # explicit wins
+        self.assertEqual(fill.effective_steps("flux2-klein-4b", 12), 12)
+        # never returns None: the ETA divides by this
+        self.assertIsNotNone(fill.effective_steps("no-such-model", None))
+
+    def test_progress_reports_a_real_step_total_and_eta(self):
+        """Drives the route's own on_step, so this fails if req.steps is used again."""
+        seen = []
+
+        def gen(**kwargs):
+            cb = kwargs.get("progress_cb")
+            if cb:
+                cb(0)
+                cb(1)
+                cb(2)
+                cb(3)
+            new_id = "d" * 32
+            Image.new("RGB", (32, 32), (10, 220, 90)).save(self.root / f"{new_id}.png")
+            (self.root / f"{new_id}.json").write_text('{"id": "%s"}' % new_id, encoding="utf-8")
+            return {"id": new_id, "format": "png", "seed": 7, "steps": 4}
+
+        import generator
+
+        def run():
+            from fastapi import FastAPI
+
+            app = FastAPI()
+            app.include_router(gallery_router.router)
+            client = TestClient(app)
+            r = client.post(
+                f"/api/images/{self.image_id}/fill",
+                json={"mask": mask_data_url(), "prompt": "add a hat",
+                      "token": "shapetoken1234"},
+            )
+            self.assertEqual(r.status_code, 200, r.text)
+
+        import threading
+
+        original = generator.generate
+        generator.generate = gen
+        self.addCleanup(setattr, generator, "generate", original)
+        self.addCleanup(gallery_router._FILL_PROGRESS.clear)
+
+        # Capture what on_step published by wrapping the dict the route writes to.
+        published = []
+        original_put = gallery_router._fill_progress_put
+
+        def spy(token, value):
+            published.append(dict(value))
+            return original_put(token, value)
+
+        gallery_router._fill_progress_put = spy
+        self.addCleanup(setattr, gallery_router, "_fill_progress_put", original_put)
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        thread.join(timeout=20)
+
+        steps = [p for p in published if "step" in p]
+        self.assertTrue(steps, "on_step never published a step update")
+        for record in steps:
+            self.assertIsInstance(record.get("steps"), int,
+                                  "steps must be a number for the progress bar")
+            self.assertNotIn("?", record.get("phase_detail", ""),
+                             "phase_detail must not show an unknown total")
+        self.assertEqual(steps[-1]["step"], 4)
+        self.assertEqual(steps[-1]["steps"], 4)
+        self.assertIsNotNone(steps[-1].get("eta_seconds"))
+        self.assertEqual(steps[-1]["eta_seconds"], 0.0)

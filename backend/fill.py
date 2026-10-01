@@ -274,6 +274,24 @@ class FillCancelled(Exception):
     """
 
 
+def effective_steps(model: str, steps: int | None) -> int:
+    """The step count a fill will actually run.
+
+    `steps=None` means the caller omitted it, leaving the choice to the model
+    registry -- 4 for FLUX.2-klein. The progress readout needs the total up front to
+    show a bar and an ETA, and computing it from the request alone gives None, which
+    rendered as "Denoising step 2/?" and no ETA at all.
+    """
+    if steps is not None:
+        return int(steps)
+    try:
+        import generator
+        minfo = generator.get_model_info(model) or {}
+    except Exception:
+        minfo = {}
+    return int(minfo.get("default_steps") or 4)
+
+
 def generator_cancelled_errors():
     """The engine's cancellation exception, or a placeholder that never matches.
 
