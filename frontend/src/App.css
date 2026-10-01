@@ -4461,3 +4461,37 @@ body.native-shell * {
     transition: none;
   }
 }
+
+/* Keep-ratio toggle inside the Custom size row. */
+.size-lock-btn.active {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.size-lock-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* The LoRA panel is its own disclosure: it is large (registry chips, hub, import
+   form) and only relevant when tuning style, so it must not compete with the
+   primary path. Opens itself when a LoRA is already active. */
+.lora-disclosure .lora-disclosure-body {
+  padding-top: 0.4rem;
+}
+
+.lora-disclosure-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+}

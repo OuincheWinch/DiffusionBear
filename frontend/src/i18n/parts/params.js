@@ -54,6 +54,30 @@ export const paramsStrings = {
       de: "Abmessungen werden auf das nächste Vielfache von 16 gerundet, mindestens 256.",
       it: "Le dimensioni sono arrotondate al multiplo più vicino di 16, minimo 256.",
     },
+    "params.size.lockRatio": {
+      fr: "Conserver le ratio",
+      en: "Keep ratio",
+      de: "Seitenverhältnis halten",
+      it: "Mantieni proporzione",
+    },
+    "params.size.lockRatioTitle": {
+      fr: "Modifier une dimension ajuste l’autre pour conserver les proportions",
+      en: "Editing one side adjusts the other to preserve the proportions",
+      de: "Das Ändern einer Seite passt die andere an, um das Verhältnis zu erhalten",
+      it: "Modificare un lato adatta l’altro per mantenere le proporzioni",
+    },
+    "params.size.unlockRatioTitle": {
+      fr: "Les deux dimensions sont indépendantes",
+      en: "Both dimensions are independent",
+      de: "Beide Abmessungen sind unabhängig",
+      it: "Entrambe le dimensioni sono indipendenti",
+    },
+    "params.size.lockRatioHint": {
+      fr: "Le ratio est conservé. Décochez pour saisir les deux dimensions librement.",
+      en: "Ratio locked. Uncheck to edit both dimensions freely.",
+      de: "Seitenverhältnis gesperrt. Ausschalten, um beide Abmessungen frei zu ändern.",
+      it: "Proporzione bloccata. Deseleziona per modificare entrambe liberamente.",
+    },
     "params.advanced.label": {
       fr: "Réglages avancés",
       en: "Advanced Settings",

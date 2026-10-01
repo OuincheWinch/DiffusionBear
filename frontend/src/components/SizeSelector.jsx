@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../i18n/I18nContext";
 
 /**
@@ -24,10 +24,14 @@ const BASES = [256, 512, 768, 1024];
 
 const RATIOS = [
   { id: "1:1", w: 1, h: 1 },
-  { id: "16:9", w: 16, h: 9 },
+  { id: "4:3", w: 4, h: 3 },
   { id: "3:2", w: 3, h: 2 },
-  { id: "9:16", w: 9, h: 16 },
+  { id: "16:9", w: 16, h: 9 },
+  { id: "21:9", w: 21, h: 9 },
+  { id: "3:4", w: 3, h: 4 },
   { id: "2:3", w: 2, h: 3 },
+  { id: "9:16", w: 9, h: 16 },
+  { id: "9:21", w: 9, h: 21 },
 ];
 
 const MULTIPLE = 16;
@@ -110,7 +114,12 @@ function derive(width, height) {
  */
 function fitToBudget(width, height, maxPixels) {
   const cap = Number(maxPixels);
-  if (!Number.isFinite(cap) || cap <= 0) return { width, height };
+  // maxPixels arrives as null for any model without a pixel cap, and Number(null)
+  // is 0 -- finite, and below every real size. Treating that as a budget produced a
+  // permanent red "Over 0 px -- generation may fail" under a perfectly normal size.
+  if (maxPixels == null || maxPixels === "" || !Number.isFinite(cap) || cap <= 0) {
+    return { width, height };
+  }
   if (width * height <= cap) return { width, height };
   const scale = Math.sqrt(cap / (width * height));
   return { width: snap(width * scale), height: snap(height * scale) };
@@ -129,6 +138,12 @@ export default function SizeSelector({
   // The derived grid position, kept in step with externally-driven width/height.
   const derived = useMemo(() => derive(width, height), [width, height]);
   const [mode, setMode] = useState("standard");
+  // Dimensions we just wrote ourselves. Without this, typing a width in Custom mode
+  // fires the sync effect below, which re-derives base+ratio from the new pair and
+  // throws the user back out of Custom -- the control fought the person using it.
+  const selfWriteRef = useRef(null);
+  // Keep-ratio: when on, editing one side derives the other from the current shape.
+  const [lockRatio, setLockRatio] = useState(false);
   const [base, setBase] = useState(derived ? derived.base : 1024);
   const [ratioId, setRatioId] = useState(derived ? derived.ratioId : "1:1");
 
@@ -136,6 +151,11 @@ export default function SizeSelector({
   // switch, reuse params). Without this the buttons would keep showing the old
   // selection while the model had quietly changed the dimensions underneath.
   useEffect(() => {
+    const key = `${width}x${height}`;
+    if (selfWriteRef.current === key) {
+      selfWriteRef.current = null;
+      return;
+    }
     const d = derive(width, height);
     if (d) {
       setBase(d.base);
@@ -153,8 +173,39 @@ export default function SizeSelector({
     const target = RATIOS.find((r) => r.id === nextRatioId) ?? RATIOS[0];
     const raw = dimensionsFor(nextBase, target);
     const d = fitToBudget(raw.width, raw.height, maxPixels);
+    if (d.width !== width || d.height !== height) selfWriteRef.current = `${d.width}x${d.height}`;
     setWidth(d.width);
     setHeight(d.height);
+  }
+
+  /**
+   * One side changed in Custom mode.
+   *
+   * With the ratio locked the other side follows, preserving the shape the user is
+   * looking at. Either way the pair is marked as self-written so the effect that
+   * re-derives base+ratio does not interpret a keystroke as an external size change
+   * and bounce the control back to the grid.
+   */
+  function setSide(side, raw) {
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value <= 0) return;
+    const next = snap(value);
+    let w = side === "width" ? next : Number(width);
+    let h = side === "height" ? next : Number(height);
+    if (lockRatio) {
+      const other = side === "width" ? Number(height) : Number(width);
+      if (other > 0) {
+        const scaled = side === "width"
+          ? (next * other) / Number(width)
+          : (next * Number(width)) / Number(height);
+        if (side === "width") h = snap(scaled);
+        else w = snap(scaled);
+      }
+    }
+    if (w === Number(width) && h === Number(height)) return;
+    selfWriteRef.current = `${w}x${h}`;
+    setWidth(w);
+    setHeight(h);
   }
 
   function selectBase(next) {
@@ -168,8 +219,10 @@ export default function SizeSelector({
   }
 
   const preview = fitToBudget(width, height, maxPixels);
-  const overBudget =
-    Number.isFinite(Number(maxPixels)) && Number(width) * Number(height) > Number(maxPixels);
+  const budget =
+    maxPixels == null || maxPixels === "" ? null : Number(maxPixels);
+  const hasBudget = Number.isFinite(budget) && budget > 0;
+  const overBudget = hasBudget && Number(width) * Number(height) > budget;
 
   return (
     <div className="size-selector">
@@ -203,7 +256,6 @@ export default function SizeSelector({
           {t("params.size.customShort")}
         </button>
       </div>
-
       {mode === "standard" ? (
         <div className="size-ratio-row" role="group" aria-label={t("params.size.ratioLabel")}>
           {RATIOS.map((r) => (
@@ -225,50 +277,60 @@ export default function SizeSelector({
           ))}
         </div>
       ) : (
-        <div className="size-custom-row">
-          <label className="size-custom-field">
-            <span>{t("params.size.widthLabel")}</span>
-            <input
-              type="number"
-              min={FLOOR}
-              step={MULTIPLE}
-              value={width}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (Number.isFinite(v) && v > 0) setWidth(snap(v));
+        <>
+          <div className="size-custom-row">
+            <label className="size-custom-field">
+              <span>{t("params.size.widthLabel")}</span>
+              <input
+                type="number"
+                min={FLOOR}
+                step={MULTIPLE}
+                value={width}
+                onChange={(e) => setSide("width", e.target.value)}
+              />
+            </label>
+            <label className="size-custom-field">
+              <span>{t("params.size.heightLabel")}</span>
+              <input
+                type="number"
+                min={FLOOR}
+                step={MULTIPLE}
+                value={height}
+                onChange={(e) => setSide("height", e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className={`btn-mini size-lock-btn${lockRatio ? " active" : ""}`}
+              aria-pressed={lockRatio}
+              onClick={() => setLockRatio((v) => !v)}
+              title={lockRatio ? t("params.size.unlockRatioTitle") : t("params.size.lockRatioTitle")}
+            >
+              {t("params.size.lockRatio")}
+            </button>
+            <button
+              type="button"
+              className="btn-mini"
+              onClick={() => {
+                setMode("standard");
+                apply(base, ratioId);
               }}
-            />
-          </label>
-          <label className="size-custom-field">
-            <span>{t("params.size.heightLabel")}</span>
-            <input
-              type="number"
-              min={FLOOR}
-              step={MULTIPLE}
-              value={height}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (Number.isFinite(v) && v > 0) setHeight(snap(v));
-              }}
-            />
-          </label>
-          <button
-            type="button"
-            className="btn-mini"
-            onClick={() => {
-              setMode("standard");
-              apply(base, ratioId);
-            }}
-            title={t("params.size.backToGridTitle")}
-          >
-            {t("params.size.backToGrid")}
-          </button>
-        </div>
+              title={t("params.size.backToGridTitle")}
+            >
+              {t("params.size.backToGrid")}
+            </button>
+          </div>
+          {lockRatio && (
+            <p className="size-lock-hint" role="status">
+              {t("params.size.lockRatioHint")}
+            </p>
+          )}
+        </>
       )}
 
       {overBudget && (
         <p className="size-budget-warning" role="status">
-          {t("params.size.budgetWarning", { max: Number(maxPixels) })}
+          {t("params.size.budgetWarning", { max: budget })}
         </p>
       )}
 

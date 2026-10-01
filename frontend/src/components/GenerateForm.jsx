@@ -1201,6 +1201,18 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
             setMaxPixels={setMaxPixels}
           />
       {modelInfo.supports_loras && modelInfo.lora_format ? (
+        <details
+          className={`advanced-settings lora-disclosure${loras.length ? " has-active" : ""}`}
+          open={loras.length > 0}
+        >
+          <summary className="advanced-settings-summary">
+            <span className="advanced-settings-chevron" aria-hidden="true" />
+            {t("lora.disclosureLabel")}
+            {loras.length > 0 && (
+              <span className="lora-disclosure-count">{loras.length}</span>
+            )}
+          </summary>
+          <div className="advanced-settings-body lora-disclosure-body">
         <LoraManagerDrawer
           loras={loras}
           setLoras={setLoras}
@@ -1257,6 +1269,8 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
             </p>
           </details>
         </LoraManagerDrawer>
+          </div>
+        </details>
       ) : (
         <p className="hint">{t("generate.lora.unavailableHint", { model: modelInfo.label })}</p>
       )}

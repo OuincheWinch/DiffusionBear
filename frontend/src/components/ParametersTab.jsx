@@ -10,6 +10,7 @@ import StorageSection from "./settings/StorageSection";
 import EnhancerSystemSection from "./settings/EnhancerSystemSection";
 import LanguageSection from "./settings/LanguageSection";
 import { useI18n } from "../i18n/I18nContext";
+import LicencesTab from "./LicencesTab";
 import { useSettings } from "../hooks/useSettings";
 
 export default function ParametersTab({ onNavigate }) {
@@ -78,9 +79,20 @@ export default function ParametersTab({ onNavigate }) {
         >
           🧠 {t("settings.tab.enhancer")}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={subtab === "licences"}
+          className={`params-subtab${subtab === "licences" ? " active" : ""}`}
+          onClick={() => setSubtab("licences")}
+        >
+          ⚖ {t("licences.title")}
+        </button>
       </div>
 
-      {subtab === "enhancer" ? (
+      {subtab === "licences" ? (
+        <LicencesTab />
+      ) : subtab === "enhancer" ? (
         <section className="params-section">
           <h3>{t("settings.tab.enhancerTitle")}</h3>
           <p className="params-section-desc">{t("settings.tab.enhancerDesc")}</p>

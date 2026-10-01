@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import GenerateForm from "./components/GenerateForm";
 import Gallery from "./components/Gallery";
 import ParametersTab from "./components/ParametersTab";
-import LicencesTab from "./components/LicencesTab";
 import { useI18n } from "./i18n/I18nContext";
 import { APP_TITLE, APP_VERSION_LABEL } from "./version";
 import logo from "./assets/logo.png";
@@ -60,12 +59,6 @@ export default function App() {
           >
             {t("app.navParams")}
           </button>
-          <button
-            className={tab === "licences" ? "active" : ""}
-            onClick={() => setTab("licences")}
-          >
-            ⚖ {t("licences.title")}
-          </button>
         </nav>
       </header>
 
@@ -92,9 +85,6 @@ export default function App() {
         </div>
         <div style={{ display: tab === "params" ? "block" : "none" }}>
           <ParametersTab onNavigate={setTab} />
-        </div>
-        <div style={{ display: tab === "licences" ? "block" : "none" }}>
-          <LicencesTab />
         </div>
       </main>
     </div>

@@ -44,6 +44,15 @@ export const loraStrings = {
     it: "Eliminazione non riuscita: {message}",
   },
 
+  // GenerateForm.jsx: the LoRA panel is its own disclosure, so this is the label on
+  // the collapsed summary rather than the fieldset legend inside it.
+  "lora.disclosureLabel": {
+    fr: "LoRAs",
+    en: "LoRAs",
+    de: "LoRAs",
+    it: "LoRA",
+  },
+
   "lora.activeLegend": {
     fr: "LoRAs actives ({count}/16 max)",
     en: "Active LoRAs ({count}/16 max)",

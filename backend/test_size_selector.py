@@ -198,3 +198,86 @@ class SizeSelectorStructureTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class CustomModeTests(unittest.TestCase):
+    """Custom mode must survive the user typing in it.
+
+    The reported symptom was "custom size is bugged". The cause was the sync effect:
+    it re-derives base+ratio from width/height on every change, and a size the user
+    typed that happened to land on the grid was read as an EXTERNAL change, which
+    switched the control back to standard mode mid-keystroke. The user was fighting
+    the control.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        raw = COMPONENT.read_text(encoding="utf-8")
+        cls.code = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
+        cls.code = re.sub(r"//[^\n]*", "", cls.code)
+
+    def test_our_own_writes_are_not_mistaken_for_external_changes(self):
+        self.assertIn("selfWriteRef", self.code)
+        self.assertRegex(
+            self.code,
+            r"if \(selfWriteRef\.current === key\)",
+            "the sync effect must skip dimensions this component just wrote",
+        )
+
+    def test_every_write_path_is_marked(self):
+        """Both the ratio/base buttons and the Custom inputs must mark their write."""
+        self.assertGreaterEqual(
+            self.code.count("selfWriteRef.current ="),
+            2,
+            "both apply() and the custom-field setter must mark their own write",
+        )
+
+    def test_custom_mode_has_a_keep_ratio_control(self):
+        self.assertIn("lockRatio", self.code)
+        self.assertIn("params.size.lockRatio", self.code)
+
+    def test_keep_ratio_derives_the_other_side(self):
+        self.assertRegex(
+            self.code,
+            r"if \(lockRatio\)",
+            "with the ratio locked, editing one side must derive the other",
+        )
+
+    def test_the_budget_warning_ignores_an_absent_cap(self):
+        """Number(null) is 0, which is finite and below every real size, so a model
+        with no pixel cap rendered a permanent red "Over 0 px" warning."""
+        self.assertRegex(
+            self.code,
+            r"maxPixels == null",
+            "an absent pixel cap must not be treated as a budget of zero",
+        )
+        self.assertIn("hasBudget", self.code)
+
+    def test_the_four_new_ratios_are_present(self):
+        for ratio in ("4:3", "3:4", "21:9", "9:21"):
+            with self.subTest(ratio=ratio):
+                self.assertRegex(self.code, rf'id: "{re.escape(ratio)}"')
+
+
+class StructureRegressionsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        root = Path(__file__).resolve().parents[1] / "frontend" / "src"
+        cls.form = re.sub(r"//[^\n]*", "", (root / "components" / "GenerateForm.jsx").read_text())
+        cls.params = re.sub(r"//[^\n]*", "", (root / "components" / "ParametersTab.jsx").read_text())
+        cls.app = re.sub(r"//[^\n]*", "", (root / "App.jsx").read_text())
+
+    def test_lora_panel_is_its_own_disclosure(self):
+        self.assertIn("lora-disclosure", self.form)
+        self.assertIn("<summary", self.form)
+
+    def test_the_lora_disclosure_opens_when_a_lora_is_active(self):
+        self.assertRegex(self.form, r"open=\{loras\.length > 0\}")
+
+    def test_licences_is_a_parameters_subtab_not_a_top_level_tab(self):
+        self.assertIn("subtab === \"licences\"", cls := self.params)
+        self.assertNotIn('tab === "licences"', self.app)
+        self.assertNotIn("LicencesTab", self.app)
+
+    def test_preset_buttons_are_still_gone(self):
+        self.assertNotIn("preset-btn", self.form)
+        self.assertNotIn("PRESETS", self.form)
