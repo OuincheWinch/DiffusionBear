@@ -84,6 +84,19 @@ FEATHER_PX = 12
 # and the render is grown if necessary to keep the aspect ratio sane.
 MIN_RENDER_SIDE = 128
 
+# generator._validate_dimensions hard-rejects anything outside 128..2048 and anything
+# that is not a multiple of 16 (8 for SDXL). A render size that misses either kills the
+# whole fill with a ValueError before a model is even loaded.
+#
+# This is not theoretical. It broke every fill a user attempted on a real 768x768 image
+# and a 1536x1536 one -- "dimensions must be multiples of 16" -- while all 235 tests
+# passed, because every one of them injects a fake generate_fn that never validates
+# anything. The invariants that WERE tested (floor, budget) are our own arithmetic and
+# were both satisfied by sizes the engine refuses. Mirrored here so the plan satisfies
+# the engine by construction, and asserted against the real validator in the tests.
+RENDER_ALIGNMENT = 16
+MAX_RENDER_SIDE = 2048
+
 # 786432 px is 1024x768, a size the engine is already exercised at. Measured cost is
 # therefore bounded by roughly the worst case above at ~197s, and typically far less
 # because most fills are small.
@@ -473,14 +486,30 @@ def _render_plan(mask: Image.Image, box: tuple[int, int, int, int]) -> dict:
         cw = int(cw * upscale)
         ch = int(ch * upscale)
 
-    if cw * ch <= budget:
-        return {"crop": (cx0, cy0, cx1, cy1), "render": (cw, ch),
-                "scale": 1.0 / upscale}
+    # Snap to the engine's grid. Without this every fill whose crop did not already
+    # land on a multiple of 16 died before reaching the model, so it is applied to
+    # both the budget-scaled and the under-budget branch.
+    def _snap(cw_, ch_):
+        def side(v):
+            v = int(round(v / RENDER_ALIGNMENT)) * RENDER_ALIGNMENT
+            return max(MIN_RENDER_SIDE, min(MAX_RENDER_SIDE, v))
+        return side(cw_), side(ch_)
 
-    scale = (budget / float(cw * ch)) ** 0.5
-    rw_ = max(MIN_RENDER_SIDE, int(cw * scale))
-    rh_ = max(MIN_RENDER_SIDE, int(ch * scale))
-    return {"crop": (cx0, cy0, cx1, cy1), "render": (rw_, rh_), "scale": scale}
+    if cw * ch <= budget and cw <= MAX_RENDER_SIDE and ch <= MAX_RENDER_SIDE:
+        rw_, rh_ = _snap(cw, ch)
+        return {"crop": (cx0, cy0, cx1, cy1), "render": (rw_, rh_),
+                "scale": rw_ / float(cw)}
+
+    # Shrink to whichever constraint binds: the pixel budget, or the per-side maximum.
+    # The latter is reachable on its own -- a 0.25-padded mask over a 3072x3072 source
+    # is 2028px wide before any budget scaling, and context padding is what pushes it
+    # over -- so it cannot be left to the budget alone.
+    by_budget = (budget / float(cw * ch)) ** 0.5
+    by_side = MAX_RENDER_SIDE / float(max(cw, ch))
+    scale = min(by_budget, by_side)
+    rw_, rh_ = _snap(cw * scale, ch * scale)
+    return {"crop": (cx0, cy0, cx1, cy1), "render": (rw_, rh_),
+            "scale": rw_ / float(cw)}
 
 
 def _normalise_mask(mask: Image.Image) -> Image.Image:

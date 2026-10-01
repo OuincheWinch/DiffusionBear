@@ -833,6 +833,64 @@ class RenderFloorTests(unittest.TestCase):
                 rw, rh = fill._render_plan(m, fill.mask_bounding_box(m))["render"]
                 self.assertLessEqual(rw * rh, fill.FILL_RENDER_MAX_PIXELS, name)
 
+    def test_every_shape_is_accepted_by_the_engine_itself(self):
+        """The floor and budget tests above are our own arithmetic. This asks the
+        engine's real validator, which is what actually rejected every fill in the
+        wild: "dimensions must be multiples of 16".
+
+        Checking our own invariants was not enough, and could not have caught it. Every
+        other test drives fill_image with a fake generate_fn that never validates
+        anything, so a plan the engine would refuse passed all 235 of them. Assert
+        against generator._validate_dimensions directly so the two cannot drift.
+        """
+        import generator
+
+        for name, size, box in self.SHAPES:
+            for engine in ("flux", "sdxl"):
+                with self.subTest(shape=name, engine=engine):
+                    m = self._mask(size, box)
+                    rw, rh = fill._render_plan(m, fill.mask_bounding_box(m))["render"]
+                    # No assertRaises: a rejection here IS the failure.
+                    generator._validate_dimensions(
+                        rw, rh, {"engine": engine, "label": f"{name}/{engine}"}
+                    )
+
+    def test_random_brush_strokes_are_always_engine_valid(self):
+        """The shapes above are hand-written and tidy. A real stroke is a squiggle at
+        an arbitrary offset, and the bug that shipped was only reachable from an
+        arbitrary offset -- the tidy ones happened to land on multiples of 16.
+        """
+        import random
+
+        import generator
+
+        rng = random.Random(20260930)
+        for size in [(768, 768), (512, 768), (1024, 1024), (1536, 1536), (3072, 3072)]:
+            w, h = size
+            for _ in range(40):
+                m = Image.new("L", size, 0)
+                d = ImageDraw.Draw(m)
+                x = rng.randint(80, int(w * 0.45))
+                y = rng.randint(120, int(h * 0.85))
+                pts = []
+                for _ in range(rng.randint(3, 10)):
+                    pts.append((x, y))
+                    x += rng.randint(15, 100)
+                    y += rng.randint(-30, 30)
+                r = rng.randint(6, 22)
+                for i in range(len(pts) - 1):
+                    d.line([pts[i], pts[i + 1]], fill=255, width=r * 2)
+                for p in pts:
+                    d.ellipse([p[0] - r, p[1] - r, p[0] + r, p[1] + r], fill=255)
+                box = fill.mask_bounding_box(m)
+                if box is None:
+                    continue
+                rw, rh = fill._render_plan(m, box)["render"]
+                with self.subTest(size=size, render=(rw, rh)):
+                    generator._validate_dimensions(
+                        rw, rh, {"engine": "flux", "label": "stroke"}
+                    )
+
     def test_the_crop_never_cuts_the_mask(self):
         for name, size, box in self.SHAPES:
             with self.subTest(shape=name):

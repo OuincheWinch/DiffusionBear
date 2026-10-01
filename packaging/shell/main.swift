@@ -80,8 +80,13 @@ private struct Paths {
         return base.appendingPathComponent(supportNames[0], isDirectory: true)
     }
     static var assetDir: URL { support.appendingPathComponent("data", isDirectory: true) }
+    /// Backend stdout/stderr. Deliberately NOT under `support`: that path can fall back
+    /// to the pre-rename "MLX-Diffusion" directory, so a fill bug would have been
+    /// reported to a log path that does not mention the app you are running. The log
+    /// is a debugging aid, it is not worth migrating, and it is tiny.
     static var logFile: URL {
-        let logs = support.appendingPathComponent("Logs", isDirectory: true)
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let logs = base.appendingPathComponent("DiffusionBear/Logs", isDirectory: true)
         try? FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
         return logs.appendingPathComponent("backend.log")
     }

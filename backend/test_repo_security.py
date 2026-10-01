@@ -30,7 +30,7 @@ _ALLOWED_DANGEROUS = {
     # result is handed straight to PIL's image loader rather than to pickle,
     # marshal, ctypes or eval. It is size-capped before decode and
     # dimension-checked after, because a mask is untrusted input either way.
-    "backend/fill.py:190 base64 decode",
+    "backend/fill.py:203 base64 decode",
 }
 # Prose and lockfiles are scanned for secrets only; documentation may link anywhere.
 TEXT_SUFFIXES = CODE_AND_CONFIG | {".json", ".md", ".txt"}
