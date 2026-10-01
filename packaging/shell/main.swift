@@ -492,6 +492,97 @@ final class DropHostView: NSView {
     }
 }
 
+// MARK: - Native export bridge
+
+/// Receives `export` requests from the web layer and puts them on a real save panel.
+///
+/// Why this exists: dragging a gallery image onto the Desktop does not put a file there.
+/// macOS builds the drag pasteboard from the DOM element, so the web layer can only ever
+/// offer an `http://127.0.0.1:8001/...` URL, and dropping that writes a `.webloc` link
+/// stub pointing back at a server that stops the moment the app quits. `DownloadURL` is a
+/// Safari-only flavour that Chrome ignores, and WKWebView discards the JS-set variants
+/// entirely. None of that is fixable from JavaScript, which is why the reliable path out
+/// is native.
+///
+/// The web layer sends only an image id. The path is resolved here, from the same backend
+/// that owns the file, so the shell never has to guess a directory or trust a path
+/// supplied by a web page.
+final class NativeBridge: NSObject, WKScriptMessageHandler {
+    /// Called with an image id. Returns nil if the id is not a plain hex identifier.
+    var resolveFileURL: ((String) -> URL?)?
+    /// Called once the copy has finished or failed.
+    var onResult: ((String, Bool, String?) -> Void)?
+    /// Supplies the key window for the save panel's sheet presentation.
+    var windowProvider: (() -> NSWindow?)?
+
+    private var window: NSWindow? { windowProvider?() }
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        guard message.name == "native",
+              let body = message.body as? [String: Any],
+              let action = body["action"] as? String,
+              let imageId = body["imageId"] as? String
+        else { return }
+
+        switch action {
+        case "export":
+            guard imageId.range(of: "^[0-9a-f]{8,64}$", options: .regularExpression) != nil else {
+                onResult?(imageId, false, "invalid image id")
+                return
+            }
+            guard let source = resolveFileURL?(imageId) else {
+                onResult?(imageId, false, "image not found")
+                return
+            }
+            guard FileManager.default.fileExists(atPath: source.path) else {
+                onResult?(imageId, false, "image file is missing")
+                return
+            }
+
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = source.lastPathComponent
+            panel.canCreateDirectories = true
+            panel.title = "Export image"
+            NSApp.activate(ignoringOtherApps: true)
+            panel.beginSheetModal(for: window ?? NSApp.keyWindow ?? NSWindow()) { response in
+                guard response == .OK, let destination = panel.url else {
+                    self.onResult?(imageId, false, nil)   // user dismissed; not an error
+                    return
+                }
+                do {
+                    // Replace rather than append: re-exporting the same image twice
+                    // should overwrite, not produce "name 2.png".
+                    if FileManager.default.fileExists(atPath: destination.path) {
+                        try FileManager.default.removeItem(at: destination)
+                    }
+                    try FileManager.default.copyItem(at: source, to: destination)
+                    self.onResult?(imageId, true, destination.path)
+                } catch {
+                    self.onResult?(imageId, false, error.localizedDescription)
+                }
+            }
+
+        default:
+            break
+        }
+    }
+
+}
+
+/// Forwards `WKScriptMessage` to the real handler without retaining it.
+///
+/// WKUserContentController retains every handler it is given, so registering
+/// AppDelegate directly would create a cycle that outlives the window.
+final class ScriptMessageProxy: NSObject, WKScriptMessageHandler {
+    weak var target: WKScriptMessageHandler?
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        target?.userContentController(userContentController, didReceive: message)
+    }
+}
+
 // MARK: - Menus
 
 /// Hosts the web view and contributes text-editing actions to the context menu.
@@ -590,6 +681,7 @@ private func installMainMenu() {
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
     private var window: NSWindow!
     private var webView: WKWebView!
+    private var nativeBridge: NativeBridge!
     private let backend = BackendProcess()
     private var statusLabel: NSTextField!
     private var activityToken: NSObjectProtocol?
@@ -665,6 +757,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         backend.onReady = { [weak self] in
             guard let self else { return }
             self.setStatus(nil)
+            self.wireNativeBridge()
             self.webView.load(URLRequest(url: backendURL))
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -691,6 +784,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     private func buildWindow() {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()   // keep logins/session across launches
+
+        // Native export bridge. Registered before the web view exists, because
+        // WKUserContentController has to be configured on the configuration object that
+        // creates the view -- adding the handler to `webView.configuration` afterwards
+        // throws, the web view having already copied it.
+        //
+        // A weak proxy is used because WKUserContentController retains its handlers, and
+        // AppDelegate owns the web view: a direct reference would be a retain cycle that
+        // keeps the whole app alive after the last window closes.
+        let bridgeProxy = ScriptMessageProxy()
+        nativeBridge = NativeBridge()
+        nativeBridge.windowProvider = { [weak self] in self?.window }
+        bridgeProxy.target = nativeBridge
+        config.userContentController.add(bridgeProxy, name: "native")
         webView = AppWebView(frame: NSRect(x: 0, y: 0, width: 1280, height: 840), configuration: config)
         webView.navigationDelegate = self
         // A UI delegate is mandatory, not cosmetic. Without it WebKit does NOT show a
@@ -755,7 +862,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     /// so probing Resources/Info.plist silently returned early and the whole check
     /// was a no-op. Probe main.py -- a file the backend genuinely needs, in the
     /// directory it genuinely runs from.
-    private func requestAccessToOwnBundle() {
+    /// Resolves an image id to a real file URL, by asking the backend that owns it.
+///
+/// The shell never constructs a path itself. The gallery lives on an external volume the
+/// shell has no business knowing the layout of, and the directory name can change
+/// (DIFFUSIONBEAR_DATA_DIR). Asking keeps one source of truth and means a path can never
+/// disagree with where the file actually is.
+private func wireNativeBridge() {
+    nativeBridge.resolveFileURL = { imageId in
+        guard let data = try? Data(contentsOf: backendURL.appendingPathComponent("api/images/\(imageId)/file-url")),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let fileUrl = json["file_url"] as? String,
+              let url = URL(string: fileUrl), url.isFileURL
+        else { return nil }
+        return url
+    }
+    nativeBridge.onResult = { imageId, ok, detail in
+        if ok {
+            trace("exported \(imageId) -> \(detail ?? "?")")
+        } else if let detail {
+            NSLog("DiffusionBear: export of %@ failed: %@", imageId, detail)
+        } else {
+            trace("export of \(imageId) cancelled")
+        }
+    }
+}
+
+private func requestAccessToOwnBundle() {
         let probe = Paths.backend.appendingPathComponent("main.py")
         guard let data = try? Data(contentsOf: probe) else {
             trace("volume probe FAILED for \(probe.path)")

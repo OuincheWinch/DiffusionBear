@@ -347,6 +347,33 @@ export async function copyFullImageToClipboard(imageOrId) {
 /**
  * Asks the local backend to reveal the full-resolution image in macOS Finder.
  */
+/**
+ * Saves a full-resolution image through a native save panel.
+ *
+ * The reliable way out of the app, because dragging does not work for this: macOS builds
+ * the drag pasteboard from the DOM element, so a gallery image can only ever be dragged
+ * out as an `http://127.0.0.1:8001/...` URL, and dropping that onto the Desktop writes a
+ * `.webloc` link stub -- pointing at a server that stops answering the moment the app
+ * quits. `DownloadURL` is a Safari-only flavour (Chrome ignores it) and WKWebView throws
+ * the JS-set variants away entirely. None of that is reachable from JavaScript, so the
+ * shell owns it.
+ *
+ * Returns false when the bridge is absent, i.e. in a browser during development, where
+ * the plain <a download> path is the fallback.
+ */
+export function exportImageNatively(imageOrId) {
+  const id = typeof imageOrId === "string" ? imageOrId : imageOrId?.id;
+  const bridge = typeof window !== "undefined" ? window.webkit?.messageHandlers?.native : null;
+  if (!id || !bridge) return false;
+  try {
+    bridge.postMessage({ action: "export", imageId: id });
+    return true;
+  } catch (err) {
+    console.warn("[dragDrop] native export unavailable:", err);
+    return false;
+  }
+}
+
 export async function revealImageInFinder(imageOrId) {
   if (!imageOrId) return false;
   const id = typeof imageOrId === "string" ? imageOrId : imageOrId.id;

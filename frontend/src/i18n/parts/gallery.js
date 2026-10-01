@@ -219,6 +219,14 @@ export const galleryStrings = {
     it: "Eliminare questa immagine?",
   },
   "gallery.deleteBtn": { fr: "Supprimer", en: "Delete", de: "Löschen", it: "Elimina" },
+  // Opens a native save panel and writes the real file. Distinct from "Download",
+  // which goes through the browser and is the fallback when there is no bridge.
+  "gallery.exportBtn": {
+    fr: "Exporter…",
+    en: "Export…",
+    de: "Exportieren…",
+    it: "Esporta…",
+  },
   // A fill creates a new image and leaves the original untouched, so "undo" is just
   // opening the parent. The lineage was invisible before this, which made a fill look
   // irreversible.

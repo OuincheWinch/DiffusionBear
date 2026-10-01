@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, imageUrl } from "../api";
-import { bindFullImageDrag, copyFullImageToClipboard, revealImageInFinder } from "../utils/dragDrop";
+import { bindFullImageDrag, copyFullImageToClipboard, revealImageInFinder, exportImageNatively } from "../utils/dragDrop";
 import LazyGalleryImage from "./LazyGalleryImage";
 import FillBrush from "./FillBrush";
 import { useI18n } from "../i18n/I18nContext";
@@ -102,6 +102,11 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
       abortRef.current?.abort();
     };
   }, [load, refreshKey, activeTab]);
+
+  // True only inside the native shell. In a browser the bridge is absent and the
+  // <a download> fallback is the correct thing to render.
+  const hasNativeBridge = () =>
+    typeof window !== "undefined" && Boolean(window.webkit?.messageHandlers?.native);
 
   // The list rows are the full sidecar dicts, so opening one needs no extra
   // round-trip to /api/images/{id}.
@@ -625,9 +630,20 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 >
                   {t("gallery.reuseParams")}
                 </button>
-                <a className="btn" href={imageUrl(selected.id)} download={selected.file || `${selected.id}.${selected.format || 'png'}`}>
-                  {t("gallery.download")}
-                </a>
+                {/* "Export…" opens a real save panel and writes the file at full resolution, which
+                    is the one dependable way out of the app: dragging a card to the
+                    Desktop writes a .webloc link stub instead of the image. The <a
+                    download> stays as the fallback for the dev server in a browser,
+                    where there is no native bridge. */}
+                {hasNativeBridge() ? (
+                  <button className="btn" onClick={() => exportImageNatively(selected)}>
+                    {t("gallery.exportBtn")}
+                  </button>
+                ) : (
+                  <a className="btn" href={imageUrl(selected.id)} download={selected.file || `${selected.id}.${selected.format || 'png'}`}>
+                    {t("gallery.download")}
+                  </a>
+                )}
                 <button
                   className="danger"
                   onClick={() =>
