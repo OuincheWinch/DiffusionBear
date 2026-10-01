@@ -1479,6 +1479,30 @@ button {
   background: var(--bg-tertiary, #151520);
 }
 
+/* The drag source for a gallery cell.
+ *
+ * A transparent link laid over the thumbnail whose href is the file on disk. macOS takes
+ * the pasteboard content for a web drag from the element being dragged, so this is what
+ * puts a file:// on it; the <img> behind it only offers its last-loaded http URL, which
+ * Finder saves as a .webloc.
+ *
+ * pointer-events stay ON (an anchor must be the element under the cursor to be the drag
+ * source) but the layer is empty, so it draws nothing. The click is suppressed in the
+ * component, leaving the cell's own click-to-open behaviour intact.
+ */
+.lazy-gallery-drag-anchor {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: grab;
+  text-decoration: none;
+  background: transparent;
+}
+
+.lazy-gallery-drag-anchor:active {
+  cursor: grabbing;
+}
+
 .lazy-gallery-skeleton {
   position: absolute;
   inset: 0;
@@ -4178,4 +4202,19 @@ p.warning {
   background: rgba(34, 197, 94, 0.12);
   color: var(--success);
   font-size: 0.82rem;
+}
+
+/* The detail view's drag source, mirroring the gallery cell overlay. */
+.gallery-detail-frame {
+  position: relative;
+  display: inline-block;
+}
+
+.gallery-detail-drag-anchor {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: grab;
+  background: transparent;
+  text-decoration: none;
 }

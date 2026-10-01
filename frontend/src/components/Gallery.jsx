@@ -546,17 +546,39 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
               →
             </button>
           )}
-          <div className="modal-body" onClick={(e) => e.stopPropagation()}>
-            <img
-              className="gallery-detail-img"
-              style={nativeDragSuppression()}
-              data-mlx-image-id={selected.id}
-              data-mlx-file-url={selected.file_url || ""}
-              src={imageUrl(selected.id)}
-              alt={selected.prompt}
+<div className="modal-body" onClick={(e) => e.stopPropagation()}>
+              <div className="gallery-detail-frame">
+              <img
+                className="gallery-detail-img"
+                style={nativeDragSuppression()}
+                data-mlx-image-id={selected.id}
+                data-mlx-file-url={selected.file_url || ""}
+                src={imageUrl(selected.id)}
+                alt={selected.prompt}
               title={t("gallery.dragFullResTitle")}
-              {...bindFullImageDrag(selected)}
-            />
+{...bindFullImageDrag(selected)}
+              />
+              {/* Same trick as the gallery cells: the dragged element must be a link whose
+                  href is the file on disk, or macOS takes the <img>'s http URL and saves a
+                  .webloc. */}
+              {selected.file_url && (
+                <a
+                  className="gallery-detail-drag-anchor"
+                  href={selected.file_url}
+                  draggable
+                  onClick={(e) => e.preventDefault()}
+                  onDragStart={(e) => {
+                    try {
+                      e.dataTransfer.setData(
+                        "DownloadURL",
+                        `image/png:${selected.file || `${selected.id}.png`}:${selected.file_url}`,
+                      );
+                    } catch {}
+                  }}
+                  title={t("gallery.dragFullResTitle")}
+                />
+              )}
+              </div>
             <div className="detail">
               <p className="detail-prompt">{selected.prompt}</p>
               <dl>

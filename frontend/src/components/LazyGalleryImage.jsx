@@ -27,6 +27,44 @@ export default function LazyGalleryImage({ item, alt }) {
         }}
         {...bindFullImageDrag(item)}
       />
+      <DragAnchor item={item} />
     </div>
+  );
+}
+
+/**
+ * The actual drag source: a transparent link over the thumbnail whose href is the image's
+ * real file on disk.
+ *
+ * Why an anchor and not the <img>: macOS builds a web drag's pasteboard from the DOM
+ * element being dragged, so an <img> dragging itself offers its last-loaded URL — an
+ * http://127.0.0.1:8001 address, which Finder saves as a .webloc link stub pointing at a
+ * server that stops with the app. An anchor contributes its href instead, and the href is
+ * in the DOM from first render, so there is no press-time race to lose.
+ *
+ * Why not handle this natively in the shell: tried, and it cannot work. WKWebView hit-tests
+ * to an internal content subview, so mouseDown/mouseDragged overrides on a WKWebView
+ * subclass never fire for clicks on the page. That produced no drag at all.
+ *
+ * The overlay is transparent and does not capture the click: WebKit only treats a link as
+ * draggable once the pointer moves, and onClick is suppressed so the cell still opens.
+ */
+function DragAnchor({ item }) {
+  if (!item.file_url) return null;
+  return (
+    <a
+      className="lazy-gallery-drag-anchor"
+      href={item.file_url}
+      draggable
+      onClick={(e) => e.preventDefault()}
+      onDragStart={(e) => {
+        // Keep the link itself as the dragged object rather than letting WebKit
+        // substitute the element underneath.
+        try {
+          e.dataTransfer.setData("DownloadURL", `image/png:${item.file || `${item.id}.png`}:${item.file_url}`);
+        } catch {}
+      }}
+      title={item.file || item.id}
+    />
   );
 }
