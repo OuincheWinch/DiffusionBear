@@ -152,5 +152,12 @@
     "ja": "領域を塗りつぶす",
     "pt": "Preencher uma região",
     "ko": "영역 채우기"
+  },
+  "fill.cancel": {
+    "es": "Cancelar",
+    "zh": "取消",
+    "ja": "キャンセル",
+    "pt": "Cancelar",
+    "ko": "취소"
   }
 }

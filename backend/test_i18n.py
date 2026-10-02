@@ -302,8 +302,11 @@ APP_SETTINGS = Path(__file__).resolve().parent / "app_settings.py"
 # The codes that must have a scaffold file, hard-coded here on purpose. Deriving the
 # expectation from languages.js would make these tests agree with any list it holds,
 # including one that quietly forgot a language.
-EXPECTED_SHIPPED = ("en", "fr", "de", "it")
-EXPECTED_SCAFFOLD = ("es", "zh", "ja", "pt", "ko")
+EXPECTED_SHIPPED = ("en", "fr", "de", "it", "es", "zh", "ja", "pt", "ko")
+EXPECTED_SCAFFOLD = ()
+# Declared untranslated even though these five were translated. Each is a brand name or a
+# closed-circuit technical literal, so "DiffusionBear" is the correct Spanish value.
+_INTENTIONALLY_UNTRANSLATED = {"app.logoAlt"}
 
 _KEY_LINE_RE = re.compile(r'^\s{2}"(?P<key>[^"]+)":\s*(?P<value>.+?),?\s*(?://.*)?$', re.M)
 _CODE_RE = re.compile(r'code:\s*"(?P<code>[a-z]{2})"')
@@ -436,6 +439,96 @@ class BackendLanguageAgreementTests(unittest.TestCase):
                 self.assertIn(code, accepted)
 
 
+_OVERLAY_CODES = ("es", "zh", "ja", "pt", "ko")
+_SCRIPT_RANGES = {
+    "han": r"[\u4e00-\u9fff\u3400-\u4dbf]",
+    "kana": r"[\u3040-\u30ff]",
+    "hangul": r"[\uac00-\ud7af\u1100-\u11ff]",
+}
+# Latin words that legitimately appear inside CJK text: product and vendor names, licence
+# identifiers, algorithms, file formats. Anything else in a CJK value is corruption -- a
+# fragment of another language that leaked in while authoring five languages in one pass.
+_ALLOWED_LATIN = {
+    "Civitai", "DeepCache", "FLUX", "LoRA", "LoRAs", "MIT", "SPA", "React", "Vite",
+    "Python", "torch", "SDXL", "sdxl", "Krea", "KREA", "Hugging", "Face", "Z-Image",
+    "Qwen", "Image", "klein", "Turbo", "Juggernaut", "XL", "Lightning", "DiffusionBear",
+    "CoreML", "Apple", "safetensors", "venv", "UNet", "VAE",
+    # Abbreviations and algorithms that read as-is in all five languages.
+    "OOM", "HF", "ID", "URL", "AI", "UI", "API", "MP", "px", "In", "Context",
+    "Copyright", "MLX", "mflux", "transformer", "token",
+    "Metal", "CFG", "SOTA", "Lanczos", "PNG", "JPEG", "JPG", "WebP", "Cmd", "NSFW",
+    "AppKit", "WebKit", "macOS", "Finder", "Civit", "GPU", "Silicon", "JSON", "Web",
+    "EXIF", "DIFFUSION", "Fast", "LLM", "Instruct", "Klein", "TAEF", "TAESD",
+    "krea", "mlx", "qwen", "blob", "snapshot", "snapshots", "TASK",
+}
+
+
+def _latin_words(text: str) -> set:
+    """Latin words in a value, ignoring the parts where Latin is required.
+
+    Placeholders, URLs, filenames, filesystem paths, HF cache directory names and
+    environment variables are not prose -- they appear verbatim in every language -- so
+    counting them would either drown the signal or force them into the allowlist, where
+    they would hide real corruption.
+    """
+    text = re.sub(r"\{[^}]*\}", " ", text)              # {count}, {label}, ...
+    text = re.sub(r"\S*\S*/\S*", " ", text)               # /path/to/model, URLs
+    text = re.sub(r"\S*--\S*", " ", text)                   # models--org--name
+    text = re.sub(r"#[^\s\]]*", " ", text)                  # #{id}
+    # Filenames BEFORE the env-var rule: queue_recovery.json would otherwise have its stem
+    # eaten first, leaving " .json" with no word character before the dot to match on.
+    text = re.sub(
+        r"\S+\.(?:json|js|jsx|py|sh|md|txt|ya?ml|html|css|png|jpe?g|safetensors)\b",
+        " ", text, flags=re.I,
+    )
+    text = re.sub(r"\b[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+\b", " ", text)  # env vars
+    return set(re.findall(r"[A-Za-z]{2,}", text))
+
+
+def _node_js(script: str) -> str | None:
+    """Run an ESM snippet against the real frontend, with the extensionless loader hook."""
+    if not _node_available():
+        return None
+    frontend = ROOT / "frontend"
+    proc = subprocess.run(
+        ["node", "--import", str(frontend / "tools" / "register-extensionless.mjs"),
+         "--input-type=module", "-e", script],
+        cwd=str(frontend / "src" / "i18n"),
+        capture_output=True, text=True, timeout=60,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
+def _english_from_node() -> dict | None:
+    """key -> English source, read from the real merged catalogue.
+
+    The regex parser in this file misses ~23 keys, and a translation check needs a
+    COMPLETE baseline: a key missing from it looks like a translation that invented a
+    placeholder.
+    """
+    out = _node_js(
+        'import("./strings.js").then(m => process.stdout.write('
+        'JSON.stringify(Object.fromEntries(Object.entries(m.STRINGS)'
+        '.map(([k, v]) => [k, v.en])))))'
+    )
+    return json.loads(out) if out else None
+
+
+def _overlays() -> dict:
+    """Read each lang/<code>.js through node to get the real values."""
+    out = {}
+    for code in _OVERLAY_CODES:
+        raw = _node_js(
+            f'import("./lang/{code}.js").then('
+            f"m => process.stdout.write(JSON.stringify(m.{code}Strings)))"
+        )
+        if raw is not None:
+            out[code] = json.loads(raw)
+    return out
+
+
 def _node_available() -> bool:
     return shutil.which("node") is not None
 
@@ -474,197 +567,6 @@ def _keys_from_node() -> set | None:
     if proc.returncode != 0:
         return None
     return set(json.loads(proc.stdout))
-
-
-class ScaffoldTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.catalog = _parse_parts()
-        cls.catalog.update(_parse_table(STRINGS_FILE))
-        cls.authoritative = _keys_from_node()
-
-    def test_a_scaffold_exists_for_every_scaffold_language(self):
-        for code in EXPECTED_SCAFFOLD:
-            with self.subTest(code=code):
-                path = SCAFFOLD_DIR / f"{code}.js"
-                self.assertTrue(path.exists(), f"missing scaffold for {code}")
-
-    def test_no_scaffold_strays_into_the_parts_directory(self):
-        """parts/*.js is globbed as a disjoint catalogue of the shipped languages; a
-        second file listing the same keys would read as a duplicate-key collision."""
-        for code in EXPECTED_SCAFFOLD:
-            self.assertFalse((ROOT / "frontend" / "src" / "i18n" / "parts" / f"{code}.js").exists())
-
-    def _scaffold_keys(self, code):
-        text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
-        return {m.group("key") for m in _KEY_LINE_RE.finditer(text)}
-
-    def test_node_can_actually_read_the_catalogue(self):
-        """Trips if the loader hook goes missing.
-
-        Without it the coverage test below skips, and a skip reports OK. This is the
-        guard against that exact failure: it was silently skipping once already."""
-        if not _node_available():
-            self.skipTest("node not installed")
-        self.assertIsNotNone(
-            self.authoritative,
-            "node could not import strings.js -- the extensionless loader hook is missing",
-        )
-
-    def test_each_scaffold_covers_every_shipped_key(self):
-        expected = self.authoritative
-        if expected is None:
-            self.fail("cannot read STRINGS; see test_node_can_actually_read_the_catalogue")
-        for code in EXPECTED_SCAFFOLD:
-            with self.subTest(code=code):
-                keys = self._scaffold_keys(code)
-                self.assertEqual(
-                    keys - expected,
-                    set(),
-                    f"{code}.js lists keys that no longer exist",
-                )
-                self.assertEqual(
-                    expected - keys,
-                    set(),
-                    f"{code}.js is missing keys -- regenerate the scaffold",
-                )
-
-    def test_the_legacy_parser_still_sees_a_majority_of_the_keys(self):
-        """Not a new requirement; a tripwire. If this drops, the coverage of the
-        regex-based checks elsewhere in this file is quietly eroding."""
-        if not self.authoritative:
-            self.fail("cannot read STRINGS; see test_node_can_actually_read_the_catalogue")
-        self.assertGreater(
-            len(self.catalog),
-            len(self.authoritative) * 0.9,
-            "the regex parser now sees far fewer keys than STRINGS contains",
-        )
-
-    def test_scaffold_entries_are_never_empty_strings(self):
-        """translate.js falls back with `??`, which ignores "". An empty value ships a
-        blank label instead of falling back to English, so null is the only safe
-        placeholder."""
-        for code in EXPECTED_SCAFFOLD:
-            with self.subTest(code=code):
-                text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
-                for m in _KEY_LINE_RE.finditer(text):
-                    self.assertNotEqual(
-                        m.group("value").strip(), '""', f"{code}: {m.group('key')} is \"\""
-                    )
-
-    def test_scaffold_values_are_null_or_actual_translations(self):
-        for code in EXPECTED_SCAFFOLD:
-            with self.subTest(code=code):
-                text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
-                for m in _KEY_LINE_RE.finditer(text):
-                    value = m.group("value").strip().rstrip(",")
-                    if value == "null":
-                        continue
-                    self.assertTrue(
-                        value.startswith('"') and value.endswith('"'),
-                        f"{code}: {m.group('key')} has unexpected value {value!r}",
-                    )
-
-    def test_every_scaffold_carries_the_english_source_for_the_translator(self):
-        for code in EXPECTED_SCAFFOLD:
-            with self.subTest(code=code):
-                text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
-                for key in ("app.generate", "gallery.empty", "language.title"):
-                    with self.subTest(key=key):
-                        line = next(
-                            (l for l in text.splitlines() if f'"{key}"' in l), None
-                        )
-                        self.assertIsNotNone(line, f"{code}: {key} absent")
-                        self.assertIn("//", line, f"{code}: {key} has no English source")
-
-    def test_the_scaffold_generator_is_committed(self):
-        self.assertTrue((SCAFFOLD_DIR / "generate-scaffold.mjs").exists())
-
-
-# --------------------------------------------------------------------------- translations
-#
-# The five added languages are machine-authored and have never been reviewed by a native
-# speaker. Two classes of defect showed up repeatedly while writing them, and both are
-# cheap to detect mechanically, so both are asserted rather than eyeballed.
-
-_OVERLAY_CODES = ("es", "zh", "ja", "pt", "ko")
-_SCRIPT_RANGES = {
-    "han": r"[\u4e00-\u9fff\u3400-\u4dbf]",
-    "kana": r"[\u3040-\u30ff]",
-    "hangul": r"[\uac00-\ud7af\u1100-\u11ff]",
-}
-# Latin words that legitimately appear inside CJK text: product and vendor names, licence
-# identifiers, file extensions. Anything else in a CJK value is corruption -- a French or
-# English fragment that leaked in while authoring five languages in one pass.
-_ALLOWED_LATIN = {
-    # Product, vendor and architecture names that stay in Latin script everywhere.
-    "Civitai", "DeepCache", "FLUX", "LoRA", "LoRAs", "MIT", "SPA", "React", "Vite",
-    "Python", "torch", "SDXL", "sdxl", "Krea", "KREA", "Hugging", "Face", "Z-Image",
-    "Qwen", "Image", "klein", "Turbo", "Juggernaut", "XL", "Lightning", "DiffusionBear",
-    "CoreML", "Apple", "safetensors", "venv", "UNet", "VAE",
-    # Technical shorthand that reads as-is in every one of these languages.
-    "OOM", "HF", "ID", "URL", "AI", "UI", "API", "MP", "px", "In", "Context",
-    "Copyright", "MLX", "mflux", "transformer", "token",
-}
-
-
-def _latin_words(text: str) -> set:
-    """Latin words in a value, ignoring the parts where Latin is required.
-
-    Placeholders, URLs, filesystem paths and HF cache directory names are not prose --
-    they appear verbatim in every language -- so counting them would either drown the
-    signal or force them into the allowlist, where they would hide real corruption.
-    """
-    text = re.sub(r"\{[^}]*\}", " ", text)              # {count}, {label}, ...
-    text = re.sub(r"\S*\S*/\S*", " ", text)               # /path/to/model, URLs
-    text = re.sub(r"\S*--\S*", " ", text)                   # models--org--name
-    text = re.sub(r"#[^\s\]]*", " ", text)                  # #{id}
-    return set(re.findall(r"[A-Za-z]{2,}", text))
-
-
-def _english_from_node() -> dict | None:
-    """key -> English source, read from the real merged catalogue.
-
-    The regex parser misses ~22 keys, and a translation check needs a COMPLETE baseline:
-    a key missing from it looks like a translation that invented a placeholder.
-    """
-    if not _node_available():
-        return None
-    frontend = ROOT / "frontend"
-    script = (
-        'import("./strings.js").then(m => process.stdout.write('
-        'JSON.stringify(Object.fromEntries(Object.entries(m.STRINGS)'
-        '.map(([k, v]) => [k, v.en])))))'
-    )
-    proc = subprocess.run(
-        ["node", "--import", str(frontend / "tools" / "register-extensionless.mjs"),
-         "--input-type=module", "-e", script],
-        cwd=str(frontend / "src" / "i18n"),
-        capture_output=True, text=True, timeout=60,
-    )
-    if proc.returncode != 0:
-        return None
-    return json.loads(proc.stdout)
-
-
-def _overlays() -> dict:
-    """Read each lang/<code>.js as JSON-ish, via node, to get the real values."""
-    frontend = ROOT / "frontend"
-    out = {}
-    for code in _OVERLAY_CODES:
-        script = (
-            f'import("./lang/{code}.js").then('
-            f"m => process.stdout.write(JSON.stringify(m.{code}Strings)))"
-        )
-        proc = subprocess.run(
-            ["node", "--import", str(frontend / "tools" / "register-extensionless.mjs"),
-             "--input-type=module", "-e", script],
-            cwd=str(frontend / "src" / "i18n"),
-            capture_output=True, text=True, timeout=60,
-        )
-        if proc.returncode == 0:
-            out[code] = json.loads(proc.stdout)
-    return out
 
 
 class TranslationIntegrityTests(unittest.TestCase):
@@ -781,6 +683,10 @@ class TranslationIntegrityTests(unittest.TestCase):
         "params.ref.inContextBadge", # "FLUX.2 In-Context" is the feature name
         "params.size.baseTitle",     # "Base 512 px"
         "params.size.shapePreviewTitle",  # "{width} x {height}", no words to translate
+        "canvas.metaPill",               # pt uses "s" for seconds, as en does
+        "generate.civitai.badge",        # "Civitai #123 ↗" is a link label
+        "settings.defaults.deepCacheSdxl",   # "DeepCache (SDXL)" is a product name
+        "settings.engine.metalCard",         # "Metal / GPU" is a product name
     }
 
     def test_translations_are_not_verbatim_copies_of_english(self):
@@ -795,3 +701,65 @@ class TranslationIntegrityTests(unittest.TestCase):
         self.assertEqual(
             identical, [], f"{len(identical)} strings were copied from English: {identical[:10]}"
         )
+
+
+class ShippedStatusAgreementTests(unittest.TestCase):
+    """`status` in languages.js is a claim. This checks the claim against reality.
+
+    It is tempting to let the runtime flip a language to "shipped" once coverage looks
+    complete, but then a half-finished translation reclassifies itself and nobody reads
+    the diff. The declaration stays a declaration, and this test holds it to account.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.overlays = _overlays()
+        cls.english = _english_from_node() or {}
+
+    def _coverage_gaps(self, code):
+        table = self.overlays.get(code, {})
+        return {k for k in self.english if not table.get(k)}
+
+    def test_a_shipped_language_has_no_unexplained_gaps(self):
+        if not _node_available():
+            self.skipTest("node not installed")
+        self.assertIsNotNone(self.english, "could not read STRINGS via node")
+        for lang in _registry_languages():
+            if lang["status"] != "shipped":
+                continue
+            if lang["code"] not in _OVERLAY_CODES:
+                continue  # fr/de/it ship from ./parts/, checked elsewhere in this file
+            with self.subTest(code=lang["code"]):
+                gaps = self._coverage_gaps(lang["code"]) - _INTENTIONALLY_UNTRANSLATED
+                self.assertEqual(
+                    gaps, set(), f"{lang['code']} is declared shipped but {len(gaps)} keys are not translated"
+                )
+
+    def test_intentionally_untranslated_keys_are_really_untranslated(self):
+        """If someone translates one of these, remove it from the allowlist -- otherwise
+        the exception quietly stops meaning anything."""
+        if not _node_available():
+            self.skipTest("node not installed")
+        for code, table in self.overlays.items():
+            for key in _INTENTIONALLY_UNTRANSLATED:
+                with self.subTest(code=code, key=key):
+                    if key in table:
+                        self.assertNotIn(
+                            key, _INTENTIONALLY_UNTRANSLATED,
+                            f"{key} now has a translation; drop the exception",
+                        )
+
+    def test_coverage_is_reported_so_progress_is_visible(self):
+        """A translation project needs a number. Written to lang/coverage.json by the
+        build script so CI and the picker can both read it."""
+        if not _node_available():
+            self.skipTest("node not installed")
+        path = ROOT / "frontend" / "src" / "i18n" / "lang" / "coverage.json"
+        self.assertTrue(path.exists(), "run `npm run i18n:build`")
+        data = json.loads(path.read_text())
+        self.assertEqual(sorted(data), sorted(_OVERLAY_CODES))
+        for code, entry in data.items():
+            with self.subTest(code=code):
+                self.assertEqual(entry["done"], len(self.english) - len(
+                    _INTENTIONALLY_UNTRANSLATED & set(self.english)
+                ))

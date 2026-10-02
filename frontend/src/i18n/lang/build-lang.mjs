@@ -24,7 +24,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { STRINGS } from "../strings.js";
-import { LANGUAGES } from "../languages.js";
+import { LANGUAGES, SCAFFOLD_LANGUAGES } from "../languages.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PARTS = join(HERE, "_parts");
@@ -35,13 +35,25 @@ const PARTS = join(HERE, "_parts");
 const ORDER = Object.keys(STRINGS);
 const GROUP_OF = (key) => key.split(".")[0];
 
-const TRANSLATABLE = LANGUAGES.map((l) => l.code).filter((c) => c !== "en");
+// Only the languages that have an overlay file. fr/de/it are listed in LANGUAGES and
+// ship their strings from ./parts/, so including them here made the coverage report claim
+// 739 keys missing for French, which has every one of them.
+const SCAFFOLD_CODES = SCAFFOLD_LANGUAGES.map((l) => l.code);
+const TRANSLATABLE = LANGUAGES.filter((l) => SCAFFOLD_CODES.includes(l.code)).map((l) => l.code);
 
 /** @type {Record<string, Record<string, Record<string, string>>>} */
 const parts = {};
-for (const file of readdirSync(PARTS).filter((f) => f.endsWith(".json"))) {
-  const group = file.replace(/\.json$/, "");
-  parts[group] = JSON.parse(readFileSync(join(PARTS, file), "utf8"));
+// A group may be split across `<group>.json` and `<group>.2.json`, `<group>.3.json`...
+// settings alone is 244 keys, which is a large enough file to be worth splitting, and a
+// single JSON object that size is unpleasant to edit by hand.
+const PART_FILE_RE = /^(?<group>[a-z]+)(?:\.(?<part>\d+))?\.json$/;
+
+for (const file of readdirSync(PARTS).filter((f) => f.endsWith(".json")).sort()) {
+  const match = PART_FILE_RE.exec(file);
+  if (!match) throw new Error(`unexpected file in _parts/: ${file}`);
+  const { group } = match.groups;
+  const chunk = JSON.parse(readFileSync(join(PARTS, file), "utf8"));
+  parts[group] = { ...(parts[group] ?? {}), ...chunk };
 }
 
 const unknown = [];
@@ -109,7 +121,8 @@ writeFileSync(
 
 const code = TRANSLATABLE[0];
 if (counts[code] && counts[code].missing.length) {
-  console.log(`\n  ${counts[code].missing.length} keys left in English, e.g.:`);
+  const n = counts[code].missing.length;
+  console.log(`\n  ${n} key${n === 1 ? "" : "s"} left in English, e.g.:`);
   for (const key of counts[code].missing.slice(0, 12)) {
     console.log(`    ${key} :: ${STRINGS[key]?.en ?? ""}`);
   }

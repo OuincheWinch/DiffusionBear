@@ -16,11 +16,11 @@ export const LANGUAGES = [
   { code: "fr", label: "Français", flag: "🇫🇷", status: "shipped" },
   { code: "de", label: "Deutsch", flag: "🇩🇪", status: "shipped" },
   { code: "it", label: "Italiano", flag: "🇮🇹", status: "shipped" },
-  { code: "es", label: "Español", flag: "🇪🇸", status: "scaffold" },
-  { code: "zh", label: "简体中文", flag: "🇨🇳", status: "scaffold" },
-  { code: "ja", label: "日本語", flag: "🇯🇵", status: "scaffold" },
-  { code: "pt", label: "Português", flag: "🇵🇹", status: "scaffold" },
-  { code: "ko", label: "한국어", flag: "🇰🇷", status: "scaffold" },
+  { code: "es", label: "Español", flag: "🇪🇸", status: "shipped" },
+  { code: "zh", label: "简体中文", flag: "🇨🇳", status: "shipped" },
+  { code: "ja", label: "日本語", flag: "🇯🇵", status: "shipped" },
+  { code: "pt", label: "Português", flag: "🇵🇹", status: "shipped" },
+  { code: "ko", label: "한국어", flag: "🇰🇷", status: "shipped" },
 ];
 
 /** Languages with a real catalogue; everything else falls back to English. */
