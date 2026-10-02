@@ -1648,16 +1648,46 @@ body.native-shell .gallery-detail-img {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
-  display: flex;
+  /* Grid rather than flex, so the image and the metadata are two independent tracks: the
+     image can then take every pixel left over without the metadata column being dragged
+     along with it. minmax(0, 1fr) and NOT 1fr -- a bare 1fr track has an automatic
+     MINIMUM of min-content, so one long unbroken value in the metadata would widen this
+     track and push the panel off screen. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(17rem, 26vw, 22rem);
+  align-items: start;
   gap: 1rem;
-  max-width: 90vw;
-  max-height: 90vh;
+  box-sizing: border-box;
+  max-width: min(96vw, 1800px);
+  max-height: 94vh;
   padding: 1rem;
+  /* The rule that actually stops the bleed. Everything else shrinks children; this is
+     what stops any child that refuses to shrink from painting over the app background
+     and the window scrollbar. */
+  overflow: hidden;
 }
 
-.modal-body > img {
-  max-width: 55vw;
-  max-height: 85vh;
+/* Centred in its grid track, and allowed to grow into it: this is what makes a large
+   image open at a size worth looking at instead of a thumbnail-sized postage stamp.
+   min-width/max-width: 100% keeps it from deciding the track's width. */
+.gallery-detail-frame {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 88vh;
+}
+
+.gallery-detail-img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 88vh;
+  /* contain, not fill: a small image in a wide column stays at its own size rather than
+     being stretched into a blurry mess. */
   object-fit: contain;
   border-radius: 6px;
 }
@@ -1666,8 +1696,18 @@ body.native-shell .gallery-detail-img {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  min-width: 260px;
+  box-sizing: border-box;
+  /* min-width: 0, not the old min-width: 260px. A minimum only sets a FLOOR -- it never
+     grants permission to shrink -- so long content inside could not be contained and
+     simply painted outside. min-width: 0 is what makes this item shrinkable. */
+  min-width: 0;
+  max-width: 100%;
+  max-height: 88vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  /* Model ids, sampler lists and file paths are single tokens with no spaces in them, so
+     they need an explicit break opportunity. */
+  overflow-wrap: break-word;
 }
 
 .detail-prompt {
@@ -1677,34 +1717,61 @@ body.native-shell .gallery-detail-img {
 
 dl {
   display: grid;
-  grid-template-columns: auto 1fr;
+  /* minmax(0, 1fr) on the value track is the load-bearing fix here. A plain 1fr has an
+     automatic minimum of min-content: one long value (a prompt, a model path) widened the
+     track, which widened .detail, which escaped the panel and reached the scrollbar. */
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.25rem 1rem;
   font-size: 0.85rem;
   margin: 0;
+  min-width: 0;
 }
 
 dt {
   color: var(--muted);
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 dd {
   margin: 0;
+  min-width: 0;
+  /* Both properties: overflow-wrap handles ordinary long words, and break-word lets a
+     single unbroken token (a path, a hash) break rather than push the track. */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .tag-editor {
   display: flex;
   gap: 0.5rem;
   align-items: end;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .tag-editor label {
-  flex: 1;
+  /* 1 1 8rem so it can both grow into the spare width and shrink below the input's
+     intrinsic size. Plain flex: 1 leaves min-width at auto, which is the input's own
+     width, so the Save button got pushed out of the panel. */
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.tag-editor input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .detail-actions {
   display: flex;
+  /* wrap was already here; what was missing is the item being allowed to shrink, plus the
+     individual buttons being capped at the container width so a long translated label
+     cannot push the row wider than the panel. */
   flex-wrap: wrap;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .detail-actions button,
@@ -1717,6 +1784,12 @@ dd {
   padding: 0.4rem 0.7rem;
   font-size: 0.85rem;
   text-decoration: none;
+  box-sizing: border-box;
+  max-width: 100%;
+  /* Labels are translated in nine languages and several are considerably longer than the
+     English; allow them to wrap inside the button rather than widen it. */
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .detail-actions a.btn {
