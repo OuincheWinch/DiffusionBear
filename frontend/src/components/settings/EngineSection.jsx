@@ -29,7 +29,7 @@ function normalizeNum(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-function TuneInput({ label, unit, value, onChange, step, max = 128, title }) {
+function TuneInput({ label, unit, value, onChange, step, max = 128, title, placeholder }) {
   return (
     <label className="engine-tune" title={title}>
       <span>{label}</span>
@@ -40,6 +40,7 @@ function TuneInput({ label, unit, value, onChange, step, max = 128, title }) {
           max={max}
           step={step ?? "any"}
           value={value}
+          placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
         />
         <small>{unit}</small>
@@ -66,8 +67,11 @@ export default function EngineSection() {
 
   const syncDraftFromStatus = (s) => {
     setDraft({
-      wiredGb: String(s.wired?.generic_limit_gb ?? ""),
-      kreaGb: String(s.wired?.krea_limit_gb ?? ""),
+      // Empty when auto. Showing the derived figure here would make it look typed,
+      // and saving would then persist a machine-specific constant -- the bug this
+      // whole change exists to remove.
+      wiredGb: s.wired?.generic_auto ? "" : String(s.wired?.generic_limit_gb ?? ""),
+      kreaGb: s.wired?.krea_auto ? "" : String(s.wired?.krea_limit_gb ?? ""),
       mfluxIdle: String(s.mflux?.idle_kill_s ?? ""),
       sdxlIdle: String(s.sdxl?.idle_kill_s ?? ""),
       qwenIdle: String(s.qwen?.idle_kill_s ?? ""),
@@ -117,11 +121,16 @@ export default function EngineSection() {
     const mfluxIdle = normalizeNum(draft.mfluxIdle);
     const sdxlIdle = normalizeNum(draft.sdxlIdle);
     const qwenIdle = normalizeNum(draft.qwenIdle);
-    if (wiredGb == null || kreaGb == null || mfluxIdle == null || sdxlIdle == null || qwenIdle == null) {
+    // The idle timers have no derived default, so they must be numbers. The two wired
+    // budgets do: an empty field means "auto", i.e. derive from this Mac, and null is the
+    // settings schema's existing sentinel for that. Requiring a number here is what
+    // stopped a machine-derived budget from ever being saved.
+    if (mfluxIdle == null || sdxlIdle == null || qwenIdle == null) {
       setErr(t("settings.engine.tuningNumbersError"));
       return;
     }
-    if (wiredGb < 0 || kreaGb < 0 || mfluxIdle < 0 || sdxlIdle < 0 || qwenIdle < 0) {
+    if ((wiredGb != null && wiredGb < 0) || (kreaGb != null && kreaGb < 0)
+        || mfluxIdle < 0 || sdxlIdle < 0 || qwenIdle < 0) {
       setErr(t("settings.engine.tuningRangeError"));
       return;
     }
@@ -256,22 +265,38 @@ export default function EngineSection() {
           </header>
           <p className="engine-tune-note">{t("settings.engine.tuningNote")}</p>
           <form className="engine-tune-grid" onSubmit={saveConfig}>
-            <TuneInput
-              label={t("settings.engine.tuneWired")}
-              unit="GB"
-              value={draft.wiredGb}
-              onChange={(v) => { setDraft((d) => ({ ...d, wiredGb: v })); setDirty(true); }}
-              step="0.5"
-              title={t("settings.engine.tuneWiredTitle")}
-            />
-            <TuneInput
-              label={t("settings.engine.tuneKrea")}
-              unit="GB"
-              value={draft.kreaGb}
-              onChange={(v) => { setDraft((d) => ({ ...d, kreaGb: v })); setDirty(true); }}
-              step="0.5"
-              title={t("settings.engine.tuneKreaTitle")}
-            />
+            <div className="engine-tune-cell">
+              <TuneInput
+                label={t("settings.engine.tuneWired")}
+                unit="GB"
+                value={draft.wiredGb}
+                onChange={(v) => { setDraft((d) => ({ ...d, wiredGb: v })); setDirty(true); }}
+                step="0.5"
+                placeholder={String(wired.generic_derived_gb ?? "")}
+                title={t("settings.engine.tuneWiredTitle")}
+              />
+              {draft.wiredGb === "" && (
+                <span className="engine-tune-auto">
+                  {t("settings.engine.autoDerived", { gb: wired.generic_derived_gb ?? 0 })}
+                </span>
+              )}
+            </div>
+            <div className="engine-tune-cell">
+              <TuneInput
+                label={t("settings.engine.tuneKrea")}
+                unit="GB"
+                value={draft.kreaGb}
+                onChange={(v) => { setDraft((d) => ({ ...d, kreaGb: v })); setDirty(true); }}
+                step="0.5"
+                placeholder={String(wired.krea_derived_gb ?? "")}
+                title={t("settings.engine.tuneKreaTitle")}
+              />
+              {draft.kreaGb === "" && (
+                <span className="engine-tune-auto">
+                  {t("settings.engine.autoDerived", { gb: wired.krea_derived_gb ?? 0 })}
+                </span>
+              )}
+            </div>
             <TuneInput
               label={t("settings.engine.tuneMfluxIdle")}
               unit="s"

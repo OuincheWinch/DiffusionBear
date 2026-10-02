@@ -115,6 +115,7 @@ DEFAULTS = {
     # 0 = never auto-release. Applied lazily (next generation / idle rearm).
     "memory_wired_limit_gb": None,
     "memory_krea_wired_limit_gb": None,
+    "krea_vae_tile_size": None,
     "idle_kill_s_mflux": None,
     "idle_kill_s_sdxl": None,
     "idle_kill_s_qwen": None,
@@ -178,6 +179,8 @@ _VALIDATORS = {
     "prompt_enhancer_json": lambda v: isinstance(v, dict) and len(v) <= len(PROMPT_ENHANCER_KEYS),
     "memory_wired_limit_gb": lambda v: v is None or (_is_number(v) and 0 <= v <= 128),
     "memory_krea_wired_limit_gb": lambda v: v is None or (_is_number(v) and 0 <= v <= 128),
+    # 0 disables tiled VAE decoding. Bounded so a typo cannot ask for a 100k tile.
+    "krea_vae_tile_size": lambda v: v is None or (_is_number(v) and 0 <= v <= 4096),
     "idle_kill_s_mflux": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),
     "idle_kill_s_sdxl": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),
     "idle_kill_s_qwen": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),

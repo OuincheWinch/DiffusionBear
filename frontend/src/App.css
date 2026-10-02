@@ -4770,3 +4770,20 @@ body.native-shell * {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* An empty wired-budget field means "derive from this Mac", so it must not look like a
+   broken input. The placeholder carries the derived figure (grey) and the badge states
+   it outright, so the number in the box is never mistaken for one the user typed -- which
+   is what let a machine-specific constant get saved back into the settings. */
+.engine-tune-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.engine-tune-auto {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

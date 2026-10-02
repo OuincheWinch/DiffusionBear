@@ -910,32 +910,58 @@ class QwenGuardrailTests(unittest.TestCase):
 
 
 class WiredBudgetTests(unittest.TestCase):
-    """The generic budget is 9GB; krea2 is unbounded by default.
+    """Both budgets are DERIVED FROM THE MACHINE unless explicitly pinned.
 
-    krea2 used to be pinned to 9GB on the strength of an AGENTS.md claim that the
-    pin was ~18% faster for identical output. The 2026-09-29 A/B (test/wired_budget/)
-    could not reproduce any speed difference -- exact permutation p=1.00 over 6
-    interleaved runs per arm, with the arms fully interleaved -- while all 12
-    renders came out pixel-identical. So the pin was reverted to the pre-existing
-    unbounded behaviour rather than kept on an unproven claim.
+    This inverts the previous contract, on purpose. The old defaults were a hardcoded
+    9GB (generic) and unbounded (krea2), and the live installation had persisted a 9GB
+    krea2 pin left over from before the 2026-09-29 revert -- which is how a constant
+    tuned on one 16GB M1 ended up governing every machine the app ran on, and how the
+    Krea 2 text-encoder quantisation pass came to OOM: it transiently holds a 7.5GB bf16
+    copy AND its ~1.9GB q4 result, and would not fit under 9GB.
 
-    qwen-image-2.1 deliberately stays on the generic 9GB budget: its q4 pipeline is
-    ~10.5GB resident, and a too-low cap starves the load. That is a memory-safety
-    decision, not a measured speedup, so it is asserted separately below.
+    krea2 had been pinned to 9GB on the strength of an AGENTS.md claim that the pin was
+    ~18% faster for identical output. The 2026-09-29 A/B (test/wired_budget/) could not
+    reproduce any speed difference -- exact permutation p=1.00 over 6 interleaved runs
+    per arm -- while all 12 renders came out pixel-identical.
+
+    So "auto" now means: derive the ceiling as the lower of 68% of unified memory and
+    Apple's own recommended working set. On this 16GB M1 that is 10.88GB; on a 64GB Mac
+    the same code yields ~43GB. An explicit number is still honoured as a deliberate pin,
+    and 0 still means unbounded.
+
+    qwen-image-2.1 stays on the generic budget: its q4 pipeline is ~10.5GB resident and a
+    too-low cap starves the load. That is a memory-safety decision, not a measured
+    speedup, and is asserted separately below.
     """
 
-    def test_generic_budget_is_nine_gib(self):
-        self.assertAlmostEqual(generator._wired_limit_bytes() / (1 << 30), 9.0, places=1)
+    def test_both_budgets_default_to_the_derived_value(self):
+        derived = generator._derived_wired_budget_bytes()
+        self.assertGreater(derived, 0, "no device info: the derivation must fall back, not vanish")
+        self.assertEqual(generator._wired_limit_bytes(), derived)
+        self.assertEqual(generator._krea_wired_limit_bytes(), derived)
 
-    def test_krea_is_unbounded_by_default(self):
-        # Reverting the unproven 9GB pin. Set MLX_KREA_WIRED_LIMIT_GB=9 to re-pin.
-        self.assertEqual(generator._krea_wired_limit_bytes(), 0)
+    def test_the_derivation_tracks_the_machine_not_a_constant(self):
+        """A 64GB machine must not be handed the same ceiling as a 16GB one."""
+        derived_gb = generator._derived_wired_budget_bytes() / (1 << 30)
+        self.assertNotAlmostEqual(derived_gb, 9.0, places=1)
+        # 68% of this machine's RAM, capped by Apple's recommendation.
+        self.assertGreater(derived_gb, 0)
+        self.assertLessEqual(derived_gb, 11.9)
 
-    def test_krea_does_not_fall_back_to_the_generic_nine_gib(self):
-        # The failure mode this guards: someone "simplifies" the dispatch so krea2
-        # silently picks up the generic budget again, reintroducing the unproven pin.
-        self.assertNotAlmostEqual(
-            generator._krea_wired_limit_bytes() / (1 << 30), 9.0, places=1)
+    def test_krea_is_not_silently_unbounded(self):
+        """It used to be 0/unbounded. Derived is now the default, which is strictly
+        safer than unbounded and strictly looser than the 9GB that OOM'd."""
+        self.assertGreater(generator._krea_wired_limit_bytes(), 0)
+
+    def test_an_explicit_pin_still_wins_over_the_derivation(self):
+        """Auto is a default, not a policy."""
+        self.assertEqual(generator._resolve_wired_budget(9.0, 9), 9 * (1 << 30))
+        self.assertEqual(generator._resolve_wired_budget(0.0, 9), 0)
+
+    def test_krea_does_not_fall_back_to_a_different_budget(self):
+        """The failure mode this guards: someone "simplifies" the dispatch so krea2 picks
+        up a different generic constant than the generic path uses."""
+        self.assertEqual(generator._krea_wired_limit_bytes(), generator._wired_limit_bytes())
 
     def test_qwen_keeps_a_bounded_budget(self):
         # qwen must NOT be on krea2's unbounded default. Its ~10.5GB resident
@@ -984,9 +1010,15 @@ class WiredBudgetTests(unittest.TestCase):
             self.assertEqual(generator._krea_wired_limit_bytes(), 0)
 
     def test_both_paths_share_one_helper(self):
+        """Both budgets must resolve through the same function.
+
+        They drifted apart before -- the generic path clamped by the device and krea2 did
+        not -- which is how two different notions of "the limit" ended up in one file. The
+        helper is now _resolve_wired_budget, not _wired_budget_bytes."""
         import inspect
-        self.assertIn("_wired_budget_bytes", inspect.getsource(generator._wired_limit_bytes))
-        self.assertIn("_wired_budget_bytes", inspect.getsource(generator._krea_wired_limit_bytes))
+        for fn in (generator._wired_limit_bytes, generator._krea_wired_limit_bytes):
+            src = inspect.getsource(fn)
+            self.assertIn("_resolve_wired_budget", src)
 
 
 if __name__ == "__main__":

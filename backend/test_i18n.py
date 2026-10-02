@@ -454,7 +454,7 @@ _ALLOWED_LATIN = {
     "Qwen", "Image", "klein", "Turbo", "Juggernaut", "XL", "Lightning", "DiffusionBear",
     "CoreML", "Apple", "safetensors", "venv", "UNet", "VAE",
     # Abbreviations and algorithms that read as-is in all five languages.
-    "OOM", "HF", "ID", "URL", "AI", "UI", "API", "MP", "px", "In", "Context",
+    "OOM", "HF", "ID", "URL", "AI", "UI", "API", "MP", "px", "GB", "In", "Context",
     "Copyright", "MLX", "mflux", "transformer", "token",
     "Metal", "CFG", "SOTA", "Lanczos", "PNG", "JPEG", "JPG", "WebP", "Cmd", "NSFW",
     "AppKit", "WebKit", "macOS", "Finder", "Civit", "GPU", "Silicon", "JSON", "Web",
@@ -825,6 +825,11 @@ class TranslationBuildTests(unittest.TestCase):
             capture_output=True, text=True, timeout=180, cwd=str(frontend),
         )
         self.assertEqual(proc.returncode, 0, f"build failed:\n{proc.stderr[-800:]}")
-        self.assertIn("739/740", proc.stdout, f"build wrote nothing useful:\n{proc.stdout[-400:]}")
+        # Coverage as a ratio, not a literal. A hardcoded "739/740" broke the moment the
+        # next key was added, which is the wrong way for a guard to fail.
+        counts = [(int(a), int(b)) for a, b in re.findall(r"(\d+)/(\d+)", proc.stdout)]
+        self.assertTrue(counts, f"build wrote nothing useful:\n{proc.stdout[-400:]}")
+        for done, total in counts:
+            self.assertEqual(total - done, 1, "only app.logoAlt may stay untranslated")
         data = json.loads((self.LANG_DIR / "coverage.json").read_text())
         self.assertEqual(sorted(data), ["es", "ja", "ko", "pt", "zh"])

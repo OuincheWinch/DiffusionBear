@@ -419,54 +419,122 @@ def get_model_info(model_id: str) -> dict | None:
 # fraction, the configured GB value, and Apple's recommended working set.
 _WIRED_MEMORY_FRACTION = 0.68
 
-# Wired memory hint (bytes) used during generation to keep Metal from swapping on
-# 16GB machines. Set MLX_WIRED_LIMIT_GB=0 to disable.
+# Wired memory hint used during generation to keep Metal from swapping.
 #
-# This is the generic budget: FLUX.2-klein, Z-Image, SDXL and qwen-image-2.1.
-# qwen is here because its q4 pipeline is ~10.5GB resident and needs the larger
-# allowance; it is NOT here because of any measured speedup.
-try:
-    _WIRED_LIMIT_GB = int(os.environ.get("MLX_WIRED_LIMIT_GB", "9"))
-except ValueError:
-    print("[generator] invalid MLX_WIRED_LIMIT_GB, using default 9", flush=True)
-    _WIRED_LIMIT_GB = 9
-_WIRED_LIMIT_GB *= (1 << 30)
-
-# krea2 (13B q4) is UNBOUNDED by default again.
+# THE DEFAULT IS NOW DERIVED FROM THE MACHINE, NOT A CONSTANT.
 #
-# It used to carry a 9 GB pin, justified by an AGENTS.md note claiming ~18%
-# faster for identical output. Measured on 2026-09-29 (test/wired_budget/,
-# 6 runs per arm, interleaved): the arms are statistically indistinguishable
-# (exact permutation p=1.00, 150-239s bounded vs 139-198s unbounded, fully
-# interleaved) while all 12 renders are pixel-identical. The 18% never
-# reproduced, so the pin had no measured benefit and is reverted to the
-# pre-existing unbounded behaviour. Set MLX_KREA_WIRED_LIMIT_GB=9 to re-pin.
-try:
-    _KREA_WIRED_LIMIT_GB = int(os.environ.get("MLX_KREA_WIRED_LIMIT_GB", "0"))
-except ValueError:
-    print("[generator] invalid MLX_KREA_WIRED_LIMIT_GB, using default 0", flush=True)
-    _KREA_WIRED_LIMIT_GB = 0
-_KREA_WIRED_LIMIT_GB *= (1 << 30)
+# This used to be a hardcoded 9 GB (generic) and 0 (krea2). Those were numbers tuned
+# by hand on ONE 16GB M1, stored in settings.json, and carried to every other Mac the
+# app ran on. A 9 GB ceiling is far too tight on a 64GB machine and, worse, was actively
+# harmful here: krea2 persists a 9 GB pin that predates the 2026-09-29 revert, and the
+# Krea 2 text-encoder quantisation pass -- which transiently holds a 7.5GB bf16 copy
+# AND its ~1.9GB q4 result -- no longer fits under it, and dies with a Metal
+# CommandBuffer OOM during the loading_model phase.
+#
+# `None` means "auto": derive the budget from the device. Explicit GB values are still
+# honoured as deliberate overrides, and 0 still means unbounded.
+def _parse_wired_env(name: str) -> float | None:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "" or raw.strip().lower() == "auto":
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        print(f"[generator] invalid {name}={raw!r}, deriving from device instead", flush=True)
+        return None
 
 
-def _env_wired_gb() -> float:
-    return _WIRED_LIMIT_GB / (1 << 30) if _WIRED_LIMIT_GB > 0 else 0
+# Generic budget: FLUX.2-klein, Z-Image, SDXL and qwen-image-2.1. qwen is in this
+# group because its q4 pipeline is ~10.5GB resident and needs the larger allowance; it
+# is NOT here because of any measured speedup.
+_WIRED_LIMIT_GB = _parse_wired_env("MLX_WIRED_LIMIT_GB")
+
+# krea2 (13B q4). It used to carry a 9 GB pin, justified by an AGENTS.md note claiming
+# ~18% faster for identical output. Measured on 2026-09-29 (test/wired_budget/, 6 runs
+# per arm, interleaved): the arms are statistically indistinguishable (exact permutation
+# p=1.00, 150-239s bounded vs 139-198s unbounded) while all 12 renders are
+# pixel-identical. So the pin bought nothing and was reverted -- but the REVERT ONLY
+# CHANGED THE ENV DEFAULT, leaving a stale 9 GB in settings.json, which is why the cap
+# was still in force long after the note said it was gone.
+_KREA_WIRED_LIMIT_GB = _parse_wired_env("MLX_KREA_WIRED_LIMIT_GB")
+
+
+def _env_wired_gb() -> float | None:
+    return _WIRED_LIMIT_GB
 
 
 def _env_krea_gb() -> float:
     return _KREA_WIRED_LIMIT_GB / (1 << 30) if _KREA_WIRED_LIMIT_GB > 0 else 0
 
 
-def _wired_limit_gb() -> float:
-    """Effective generic wired limit (GB): persisted setting > env var default."""
+def _wired_limit_gb() -> float | None:
+    """Configured generic wired limit in GB. None means auto (derive from the device)."""
     v = app_settings.get_setting("memory_wired_limit_gb")
     return float(v) if v is not None else _env_wired_gb()
 
 
-def _krea_wired_limit_gb() -> float:
-    """Effective krea2 wired limit (GB): persisted setting > env var default."""
+def _krea_wired_limit_gb() -> float | None:
+    """Configured krea2 wired limit in GB. None means auto (derive from the device)."""
     v = app_settings.get_setting("memory_krea_wired_limit_gb")
-    return float(v) if v is not None else _env_krea_gb()
+    return float(v) if v is not None else _env_wired_gb()
+
+
+_device_budget_cache: dict = {}
+
+
+def _derived_wired_budget_bytes() -> int:
+    """Wired budget derived from this Mac, in bytes.
+
+    The lower of a fixed fraction of unified memory and Apple's own recommended working
+    set for the device. On a 16GB M1 that is min(16GB x 0.68, 11.84GB) = 10.88GB; the
+    same code yields ~43GB on a 64GB Mac, which is the point -- the old 9 GB was a
+    hand-tuned constant for one machine and meaningless on any other.
+
+    Cached: the device does not change under us, and this is read on the status path.
+    """
+    if "bytes" in _device_budget_cache:
+        return _device_budget_cache["bytes"]
+    value = 0
+    try:
+        import mlx.core as mx
+
+        dev_info = getattr(mx, "device_info", None) or getattr(mx, "metal", "device_info", None)
+        if dev_info:
+            d = dev_info() or {}
+            cap = d.get("max_recommended_working_set_size") or d.get(
+                "recommended_max_working_set_size"
+            )
+            mem = d.get("memory_size") or 0
+            if mem > 0:
+                value = int(mem * _WIRED_MEMORY_FRACTION)
+                if cap:
+                    value = min(value, int(cap))
+            elif cap:
+                value = int(cap * _WIRED_MEMORY_FRACTION)
+    except Exception:
+        value = 0
+    if value <= 0:
+        # No device info: fall back to the historical constant rather than to unbounded.
+        value = 9 * (1 << 30)
+    _device_budget_cache["bytes"] = value
+    return value
+
+
+def _derived_wired_budget_gb() -> float:
+    return round(_derived_wired_budget_bytes() / (1 << 30), 2)
+
+
+def _resolve_wired_budget(setting_gb: float | None, fallback_gb: int) -> int:
+    """Effective wired budget in bytes.
+
+    `setting_gb` is None for auto (derive from the device), 0 for an explicit
+    unbounded request, and a positive number for a deliberate pin.
+    """
+    if setting_gb is None:
+        return _derived_wired_budget_bytes()
+    if setting_gb <= 0:
+        return 0
+    return _wired_budget_bytes(int(setting_gb * (1 << 30)), fallback_gb)
 
 
 def _wired_budget_bytes(limit_gb: float, fallback_gb: int) -> int:
@@ -496,7 +564,7 @@ def _wired_budget_bytes(limit_gb: float, fallback_gb: int) -> int:
 
 
 def _wired_limit_bytes() -> int:
-    return _wired_budget_bytes(int(_wired_limit_gb() * (1 << 30)), 9)
+    return _resolve_wired_budget(_wired_limit_gb(), 9)
 
 
 def _krea_wired_limit_bytes() -> int:
@@ -506,7 +574,7 @@ def _krea_wired_limit_bytes() -> int:
     use this helper -- it uses the generic 9 GB budget, because its pipeline is
     ~10.5GB resident and a too-low cap starves the load.
     """
-    return _wired_budget_bytes(int(_krea_wired_limit_gb() * (1 << 30)), 9)
+    return _resolve_wired_budget(_krea_wired_limit_gb(), 9)
 
 _lock = threading.Lock()
 _model_maintenance_lock = threading.RLock()
@@ -1323,10 +1391,18 @@ def get_engine_status() -> dict:
     except Exception:
         pass
 
+    # auto/derived are reported separately from the configured number so the UI can say
+    # "Auto (10.88 GB)" instead of showing a derived figure as though the user had typed
+    # it -- which would then be persisted on the next save and freeze a machine-specific
+    # constant into the settings again, the exact bug this change exists to remove.
     status["wired"] = {
         "generic_limit_gb": _wired_limit_gb(),
+        "generic_auto": _wired_limit_gb() is None,
+        "generic_derived_gb": _derived_wired_budget_gb(),
         "generic_budget_bytes": _wired_limit_bytes(),
         "krea_limit_gb": _krea_wired_limit_gb(),
+        "krea_auto": _krea_wired_limit_gb() is None,
+        "krea_derived_gb": _derived_wired_budget_gb(),
         "krea_budget_bytes": _krea_wired_limit_bytes(),
     }
 
@@ -1793,6 +1869,22 @@ def _get_pipeline(model_id: str, quantization: int, loras: list[dict], variant: 
             lora_scales=scales or None,
             bake_lora=False,
         )
+        # Tiled VAE decode.
+        #
+        # mflux 0.20.0 made --vae-tiling actually work on Krea 2, where the flag was
+        # previously accepted and ignored; the changelog puts the peak decode at ~7GB for
+        # a 1024px output, cut to ~3GB tiled. That matters here because the decode is the
+        # second place this pipeline can run out of room, right after the weights load.
+        #
+        # Krea2 is a correct target: FLUX.2 Klein, Klein edit, Lens and Ideogram 4 all set
+        # supports_implicit_tiling=False, because their decoder takes normalisation
+        # statistics per tile and shifts colour between tiles. Krea2 opts in.
+        #
+        # Krea2.__init__ does not accept tiling_config, but self.tiling_config is read at
+        # decode time (krea2.py:186) and at encode time (:167) and defaults to None, so
+        # assigning it after construction is enough -- no patch to mflux is needed.
+        _apply_krea_vae_tiling(_pipeline)
+
         # Explicitly quantize the Qwen3-VL text encoder (7.5GB bf16 -> ~1.9GB q4).
         # mflux skips it by default (skip_quantization=True), leaving 7.5GB of raw bf16 weights
         # which causes resident memory to exceed 15GB and trigger Metal CommandBuffer OOM on 16GB Macs.
@@ -2666,6 +2758,39 @@ def _clear_krea_te_cache():
         mx.clear_cache()
     except Exception:
         pass
+
+
+def _krea_vae_tile_size() -> int:
+    """VAE decode tile size in px; 0 disables tiled decoding."""
+    v = app_settings.get_setting("krea_vae_tile_size")
+    if v is None:
+        v = os.environ.get("MLX_KREA_VAE_TILE_SIZE", "256")
+    try:
+        return max(0, int(v))
+    except (TypeError, ValueError):
+        return 256
+
+
+def _apply_krea_vae_tiling(pipe) -> None:
+    """Give the Krea 2 pipeline a TilingConfig so the final VAE decode tiles.
+
+    mflux only tiles when tiles_per_dim > 1, and the tile size is a cap on each tile's
+    working set. 256 is the value the changelog suggests for cutting peak decode memory
+    further; the default 512 is the library's own. A value of 0 restores untiled decoding.
+    """
+    size = _krea_vae_tile_size()
+    if size <= 0:
+        return
+    try:
+        from mflux.models.common.vae.tiling_config import TilingConfig
+
+        pipe.tiling_config = TilingConfig(
+            vae_decode_tile_size=size,
+            vae_decode_tiles_per_dim=8,
+            vae_decode_overlap=8,
+        )
+    except Exception as exc:  # pragma: no cover - depends on the mflux build
+        print(f"[generator] krea2 VAE tiling unavailable: {exc}", flush=True)
 
 
 def _krea_quantized_text_encoder(pipe, model_path, bits, group_size):

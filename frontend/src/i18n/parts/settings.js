@@ -429,6 +429,13 @@ export const settingsStrings = {
     de: "Ende des Daemon-Logs",
     it: "Coda del log del demone",
   },
+  "settings.engine.autoDerived": {
+    fr: "Auto ({gb} GB dérivés)",
+    en: "Auto ({gb} GB derived)",
+    de: "Auto ({gb} GB abgeleitet)",
+    it: "Auto ({gb} GB derivato)",
+  },
+
   "settings.engine.tuningCard": {
     fr: "⚙️ Réglage de l'exécution",
     en: "⚙️ Runtime tuning",
