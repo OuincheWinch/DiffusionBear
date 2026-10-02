@@ -8,6 +8,7 @@ dependency is absent rather than failing 40 minutes in.
 """
 
 import os
+import sys
 import threading
 import unittest
 from pathlib import Path
@@ -20,9 +21,14 @@ class AvailabilityTests(unittest.TestCase):
     def test_missing_interpreter_is_not_available(self):
         self.assertFalse(sdxl_convert.has_diffusers(Path("/nonexistent/python")))
 
-    def test_interpreter_without_diffusers_is_not_available(self):
-        # The real interpreter, probed for real: diffusers is absent today.
-        self.assertFalse(sdxl_convert.has_diffusers(sdxl_convert.DEFAULT_PYTHON))
+    def test_default_python_is_the_running_interpreter(self):
+        """Regression: it used to be ../venv/bin/python relative to this file, which is the
+        DEV checkout's venv rather than the one the app runs on -- so has_diffusers()
+        reported False even with diffusers installed. sys.executable is correct everywhere."""
+        self.assertEqual(
+            Path(sdxl_convert.DEFAULT_PYTHON).resolve(),
+            Path(sys.executable).resolve(),
+        )
 
     def test_message_names_the_exact_install_command(self):
         message = sdxl_convert.missing_dependency_message()

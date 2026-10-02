@@ -44,9 +44,18 @@ import threading
 import time
 from pathlib import Path
 
-# Where the conversion runs. Defaults to the main venv: it already imports torch on the
-# mflux inference path, whereas venv-sdxl is deliberately torch-free at runtime.
-DEFAULT_PYTHON = Path(__file__).resolve().parent.parent / "venv" / "bin" / "python"
+# Where the conversion runs: the SAME interpreter that is running the backend.
+#
+# It used to be a hardcoded ../venv/bin/python relative to this file. That silently picked
+# the DEV checkout's own venv, which is a different environment from the one the app
+# actually runs on -- diffusers was installed in the external venv and has_diffusers()
+# still reported False. sys.executable is correct in every context: a source checkout, the
+# standalone app's bundled venv, or a launchd unit.
+#
+# That interpreter also already imports torch on the mflux inference path, so nothing new
+# is being added to the running process beyond diffusers itself. venv-sdxl, which is
+# deliberately torch-free at runtime, is never used here.
+DEFAULT_PYTHON = Path(sys.executable)
 
 BASE_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
 STAGE_WEIGHT = 0.75  # share of progress that is download-vs-convert, roughly

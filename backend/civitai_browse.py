@@ -121,15 +121,36 @@ def search_models(
     if auth:
         headers["Authorization"] = f"Bearer {auth}"
 
+    # Civitai's FIRST connection to a cold host is slow -- measured 20.5s for the very
+    # first request and 0.1s for the next one. A 20s timeout sat exactly on that boundary
+    # and produced "Read timed out" in the UI, which looks like a broken feature rather
+    # than a slow first call. Generous timeout, and trust_env off to match every other
+    # outbound call in this app (a stray proxy env var must not decide reachability).
+    session = requests.Session()
+    session.trust_env = False
+    response = None
+    last_error: Exception | None = None
+    for attempt in (1, 2):
+        try:
+            # 25s, not 45: Civitai's cold call is usually 3-20s but occasionally stalls
+            # past 45 and only succeeds on the retry. A 45s attempt plus a 45s retry is a
+            # 90-second spinner. Fail sooner and let the UI offer a retry instead.
+            response = session.get(f"{API_BASE}/models", params=params, headers=headers, timeout=25)
+            break
+        except requests.exceptions.Timeout as exc:
+            last_error = exc
+        except Exception as exc:
+            raise RuntimeError(f"Civitai could not be reached ({type(exc).__name__}).") from exc
     try:
-        response = requests.get(f"{API_BASE}/models", params=params, headers=headers, timeout=20)
-    except Exception as exc:
-        raise RuntimeError(f"Civitai search failed: {exc}") from exc
-    if response.status_code == 401:
-        raise RuntimeError("Civitai rejected the API token (401). Add one in Parameters → Secrets.")
-    if response.status_code >= 400:
-        raise RuntimeError(f"Civitai search failed: HTTP {response.status_code}")
-    payload = response.json()
+        if response is None:
+            raise RuntimeError("Civitai did not respond in time. Try again in a moment.")
+        if response.status_code == 401:
+            raise RuntimeError("Civitai rejected the API token (401). Add one in Parameters → Secrets.")
+        if response.status_code >= 400:
+            raise RuntimeError(f"Civitai search failed: HTTP {response.status_code}")
+        payload = response.json()
+    finally:
+        session.close()
 
     items: list[dict[str, Any]] = []
     for entry in payload.get("items") or []:

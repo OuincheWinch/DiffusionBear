@@ -201,6 +201,24 @@ export const modelsStrings = {
     de: "Meistgeliked",
     it: "Più apprezzati",
   },
+  "models.retry": {
+    fr: "Réessayer",
+    en: "Retry",
+    de: "Erneut versuchen",
+    it: "Riprova",
+  },
+  "models.searchPlaceholderCivitai": {
+    fr: "Rechercher sur Civitai…",
+    en: "Search Civitai…",
+    de: "Civitai durchsuchen…",
+    it: "Cerca su Civitai…",
+  },
+  "models.resultsCountCivitai": {
+    fr: "{count} modèle(s) sur Civitai",
+    en: "{count} model(s) on Civitai",
+    de: "{count} Modell(e) auf Civitai",
+    it: "{count} modello/i su Civitai",
+  },
   "models.convert": {
     fr: "Convertir en diffusers",
     en: "Convert to diffusers",

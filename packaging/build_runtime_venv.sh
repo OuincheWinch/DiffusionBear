@@ -67,12 +67,25 @@ say "installing backend runtime dependencies"
   "python-multipart>=0.0.12" "pillow>=10.0.0" "pillow-heif>=1.7.0" \
   "safetensors>=0.4.0" "numpy>=1.26.0" "huggingface-hub>=0.25.0" \
   "mlx==0.32.1" "mlx-lm==0.31.3" "mlx-taef==0.8.1" "mlx-teacache==0.11.0" \
-  "torch>=2.13.0,<3.0"
+  "torch>=2.13.0,<3.0" \
+  "diffusers>=0.40.0" "omegaconf>=2.3.0" "accelerate>=1.0.0"
 
 say "installing vendored mflux (Qwen-Image 2.1 port)"
-"$VPY" -m pip install --quiet "$HERE/vendor/mflux-src"
+# pip installs from a directory in place, which drops build/ and mflux.egg-info/ INTO
+# that directory. That silently mutates the vendored fork: it doubles the file count
+# (816 -> 1617) and changes its digest, so backend/test_repo_security.py fails, and the
+# next bundle ships the artefacts too. Build from a throwaway copy and clean up after.
+_VENDOR_COPY="$(mktemp -d)/mflux-src"
+cp -R "$HERE/vendor/mflux-src" "$_VENDOR_COPY"
+trap 'rm -rf "$(dirname "$_VENDOR_COPY")"' EXIT
+"$VPY" -m pip install --quiet "$_VENDOR_COPY"
+rm -rf "$HERE/vendor/mflux-src/build" "$HERE/vendor/mflux-src"/*.egg-info
 
 # ---------------------------------------------------------------- verify
+# diffusers/omegaconf/accelerate are for the single-file -> diffusers checkpoint
+# conversion in backend/sdxl_convert.py. Without them the shipped app reports
+# "conversion unavailable" even though a source checkout can convert: this venv is built
+# from the list above, not from whatever happens to be installed in the repo venv.
 say "verifying: mlx + mflux + the qwen21 port must import, and torch must be present"
 "$VPY" - <<'PY'
 import importlib, importlib.util, sys
@@ -80,7 +93,15 @@ if importlib.util.find_spec("torch") is None:
     sys.exit("FAIL: torch is missing; mflux's weight loader needs it at inference time")
 import torch
 import mlx.core as mx
+for _dep, _why in (
+    ("diffusers", "single-file -> diffusers checkpoint conversion"),
+    ("omegaconf", "diffusers from_single_file"),
+    ("accelerate", "diffusers from_single_file"),
+):
+    if importlib.util.find_spec(_dep) is None:
+        sys.exit(f"FAIL: {_dep} is missing; {_why} would be unavailable in the shipped app")
 print(f"  torch     {torch.__version__}")
+print("  diffusers present (checkpoint conversion enabled)")
 print(f"  mlx       device={mx.default_device()}")
 import mflux
 print("  mflux     ok")

@@ -60,7 +60,15 @@ function formatBytes(n) {
 export default function HfModelBrowser({ onInstalled }) {
   const { t } = useI18n();
 
+  // Debounced mirror of the input. Civitai's cold search measures ~21s, so firing one
+  // request per keystroke would queue a dozen of them; the stale-response guard discards
+  // their answers but the requests still happen. Only the debounced value reaches `load`.
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 450);
+    return () => clearTimeout(timer);
+  }, [search]);
   const [architecture, setArchitecture] = useState("");
   const [quantization, setQuantization] = useState("");
   const [kind, setKind] = useState("");
@@ -95,12 +103,12 @@ export default function HfModelBrowser({ onInstalled }) {
       if (source === "civitai") {
         // Civitai filters server-side on its own vocabulary and has no
         // architecture/quantisation query params -- those are classified per item.
-        if (search.trim()) params.set("query", search.trim());
+        if (debouncedSearch.trim()) params.set("query", debouncedSearch.trim());
         params.set("types", kind === "lora" ? "LORA" : "Checkpoint");
         params.set("sort", sourceSort);
       } else {
         if (author) params.set("author", author);
-        if (search.trim()) params.set("search", search.trim());
+        if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
         if (architecture) params.set("architecture", architecture);
         if (quantization) params.set("quantization", quantization);
         if (kind) params.set("kind", kind);
@@ -111,11 +119,12 @@ export default function HfModelBrowser({ onInstalled }) {
       setResult(data);
     } catch (e) {
       if (!mounted.current || seq !== requestSeq.current) return;
+      setResult(null);
       setError(e.message || String(e));
     } finally {
       if (mounted.current && seq === requestSeq.current) setLoading(false);
     }
-  }, [search, architecture, quantization, kind, sort, author, source, sourceSort]);
+  }, [debouncedSearch, architecture, quantization, kind, sort, author, source, sourceSort]);
 
   useEffect(() => {
     load();
@@ -313,6 +322,19 @@ export default function HfModelBrowser({ onInstalled }) {
       </div>
 
       <div className="hf-browser-controls">
+        <div className="hf-browser-search">
+          <span className="hf-browser-search-icon" aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            value={search}
+            placeholder={source === "civitai"
+              ? t("models.searchPlaceholderCivitai")
+              : t("models.searchPlaceholder")}
+            aria-label={t("models.searchLabel")}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
         {source === "huggingface" && (
           <label className="hf-browser-filter">
             <span>{t("models.filterOrg")}</span>
@@ -381,8 +403,18 @@ export default function HfModelBrowser({ onInstalled }) {
       <div className="hf-browser-status" role="status">
         {loading
           ? t("models.searching")
-          : t("models.resultsCount", { count: items.length })}
-        {error && <span className="hf-browser-error">⚠ {error}</span>}
+          : source === "civitai"
+            ? t("models.resultsCountCivitai", { count: items.length })
+            : t("models.resultsCount", { count: items.length })}
+        {error && (
+          <>
+            <span className="hf-browser-error">⚠ {error}</span>
+            {/* Civitai in particular is slow and flaky; a retry button beats a dead spinner. */}
+            <button type="button" className="btn-mini" onClick={load}>
+              {t("models.retry")}
+            </button>
+          </>
+        )}
       </div>
 
       {!loading && items.length === 0 && !error && (
