@@ -125,6 +125,27 @@
     "pt": "downloads",
     "ko": "다운로드"
   },
+  "models.notRunnable": {
+    "es": "No se puede ejecutar aquí",
+    "zh": "此处无法运行",
+    "ja": "ここでは実行できません",
+    "pt": "Não executável aqui",
+    "ko": "여기에서 실행 불가"
+  },
+  "models.useFor": {
+    "es": "Usar para {model}",
+    "zh": "用于 {model}",
+    "ja": "{model} に使用",
+    "pt": "Usar para {model}",
+    "ko": "{model}(으)로 사용"
+  },
+  "models.stopUsing": {
+    "es": "Dejar de usar {model}",
+    "zh": "停止使用 {model}",
+    "ja": "{model} の使用を停止",
+    "pt": "Parar de usar {model}",
+    "ko": "{model} 사용 중단"
+  },
   "models.searching": {
     "es": "Buscando…",
     "zh": "搜索中…",

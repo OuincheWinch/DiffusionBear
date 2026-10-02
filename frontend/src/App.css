@@ -5025,3 +5025,13 @@ body.native-shell * {
 .models-tab-goto-generate {
   margin-top: 0.6rem;
 }
+
+/* A repo that downloaded successfully but that no engine in this app can run. Shown as a
+   quiet, non-interactive marker rather than an error: the download was fine, the app just
+   has no pipeline class for that architecture. The reason is the tooltip. */
+.hf-chip.notrunnable {
+  color: var(--muted);
+  background: rgba(138, 138, 160, 0.12);
+  border: 1px dashed var(--checkbox-border);
+  cursor: help;
+}

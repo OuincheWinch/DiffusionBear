@@ -177,6 +177,24 @@ export const modelsStrings = {
     de: "{model} ist bereits vorhanden",
     it: "Hai già {model}",
   },
+  "models.notRunnable": {
+    fr: "Non exécutable ici",
+    en: "Not runnable here",
+    de: "Hier nicht ausführbar",
+    it: "Non eseguibile qui",
+  },
+  "models.useFor": {
+    fr: "Utiliser pour {model}",
+    en: "Use for {model}",
+    de: "Für {model} verwenden",
+    it: "Usa per {model}",
+  },
+  "models.stopUsing": {
+    fr: "Cesser d'utiliser {model}",
+    en: "Stop using {model}",
+    de: "{model} nicht mehr verwenden",
+    it: "Smetti di usare {model}",
+  },
   "models.openOnHf": {
     fr: "Voir sur Hugging Face",
     en: "View on Hugging Face",

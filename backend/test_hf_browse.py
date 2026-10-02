@@ -153,3 +153,47 @@ class ListModelsCompatTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class UsableAsTests(unittest.TestCase):
+    """Which downloads this app can actually RUN.
+
+    Every generator build is a `model_id == ...` dispatch onto a fixed mflux class, so a
+    repo is runnable only if it maps onto one of those ids. Getting this wrong is what
+    makes a downloaded model look selectable when it is not.
+    """
+
+    def test_alternative_quantisations_map_onto_the_engine(self):
+        for repo, expected in [
+            ("mlx-community/FLUX.2-Klein-4B-4bit", "flux2-klein-4b"),
+            ("mlx-community/FLUX.2-Klein-4B-3bit", "flux2-klein-4b"),
+            ("mlx-community/FLUX.2-klein-9B-4bit", "flux2-klein-9b"),
+            ("mlx-community/Krea-2-Turbo-mflux-q4", "krea2-turbo"),
+            ("mlx-community/Qwen-Image-2.1-8bit", "qwen-image-2.1"),
+        ]:
+            model_id, _ = hf_browse.usable_as(repo, "diffusion")
+            self.assertEqual(model_id, expected, repo)
+
+    def test_alternative_spellings_match(self):
+        """Regression: alternatives were being AND-ed, which broke z-image entirely."""
+        for repo in ["mlx-community/z-image-turbo-6bit", "mlx-community/zimageturbo-4bit"]:
+            model_id, _ = hf_browse.usable_as(repo, "diffusion")
+            self.assertEqual(model_id, "z-image-turbo", repo)
+
+    def test_klein_size_selects_the_right_engine(self):
+        """9B must not fall through to the 4B engine -- they are separate dispatches."""
+        self.assertEqual(hf_browse.usable_as("mlx-community/FLUX.2-klein-9B-4bit", "diffusion")[0], "flux2-klein-9b")
+        self.assertEqual(hf_browse.usable_as("mlx-community/FLUX.2-Klein-4B-4bit", "diffusion")[0], "flux2-klein-4b")
+
+    def test_upscalers_are_not_runnable_and_say_why(self):
+        model_id, reason = hf_browse.usable_as("mlx-community/Restormer-real-denoising-fp32", "upscaler")
+        self.assertIsNone(model_id)
+        self.assertIn("Lanczos", reason)
+
+    def test_lora_is_not_a_model(self):
+        model_id, _ = hf_browse.usable_as("org/Illustrious-XL-LoRA", "lora")
+        self.assertIsNone(model_id)
+
+    def test_unknown_architecture_is_not_guessed(self):
+        model_id, reason = hf_browse.usable_as("cagliostrolab/Illustrious-XL-v2", "diffusion")
+        self.assertIsNone(model_id)
+        self.assertTrue(reason)

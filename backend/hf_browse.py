@@ -181,6 +181,55 @@ def supports_alpha(repo_id: str, architecture_label: str = "") -> bool:
     return architecture_label in _ALPHA_FAMILIES
 
 
+# Which registry engine, if any, can actually RUN a given repo.
+#
+# This is the honest answer to "I downloaded it, why can I not pick it?". mflux is a
+# diffusion toolkit: it constructs a small, fixed set of pipeline classes. Anything outside
+# that set -- every upscaler, every vision-language or TTS model -- is downloadable but not
+# executable, and saying so is better than letting the row imply otherwise.
+#
+# Note upscale.py has no neural upscaler at all (PIL Lanczos + UnsharpMask), so there is no
+# Restormer slot to bind to. That is why upscalers resolve to None here rather than being
+# quietly accepted.
+# Each rule is (required_all, any_one_of, model_id, label). The two groups are separate on
+# purpose: "FLUX.2-klein-9B" needs BOTH "klein" and "9b", whereas "z-image-turbo" matches
+# EITHER "z-image" or "zimage". Collapsing these into one list and requiring all of them
+# silently broke z-image entirely.
+_EXECUTABLE_RULES: list[tuple[tuple[str, ...], tuple[str, ...], str, str]] = [
+    (("klein", "9b"), (), "flux2-klein-9b", "FLUX.2-klein 9B"),
+    (("klein", "4b"), (), "flux2-klein-4b", "FLUX.2-klein 4B"),
+    (("klein",), (), "flux2-klein-4b", "FLUX.2-klein 4B"),
+    ((), ("flux.2", "flux2"), "flux2-klein-4b", "FLUX.2-klein 4B"),
+    ((), ("z-image", "zimage"), "z-image-turbo", "Z-Image Turbo"),
+    ((), ("krea",), "krea2-turbo", "Krea 2 Turbo"),
+    ((), ("qwen-image", "qwenimage"), "qwen-image-2.1", "Qwen-Image 2.1"),
+]
+
+
+def usable_as(repo_id: str, kind: str = "diffusion") -> tuple[str | None, str]:
+    """Return (registry model_id or None, human reason).
+
+    Every generator build in this app is a `model_id == ...` dispatch onto a fixed mflux
+    class (generator.py:1846 onwards). A downloaded repo becomes runnable by pointing the
+    EXISTING settings.model_paths override at its directory, which feeds `local_arg` ->
+    `model_path=`; no generation code has to change. That is the whole mechanism.
+    """
+    if kind == "upscaler":
+        return None, "This app upscales with Lanczos, not a neural model, so upscalers cannot be selected."
+    if kind == "lora":
+        return None, "LoRAs are registered separately, not as models."
+    if kind != "diffusion":
+        return None, "Not an image model."
+    stem = _stem(repo_id)
+    for required, alternatives, model_id, label in _EXECUTABLE_RULES:
+        if not all(n in stem for n in required):
+            continue
+        if alternatives and not any(n in stem for n in alternatives):
+            continue
+        return model_id, label
+    return None, "No engine in this app can run this architecture."
+
+
 def safe_install_name(repo_id: str) -> str:
     """Directory name for a downloaded repo, always inside ASSET_DIR."""
     return _SAFE_NAME.sub("-", repo_id.split("/")[-1]).strip("-") or "model"
@@ -331,6 +380,7 @@ def search_models(
         quant = guess_quantization(repo_id)
         kind = guess_kind(repo_id, tags, arch_label)
         image_like = _looks_like_image_model(entry, tags, repo_id)
+        _usable_id, _usable_label = usable_as(repo_id, kind)
         if kind == "diffusion" and image_like is False:
             # e.g. Ming-omni-tts shares the "Ming" name fragment but is a voice model.
             kind = "other"
@@ -350,6 +400,8 @@ def search_models(
             "tags": tags[:12],
             "updated_at": str(getattr(entry, "lastModified", "") or ""),
             "install_name": safe_install_name(repo_id),
+            "usable_as": _usable_id,
+            "usable_as_label": _usable_label,
             "installed": repo_id in installed,
             "installed_as": installed.get(repo_id),
             # Weaker, distinct signal: same model, different repo/quantisation.

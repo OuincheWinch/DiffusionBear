@@ -62,6 +62,8 @@ export default function HfModelBrowser({ onInstalled }) {
   const [error, setError] = useState("");
   const [tasks, setTasks] = useState([]);
   const [busyRepo, setBusyRepo] = useState(null);
+  const [registered, setRegistered] = useState({});
+  const [detected, setDetected] = useState([]);
 
   // Guards against a slow search response overwriting a newer one.
   const requestSeq = useRef(0);
@@ -129,6 +131,60 @@ export default function HfModelBrowser({ onInstalled }) {
       load();
     }
   }, [tasks, onInstalled, load]);
+
+  // Which engine, if any, each downloaded repo is bound to. Read from the app's own
+  // model_paths override so this reflects reality rather than local optimism.
+  const refreshBindings = useCallback(async () => {
+    try {
+      const data = await api("/api/hf/models/detected");
+      if (!mounted.current) return;
+      const map = {};
+      for (const item of data?.items || []) map[item.name] = item.usable_as || null;
+      setDetected(data?.items || []);
+      const bound = await api("/api/settings");
+      const paths = bound?.model_paths || {};
+      const out = {};
+      for (const [key, value] of Object.entries(paths)) {
+        if (!value) continue;
+        out[String(value).split("/").pop()] = key;
+      }
+      setRegistered(out);
+    } catch {
+      /* transient */
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshBindings();
+  }, [refreshBindings]);
+
+  const registerAs = useCallback(async (item, modelId) => {
+    if (!item || !modelId) return;
+    setBusyRepo(item.id);
+    setError("");
+    try {
+      await api("/api/hf/models/register", {
+        method: "POST",
+        body: JSON.stringify({ repo_id: item.repo_id || item.name, model_id: modelId }),
+      });
+      await refreshBindings();
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      if (mounted.current) setBusyRepo(null);
+    }
+  }, [refreshBindings]);
+
+  const unregister = useCallback(async (modelId) => {
+    if (!modelId) return;
+    setError("");
+    try {
+      await api(`/api/hf/models/register/${encodeURIComponent(modelId)}`, { method: "DELETE" });
+      await refreshBindings();
+    } catch (e) {
+      setError(e.message || String(e));
+    }
+  }, [refreshBindings]);
 
   const startDownload = useCallback(async (item) => {
     setBusyRepo(item.id);
@@ -284,6 +340,11 @@ export default function HfModelBrowser({ onInstalled }) {
                   {item.supports_alpha && (
                     <span className="hf-chip alpha">{t("models.alphaTag")}</span>
                   )}
+                  {!item.usable_as && (
+                    <span className="hf-chip notrunnable" title={item.usable_as_label || ""}>
+                      {t("models.notRunnable")}
+                    </span>
+                  )}
                 </div>
                 <div className="hf-browser-row-meta">
                   <span className="hf-browser-repo">{item.id}</span>
@@ -332,7 +393,31 @@ export default function HfModelBrowser({ onInstalled }) {
                     {t("models.cancel")}
                   </button>
                 ) : item.installed ? (
-                  <span className="settings-badge ok">{t("models.installed")}</span>
+                  <>
+                    <span className="settings-badge ok">{t("models.installed")}</span>
+                    {item.usable_as && registered[item.install_name] !== item.usable_as ? (
+                      <button
+                        type="button"
+                        className="btn-mini"
+                        disabled={busyRepo === item.id}
+                        onClick={() => registerAs(item, item.usable_as)}
+                      >
+                        {t("models.useFor", { model: item.usable_as_label })}
+                      </button>
+                    ) : item.usable_as && registered[item.install_name] === item.usable_as ? (
+                      <button
+                        type="button"
+                        className="btn-mini"
+                        onClick={() => unregister(item.usable_as)}
+                      >
+                        {t("models.stopUsing", { model: item.usable_as_label })}
+                      </button>
+                    ) : (
+                      <span className="hf-chip notrunnable" title={item.usable_as_label || ""}>
+                        {t("models.notRunnable")}
+                      </span>
+                    )}
+                  </>
                 ) : (
                   <button
                     type="button"

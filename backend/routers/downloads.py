@@ -1029,6 +1029,173 @@ def search_hf_models(
         raise HTTPException(502, str(exc))
 
 
+class ModelRegistrationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    repo_id: str = Field(min_length=1, max_length=200)
+    model_id: str = Field(min_length=1, max_length=120)
+
+
+def _known_model_dirs() -> set[str]:
+    """Directory names in the model store that belong to a registry model.
+
+    Comparing directory names against generator.MODELS *keys* is wrong: the keys are model
+    ids ("krea2-turbo", "juggernaut-xl-lightning" is an id too) while the directories are
+    bundles ("krea2-turbo-q4") or model_dir basenames. Getting this wrong made the
+    detection route report juggernaut-xl-lightning as an unknown leftover with "no engine
+    can run this architecture", for a model the app can obviously run.
+    """
+    names: set[str] = set()
+    for model_id, minfo in generator.MODELS.items():
+        model_dir = minfo.get("model_dir")
+        if model_dir:
+            names.add(Path(str(model_dir)).name)
+        repo = str(minfo.get("repo") or "")
+        if repo.startswith("local:"):
+            names.add(repo.split(":", 1)[1].strip("/"))
+        try:
+            if generator.model_download_repo(model_id, minfo) is None:
+                label = str(minfo.get("label") or "")
+                if label:
+                    names.add(label.replace(" ", "").lower())
+        except Exception:
+            continue
+    return names
+
+
+def _dir_size(directory: Path) -> int:
+    total = 0
+    for path in directory.rglob("*"):
+        try:
+            if path.is_file():
+                total += path.stat().st_size
+        except OSError:
+            continue
+    return total
+
+
+def _model_dir_for_repo(repo_id: str) -> Path | None:
+    """Locate an already-downloaded repo's directory, or None if it is not there."""
+    target = generator.ASSET_DIR / "models" / hf_browse.safe_install_name(repo_id)
+    if not target.is_dir():
+        return None
+    try:
+        target.resolve().relative_to(generator.ASSET_DIR.resolve())
+    except ValueError:
+        return None
+    return target
+
+
+def _has_weights(directory: Path) -> bool:
+    return any(
+        p.suffix in (".safetensors", ".npz", ".gguf") or p.name.endswith(".index.json")
+        for p in directory.rglob("*")
+        if p.is_file()
+    )
+
+
+@router.post("/api/hf/models/register")
+def register_downloaded_model(req: ModelRegistrationRequest):
+    """Point an existing engine at a downloaded repo, so the download becomes selectable.
+
+    Deliberately reuses the app's existing `model_paths` override instead of extending
+    generator.MODELS. Every generator build already does `model_path=local_arg` where
+    local_arg comes from that override, so binding a repo is a settings write -- no
+    generation code changes, and unbinding restores the registry default for free.
+    """
+    import app_settings
+
+    repo_id = hf_service._valid_repo_id(req.repo_id)
+    if repo_id is None:
+        raise HTTPException(400, "Invalid Hugging Face repository id")
+    model_id = req.model_id.strip()
+    if model_id not in generator.MODELS:
+        raise HTTPException(404, f"Unknown engine: {model_id}")
+    expected = hf_browse.usable_as(repo_id, "diffusion")[0]
+    if expected != model_id:
+        raise HTTPException(400, f"{repo_id} is a {expected or 'non-runnable'} model, not {model_id}")
+
+    directory = _model_dir_for_repo(repo_id)
+    if directory is None:
+        raise HTTPException(404, f"{repo_id} has not been downloaded yet")
+    if not _has_weights(directory):
+        raise HTTPException(400, f"{directory.name} contains no weights")
+
+    updated = app_settings.update_settings({"model_paths": {model_id: str(directory)}})
+    paths = updated.get("model_paths") or {}
+    return {
+        "status": "registered",
+        "model_id": model_id,
+        "repo_id": repo_id,
+        "local_path": str(directory),
+        "model_paths": paths,
+    }
+
+
+@router.delete("/api/hf/models/register/{model_id}")
+def unregister_downloaded_model(model_id: str):
+    """Drop the override so the engine falls back to its registry default."""
+    import app_settings
+
+    if model_id not in generator.MODELS:
+        raise HTTPException(404, f"Unknown engine: {model_id}")
+    settings_now = app_settings.get_settings()
+    paths = dict(settings_now.get("model_paths") or {})
+    if model_id not in paths:
+        return {"status": "not_registered", "model_id": model_id}
+    paths.pop(model_id, None)
+    updated = app_settings.update_settings({"model_paths": paths})
+    return {"status": "unregistered", "model_id": model_id, "model_paths": updated.get("model_paths") or {}}
+
+
+@router.get("/api/hf/models/detected")
+def list_detected_downloads(include_registered: bool = False):
+    """Directories in the model store that the registry does not know about.
+
+    Without this, a repo downloaded from the browser is invisible: it is in neither
+    MODELS nor /api/models, so the Models tab would show nothing and the user would have
+    no idea the weights are on disk.
+
+    Registered models are excluded by default. They are in the store, but the registry
+    already owns them, so listing them here as "detected" is noise -- and it was actively
+    misleading, reporting juggernaut-xl-lightning as an unknown leftover when it is the
+    SDXL engine the app has always run. Pass include_registered=true to see everything.
+    """
+    import app_settings
+
+    root = generator.ASSET_DIR / "models"
+    known = _known_model_dirs()
+    paths = app_settings.get_settings().get("model_paths") or {}
+    bound = {str(Path(v).name) for v in paths.values() if v}
+
+    out = []
+    if root.is_dir():
+        for directory in sorted(p for p in root.iterdir() if p.is_dir()):
+            if directory.name in bound or not _has_weights(directory):
+                continue
+            if directory.name in known and not include_registered:
+                continue
+            arch_key, arch_label = hf_browse.guess_architecture(directory.name)
+            quant = hf_browse.guess_quantization(directory.name)
+            kind = hf_browse.guess_kind(directory.name)
+            usable, reason = hf_browse.usable_as(directory.name, kind)
+            out.append(
+                {
+                    "name": directory.name,
+                    "path": str(directory),
+                    "architecture": arch_key,
+                    "architecture_label": arch_label,
+                    "quantization": quant,
+                    "kind": kind,
+                    "bytes": _dir_size(directory),
+                    "usable_as": usable,
+                    "usable_as_label": reason,
+                    "registered": directory.name in known,
+                }
+            )
+    return {"items": out, "asset_dir": str(root)}
+
+
 @router.get("/api/models/downloads")
 def get_model_downloads():
     hidden_keys = {"cancel_event", "worker_active", "_speed_t", "_speed_b"}
