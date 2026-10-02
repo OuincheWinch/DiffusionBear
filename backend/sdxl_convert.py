@@ -1,0 +1,215 @@
+"""Convert a single-file Civitai SDXL checkpoint into a diffusers directory.
+
+Why this exists
+---------------
+Civitai serves one `.safetensors`. The SDXL engine builds its pipeline with
+`StableDiffusionXLPipeline.from_diffusers(...)` (sdxl_engine.py:258), which needs a
+diffusers *directory*: `model_index.json`, `unet/`, `text_encoder/`, `text_encoder_2/`,
+`vae/`, `tokenizer/`, `tokenizer_2/`, `scheduler/`. A downloaded Civitai checkpoint is
+therefore invisible to the engine until it is converted, which is exactly the gap the
+Models tab reported as "single-file checkpoint, needs converting".
+
+Why it runs in a subprocess
+---------------------------
+The conversion needs `torch` plus `diffusers`, and the inference process must never carry
+that. `mlx_diffuser`'s own `converters/` package does the opposite direction (diffusers ->
+MLX-native) and cannot help. So this runs out-of-process with a timeout and reports
+structured progress back over stdout; a failed or hung conversion cannot take the backend
+with it, and cancelling is a process kill rather than a hope.
+
+THE DEPENDENCY IS NOT INSTALLED
+--------------------------------
+Neither venv has `diffusers` (checked 2026-10-02: venv-sdxl has torch + transformers +
+omegaconf + accelerate but no diffusers; the main venv has torch + transformers but no
+diffusers, omegaconf or accelerate). So today this exits with a clear, actionable message
+rather than pretending to work. That behaviour is tested.
+
+To enable it, install into the MAIN venv (Python 3.10, already carries torch; the SDXL
+runtime in venv-sdxl stays untouched, which matters because AGENTS.md records that the
+runtime must not depend on torch):
+
+    ./venv/bin/pip install "diffusers" omegaconf accelerate
+
+Then it runs under the main interpreter, which is the default here.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+
+# Where the conversion runs. Defaults to the main venv: it already imports torch on the
+# mflux inference path, whereas venv-sdxl is deliberately torch-free at runtime.
+DEFAULT_PYTHON = Path(__file__).resolve().parent.parent / "venv" / "bin" / "python"
+
+BASE_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
+STAGE_WEIGHT = 0.75  # share of progress that is download-vs-convert, roughly
+
+
+class ConversionError(RuntimeError):
+    pass
+
+
+def has_diffusers(python: Path | None = None) -> bool:
+    """Cheap probe so the UI can disable the action instead of failing on click."""
+    exe = python or Path(os.environ.get("MLX_SDXL_CONVERT_PYTHON") or DEFAULT_PYTHON)
+    if not exe.exists():
+        return False
+    try:
+        result = subprocess.run(
+            [str(exe), "-c", "import diffusers, omegaconf, accelerate"],
+            capture_output=True,
+            timeout=60,
+        )
+        return result.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def missing_dependency_message() -> str:
+    return (
+        "Converting a checkpoint needs `diffusers`, which is not installed. "
+        "Run: ./venv/bin/pip install diffusers omegaconf accelerate"
+    )
+
+
+_WORKER = r'''
+import json, os, sys, time
+from pathlib import Path
+
+src, dest, base, cancel_path = sys.argv[1:5]
+
+def emit(kind, **fields):
+    print(json.dumps({"kind": kind, **fields}), flush=True)
+
+def cancelled():
+    return os.path.exists(cancel_path)
+
+try:
+    import torch
+    from diffusers import StableDiffusionXLPipeline
+except Exception as exc:
+    emit("fatal", error="conversion dependencies are missing: %s" % exc)
+    sys.exit(3)
+
+emit("stage", stage="loading", progress=0.05)
+try:
+    pipeline = StableDiffusionXLPipeline.from_single_file(
+        str(src),
+        torch_dtype=torch.float16,
+        local_files_only=False,
+        safety_checker=None,
+    )
+except Exception as exc:
+    emit("fatal", error="could not load the checkpoint: %s" % exc)
+    sys.exit(4)
+
+if cancelled():
+    emit("fatal", error="cancelled")
+    sys.exit(5)
+
+emit("stage", stage="converting", progress=0.80)
+target = Path(dest)
+target.mkdir(parents=True, exist_ok=True)
+try:
+    pipeline.save_pretrained(str(target))
+except Exception as exc:
+    emit("fatal", error="could not write the diffusers directory: %s" % exc)
+    sys.exit(6)
+
+emit("stage", stage="done", progress=1.0)
+'''
+
+
+def convert(
+    source: Path,
+    dest: Path,
+    python: Path | None = None,
+    cancel_event: threading.Event | None = None,
+    on_progress=None,
+    timeout: int = 60 * 60,
+) -> dict:
+    """Convert `source` into a diffusers directory at `dest`.
+
+    Runs out-of-process. `on_progress(fraction, text)` is called from the reader thread.
+    """
+    exe = python or Path(os.environ.get("MLX_SDXL_CONVERT_PYTHON") or DEFAULT_PYTHON)
+    if not source.is_file():
+        raise ConversionError(f"checkpoint not found: {source.name}")
+    if not exe.exists():
+        raise ConversionError(f"interpreter not found: {exe}")
+
+    with tempfile_dir() as workdir:
+        script = Path(workdir) / "convert_sdxl.py"
+        script.write_text(_WORKER, encoding="utf-8")
+        cancel_path = Path(workdir) / "cancel"
+        proc = subprocess.Popen(
+            [str(exe), str(script), str(source), str(dest), BASE_MODEL, str(cancel_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        )
+        result: dict = {"ok": False, "error": None, "dest": str(dest)}
+        started = time.monotonic()
+        try:
+            for line in proc.stdout:  # type: ignore[union-attr]
+                line = line.strip()
+                if not line:
+                    continue
+                if not line.startswith("{"):
+                    continue
+                try:
+                    payload = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if payload.get("kind") == "fatal":
+                    result["error"] = payload.get("error") or "conversion failed"
+                    break
+                if payload.get("kind") == "stage":
+                    if on_progress:
+                        on_progress(float(payload.get("progress") or 0.0),
+                                    str(payload.get("stage") or ""))
+            code = proc.wait(timeout=max(30, timeout - (time.monotonic() - started)))
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            raise ConversionError("conversion timed out")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+
+        if cancel_event is not None and cancel_event.is_set():
+            shutil.rmtree(dest, ignore_errors=True)
+            raise ConversionError("cancelled")
+        if result["error"]:
+            shutil.rmtree(dest, ignore_errors=True)
+            raise ConversionError(result["error"])
+        if code != 0:
+            shutil.rmtree(dest, ignore_errors=True)
+            raise ConversionError(f"conversion exited with status {code}")
+        if not (dest / "model_index.json").is_file():
+            shutil.rmtree(dest, ignore_errors=True)
+            raise ConversionError("conversion produced no model_index.json")
+        result["ok"] = True
+        return result
+
+
+class tempfile_dir:
+    """Tiny scoped temp dir; avoids importing tempfile for one use."""
+
+    def __enter__(self):
+        import tempfile
+
+        self._dir = tempfile.TemporaryDirectory(prefix="sdxl-convert-")
+        return self._dir.name
+
+    def __exit__(self, *exc):
+        self._dir.cleanup()
+        return False

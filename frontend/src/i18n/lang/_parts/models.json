@@ -125,6 +125,27 @@
     "pt": "downloads",
     "ko": "다운로드"
   },
+  "models.convert": {
+    "es": "Convertir a formato utilizable",
+    "zh": "转换为可用格式",
+    "ja": "使用可能な形式に変換",
+    "pt": "Converter para formato utilizável",
+    "ko": "사용 가능한 형식으로 변환"
+  },
+  "models.convertUnavailable": {
+    "es": "Conversión no disponible",
+    "zh": "转换不可用",
+    "ja": "変換を利用できません",
+    "pt": "Conversão indisponível",
+    "ko": "변환 사용 불가"
+  },
+  "models.convertedBadge": {
+    "es": "CONVERTIDO",
+    "zh": "已转换",
+    "ja": "変換済み",
+    "pt": "CONVERTIDO",
+    "ko": "변환됨"
+  },
   "models.civitaiSort.downloads": {
     "es": "Descargas",
     "zh": "下载量",

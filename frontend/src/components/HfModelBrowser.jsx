@@ -76,6 +76,9 @@ export default function HfModelBrowser({ onInstalled }) {
   const [busyRepo, setBusyRepo] = useState(null);
   const [registered, setRegistered] = useState({});
   const [detected, setDetected] = useState([]);
+  // Conversion is offered only when the backend says it can actually run; otherwise the
+  // button would fail 40 minutes into a 7GB download with a dependency message.
+  const [convertAvailable, setConvertAvailable] = useState(null);
 
   // Guards against a slow search response overwriting a newer one.
   const requestSeq = useRef(0);
@@ -176,7 +179,27 @@ export default function HfModelBrowser({ onInstalled }) {
 
   useEffect(() => {
     refreshBindings();
+    api("/api/sdxl/convert/available")
+      .then((d) => setConvertAvailable(d))
+      .catch(() => setConvertAvailable({ available: false, reason: "" }));
   }, [refreshBindings]);
+
+  const startConversion = useCallback(async (item) => {
+    setBusyRepo(item.id);
+    setError("");
+    try {
+      await api("/api/sdxl/convert", {
+        method: "POST",
+        body: JSON.stringify({ install_name: item.install_name }),
+      });
+      const list = await api("/api/models/downloads");
+      if (mounted.current) setTasks(Array.isArray(list) ? list : []);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      if (mounted.current) setBusyRepo(null);
+    }
+  }, []);
 
   const registerAs = useCallback(async (item, modelId) => {
     if (!item || !modelId) return;
@@ -260,6 +283,10 @@ export default function HfModelBrowser({ onInstalled }) {
     return map;
   }, [tasks]);
 
+  const convertedNames = useMemo(
+    () => new Set(detected.filter((d) => d.usable_as).map((d) => d.name)),
+    [detected],
+  );
   const archOptions = facets.architecture || [];
   const quantOptions = facets.quantization || [];
 
@@ -391,10 +418,13 @@ export default function HfModelBrowser({ onInstalled }) {
                   {item.supports_alpha && (
                     <span className="hf-chip alpha">{t("models.alphaTag")}</span>
                   )}
-                  {!item.usable_as && (
+                  {!item.usable_as && !convertedNames.has(item.install_name) && (
                     <span className="hf-chip notrunnable" title={item.usable_as_label || ""}>
                       {t("models.notRunnable")}
                     </span>
+                  )}
+                  {convertedNames.has(item.install_name) && (
+                    <span className="settings-badge ok">{t("models.convertedBadge")}</span>
                   )}
                 </div>
                 <div className="hf-browser-row-meta">
@@ -448,6 +478,19 @@ export default function HfModelBrowser({ onInstalled }) {
                 ) : item.installed ? (
                   <>
                     <span className="settings-badge ok">{t("models.installed")}</span>
+                    {!convertedNames.has(item.install_name) && item.source === "civitai" && (
+                      <button
+                        type="button"
+                        className="btn-mini"
+                        disabled={busyRepo === item.id || convertAvailable?.available === false}
+                        title={convertAvailable?.reason || ""}
+                        onClick={() => startConversion(item)}
+                      >
+                        {convertAvailable?.available === false
+                          ? t("models.convertUnavailable")
+                          : t("models.convert")}
+                      </button>
+                    )}
                     {item.usable_as && registered[item.install_name] !== item.usable_as ? (
                       <button
                         type="button"

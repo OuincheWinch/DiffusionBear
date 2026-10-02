@@ -201,6 +201,24 @@ export const modelsStrings = {
     de: "Meistgeliked",
     it: "Più apprezzati",
   },
+  "models.convert": {
+    fr: "Convertir en diffusers",
+    en: "Convert to diffusers",
+    de: "In diffusers umwandeln",
+    it: "Converti in diffusers",
+  },
+  "models.convertUnavailable": {
+    fr: "Conversion indisponible",
+    en: "Conversion unavailable",
+    de: "Umwandlung nicht verfügbar",
+    it: "Conversione non disponibile",
+  },
+  "models.convertedBadge": {
+    fr: "CONVERTIE",
+    en: "CONVERTED",
+    de: "UMGEWANDELT",
+    it: "CONVERTITO",
+  },
   "models.notRunnable": {
     fr: "Non exécutable ici",
     en: "Not runnable here",

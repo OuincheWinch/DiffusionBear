@@ -19,6 +19,7 @@ import generator
 import hf_service
 import hf_browse
 import civitai_browse
+import sdxl_convert
 from .loras import _model_is_fully_cached
 from state import (
     LORA_FILES_DIR,
@@ -1073,6 +1074,87 @@ def _run_civitai_model_download(task_id: str, version_id: int, name: str, token:
         _fail_model_task(task_id, "Download cancelled by user")
     except Exception as exc:
         _fail_model_task(task_id, exc)
+
+
+
+class ConversionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    install_name: str = Field(min_length=1, max_length=120)
+
+
+def _run_sdxl_conversion(task_id: str, install_name: str, cancel_event: threading.Event):
+    """Convert a downloaded single-file checkpoint into a diffusers directory.
+
+    Runs the real work in a subprocess (see sdxl_convert) so a hung or crashing
+    conversion cannot take the backend down. On success the directory lands where the SDXL
+    engine can find it, and only then is the task marked done -- a half-written diffusers
+    folder would read as "installed" and then fail at generation time.
+    """
+    root = generator.ASSET_DIR / "models" / install_name
+    source = None
+    if root.is_dir():
+        for candidate in sorted(root.glob("*.safetensors")):
+            source = candidate
+            break
+    if source is None:
+        _fail_model_task(task_id, f"no .safetensors checkpoint found in {install_name}")
+        return
+
+    def on_progress(fraction: float, stage: str) -> None:
+        with _MODEL_DOWNLOAD_LOCK:
+            task = MODEL_DOWNLOAD_TASKS.get(task_id)
+            if task and task.get("status") == "downloading":
+                task["progress"] = max(0.0, min(0.99, fraction))
+                task["status_text"] = f"Converting {install_name}: {stage or 'working'}"
+
+    try:
+        _check_cancelled(cancel_event)
+        if not sdxl_convert.has_diffusers():
+            _fail_model_task(task_id, sdxl_convert.missing_dependency_message())
+            return
+        sdxl_convert.convert(source, root, cancel_event=cancel_event, on_progress=on_progress)
+        _finish_model_task(task_id, f"{install_name} converted and ready to use")
+    except Exception as exc:
+        _fail_model_task(task_id, exc)
+
+
+@router.get("/api/sdxl/convert/available")
+def sdxl_conversion_available():
+    """Lets the UI disable the Convert action with a reason, instead of failing on click."""
+    available = sdxl_convert.has_diffusers()
+    return {
+        "available": available,
+        "reason": None if available else sdxl_convert.missing_dependency_message(),
+    }
+
+
+@router.post("/api/sdxl/convert")
+def start_sdxl_conversion(req: ConversionRequest):
+    install_name = hf_browse.safe_install_name(req.install_name)
+    if install_name != req.install_name.strip():
+        raise HTTPException(400, "invalid install name")
+    root = generator.ASSET_DIR / "models" / install_name
+    if not root.is_dir():
+        raise HTTPException(404, f"{install_name} is not in the model store")
+    if (root / "model_index.json").is_file():
+        return {"status": "already_converted", "install_name": install_name}
+    if not sdxl_convert.has_diffusers():
+        raise HTTPException(503, sdxl_convert.missing_dependency_message())
+    task_id = uuid.uuid4().hex[:12]
+    cancel_event = threading.Event()
+    task = {
+        "id": task_id, "source": "convert", "model_id": f"convert-{install_name}",
+        "repo_id": f"local/{install_name}", "model_name": install_name, "engine": "sdxl",
+        "status": "downloading", "progress": 0.0, "downloaded_bytes": 0, "total_bytes": 0,
+        "speed_mb_s": 0.0, "status_text": f"Preparing to convert {install_name}...",
+        "started_at": time.time(), "finished_at": None, "error": None, "result": None,
+        "install_dir": str(root), "worker_active": True, "cancel_event": cancel_event,
+    }
+    with _MODEL_DOWNLOAD_LOCK:
+        MODEL_DOWNLOAD_TASKS[task_id] = task
+    threading.Thread(target=_run_sdxl_conversion, args=(task_id, install_name, cancel_event), daemon=True).start()
+    return {"task_id": task_id, "status": "downloading", "model_name": install_name, "source": "convert"}
 
 
 @router.get("/api/civitai/models")
