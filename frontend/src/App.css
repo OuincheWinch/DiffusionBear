@@ -4495,3 +4495,60 @@ body.native-shell * {
   font-weight: 700;
   line-height: 1;
 }
+
+/* Ratio buttons carry two distinct states, and telling them apart is the point of the
+   pair. The SELECTED ratio is what the user last clicked; the CALCULATED one is what
+   the current width/height actually describe. With the ratio locked the selection is
+   what governs, so it is the strong one. Unlocked, the dimensions are about to move on
+   their own, so the calculated ratio is the strong one and the selection fades -- which
+   is the visual warning that the shape is no longer what was picked. */
+.size-ratio-btn.calculated {
+  border-color: var(--success);
+  background: rgba(74, 222, 128, 0.18);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.size-ratio-btn.calculated .size-ratio-glyph {
+  opacity: 1;
+}
+
+/* Selected but overridden by the live dimensions: present, not authoritative. */
+.size-ratio-btn.active-muted {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.size-ratio-btn.active-muted .size-ratio-glyph {
+  opacity: 0.45;
+}
+
+/* A language whose catalogue is still empty. It stays selectable -- the point is that
+   translators can see it in the product -- but it is dimmed and carries a dot, so
+   picking it and getting the English interface reads as "untranslated" rather than
+   "broken". */
+.language-option.pending {
+  color: var(--muted);
+}
+
+.language-option.pending .language-flag {
+  opacity: 0.6;
+}
+
+.language-option.pending.active {
+  color: var(--accent-text);
+}
+
+.language-option.pending.active .language-flag {
+  opacity: 1;
+}
+
+.language-pending-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}

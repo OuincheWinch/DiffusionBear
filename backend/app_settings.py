@@ -124,6 +124,11 @@ DEFAULTS = {
 PROMPT_ENHANCER_KEYS = {"flux2", "sdxl", "krea2", "z-image-turbo", "qwen"}
 _PROMPT_ENHANCER_MAX = 8000
 _MAX_SETTINGS_BYTES = 8 * 1024 * 1024
+# Accepted interface languages, mirroring frontend/src/i18n/languages.js. A code
+# added there and not here is silently rejected on save, and the picker's choice
+# appears to do nothing -- so the two lists are asserted equal by test_i18n.py.
+LANGUAGE_CODES = frozenset({"auto", "en", "fr", "de", "it", "es", "zh", "ja", "pt", "ko"})
+
 _MAX_MODEL_SETTINGS = 64
 _MODEL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,119}$")
 
@@ -166,7 +171,7 @@ _VALIDATORS = {
     "default_fast_vae": lambda v: isinstance(v, bool),
     "default_sampler": lambda v: isinstance(v, str) and (not v or v in _SAMPLERS),
     "default_cache_interval": lambda v: _is_int(v) and 1 <= v <= 10,
-    "language": lambda v: v in ("auto", "en", "fr", "de", "it"),
+    "language": lambda v: v in LANGUAGE_CODES,
     "model_defaults": lambda v: isinstance(v, dict) and len(v) <= _MAX_MODEL_SETTINGS,
     "model_paths": lambda v: isinstance(v, dict) and len(v) <= _MAX_MODEL_SETTINGS,
     "prompt_enhancer": lambda v: isinstance(v, dict) and len(v) <= len(PROMPT_ENHANCER_KEYS),

@@ -31,7 +31,9 @@ class SettingsUpdate(BaseModel):
     # UI language. "auto" follows the OS locale; a concrete code pins it. Stored
     # with the rest of the settings so the choice survives a reinstall, and
     # validated here rather than trusted from the client.
-    language: str | None = Field(default=None, pattern=r"^(auto|en|fr|de|it)$")
+    language: str | None = Field(
+        default=None, pattern=r"^(auto|en|fr|de|it|es|zh|ja|pt|ko)$"
+    )
 
 
 @router.get("/api/settings")

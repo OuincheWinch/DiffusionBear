@@ -144,6 +144,16 @@ export default function SizeSelector({
   const selfWriteRef = useRef(null);
   // Keep-ratio: when on, editing one side derives the other from the current shape.
   const [lockRatio, setLockRatio] = useState(false);
+  // What the user is currently typing, per side. null means "show the live value".
+  //
+  // The fields were previously controlled straight off width/height and snapped on
+  // every keystroke, which made them impossible to use: typing 5 became 256
+  // immediately, so the next keystroke appended to that. Selecting the content and
+  // typing produced an empty string, which was rejected, leaving state untouched --
+  // so React reverted the field and nothing could be edited at all. A draft accepts
+  // anything, including transitory values below the floor, and commits on blur or
+  // Enter, which is when snapping to a multiple of 16 is meaningful.
+  const [draft, setDraft] = useState({ width: null, height: null });
   const [base, setBase] = useState(derived ? derived.base : 1024);
   const [ratioId, setRatioId] = useState(derived ? derived.ratioId : "1:1");
 
@@ -152,6 +162,7 @@ export default function SizeSelector({
   // selection while the model had quietly changed the dimensions underneath.
   useEffect(() => {
     const key = `${width}x${height}`;
+    setDraft({ width: null, height: null });
     if (selfWriteRef.current === key) {
       selfWriteRef.current = null;
       return;
@@ -186,6 +197,10 @@ export default function SizeSelector({
    * re-derives base+ratio does not interpret a keystroke as an external size change
    * and bounce the control back to the grid.
    */
+  /**
+   * Commit one side: snap it, derive the other if the ratio is locked, and push.
+   * Values below the floor are raised here rather than while typing.
+   */
   function setSide(side, raw) {
     const value = Number(raw);
     if (!Number.isFinite(value) || value <= 0) return;
@@ -208,6 +223,18 @@ export default function SizeSelector({
     setHeight(h);
   }
 
+  /** Apply whatever is in the draft for one side, then hand the field back to state. */
+  function commit(side) {
+    const raw = draft[side];
+    setDraft((d) => ({ ...d, [side]: null }));
+    if (raw === null || String(raw).trim() === "") return;
+    const value = Number(raw);
+    // A non-number or a clear-to-empty is a cancellation, not an error: keep the
+    // previous size rather than snapping to something the user did not ask for.
+    if (!Number.isFinite(value) || value <= 0) return;
+    setSide(side, value);
+  }
+
   function selectBase(next) {
     setBase(next);
     if (mode === "standard") apply(next, ratioId);
@@ -219,6 +246,17 @@ export default function SizeSelector({
   }
 
   const preview = fitToBudget(width, height, maxPixels);
+  // The ratio the current dimensions describe, which can differ from the one last
+  // clicked once the user edits width or height by hand.
+  const calculatedRatioId = derived ? derived.ratioId : null;
+
+  // Which of the two is in effect. Locked means the click governs the shape, so the
+  // selected ratio is what is true. Unlocked means typing governs it, so the ratio
+  // the dimensions describe is what is true -- and if the two disagree, the size on
+  // screen is about to drift out of the selected shape, which the highlight has to
+  // say out loud.
+  const selectedIsTruth = lockRatio;
+
   const budget =
     maxPixels == null || maxPixels === "" ? null : Number(maxPixels);
   const hasBudget = Number.isFinite(budget) && budget > 0;
@@ -262,8 +300,14 @@ export default function SizeSelector({
             <button
               key={r.id}
               type="button"
-              className={`size-ratio-btn${ratioId === r.id ? " active" : ""}`}
-              aria-pressed={ratioId === r.id}
+              className={[
+                "size-ratio-btn",
+                ratioId === r.id ? (selectedIsTruth ? "active" : "active-muted") : "",
+                calculatedRatioId === r.id && !selectedIsTruth ? "calculated" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={ratioId === r.id || calculatedRatioId === r.id}
               onClick={() => selectRatio(r.id)}
               title={t("params.size.ratioTitle", { ratio: r.id })}
             >
@@ -285,8 +329,17 @@ export default function SizeSelector({
                 type="number"
                 min={FLOOR}
                 step={MULTIPLE}
-                value={width}
-                onChange={(e) => setSide("width", e.target.value)}
+                value={draft.width ?? width}
+                onChange={(e) => setDraft((d) => ({ ...d, width: e.target.value }))}
+                onBlur={() => commit("width")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commit("width");
+                  } else if (e.key === "Escape") {
+                    setDraft((d) => ({ ...d, width: null }));
+                  }
+                }}
               />
             </label>
             <label className="size-custom-field">
@@ -295,8 +348,17 @@ export default function SizeSelector({
                 type="number"
                 min={FLOOR}
                 step={MULTIPLE}
-                value={height}
-                onChange={(e) => setSide("height", e.target.value)}
+                value={draft.height ?? height}
+                onChange={(e) => setDraft((d) => ({ ...d, height: e.target.value }))}
+                onBlur={() => commit("height")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commit("height");
+                  } else if (e.key === "Escape") {
+                    setDraft((d) => ({ ...d, height: null }));
+                  }
+                }}
               />
             </label>
             <button

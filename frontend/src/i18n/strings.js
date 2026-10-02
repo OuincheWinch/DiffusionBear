@@ -72,6 +72,12 @@ export const STRINGS = {
     de: "Systemeinstellung folgen",
     it: "Segui il sistema",
   },
+  "language.pending": {
+    fr: "Traduction en cours — l'interface s'affiche en anglais",
+    en: "Translation in progress — the interface shows English",
+    de: "Übersetzung läuft — die Oberfläche zeigt Englisch",
+    it: "Traduzione in corso — l'interfaccia mostra l'inglese",
+  },
 
   // -------------------------------------------------------------- generation stack
 

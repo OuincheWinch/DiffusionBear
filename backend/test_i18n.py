@@ -9,7 +9,10 @@ node-based test runner in this repo, and the file's shape (a flat object of stri
 literals) is stable enough to check without executing JavaScript.
 """
 
+import json
 import re
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -282,3 +285,275 @@ class NoHardcodedFrenchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# --------------------------------------------------------------------------- scaffolds
+#
+# Five languages (es, zh, ja, pt, ko) ship as empty catalogues: selectable in the
+# picker, rendering through the English fallback until translated. The scaffolds are
+# the translators' work order, and these tests keep them honest without pretending
+# the translations exist.
+
+ROOT = Path(__file__).resolve().parents[1]
+SCAFFOLD_DIR = ROOT / "frontend" / "src" / "i18n" / "scaffold"
+SETTINGS_ROUTER = Path(__file__).resolve().parent / "routers" / "settings.py"
+APP_SETTINGS = Path(__file__).resolve().parent / "app_settings.py"
+
+# The codes that must have a scaffold file, hard-coded here on purpose. Deriving the
+# expectation from languages.js would make these tests agree with any list it holds,
+# including one that quietly forgot a language.
+EXPECTED_SHIPPED = ("en", "fr", "de", "it")
+EXPECTED_SCAFFOLD = ("es", "zh", "ja", "pt", "ko")
+
+_KEY_LINE_RE = re.compile(r'^\s{2}"(?P<key>[^"]+)":\s*(?P<value>.+?),?\s*(?://.*)?$', re.M)
+_CODE_RE = re.compile(r'code:\s*"(?P<code>[a-z]{2})"')
+# Anchored on the whole declaration, because settings.py holds several `pattern=` fields
+# and `language: str | None = Field(` contains an `=`, so the shorter `language:[^=]*`
+# form stops before reaching the pattern.
+_LANG_FIELD_RE = re.compile(
+    r'language:\s*str\s*\|\s*None\s*=\s*Field\(\s*default=None,\s*'
+    r'pattern=r"\^\((?P<codes>[^)]*)\)\$"',
+    re.S,
+)
+
+
+def _registry_languages() -> list[dict]:
+    """The LANGUAGES array from languages.js, parsed without executing it."""
+    text = LANGUAGES_FILE.read_text(encoding="utf-8")
+    block = re.search(r"export const LANGUAGES = \[(.*?)\n\];", text, re.S).group(1)
+    out = []
+    for raw in re.findall(r"\{[^{}]*\}", block):
+        def field(name):
+            m = re.search(rf'{name}:\s*"([^"]+)"', raw)
+            return m.group(1) if m else None
+        out.append(
+            {
+                "code": field("code"),
+                "label": field("label"),
+                "flag": field("flag"),
+                "status": field("status"),
+            }
+        )
+    return out
+
+
+class LanguageRegistryTests(unittest.TestCase):
+    def setUp(self):
+        self.languages = _registry_languages()
+
+    def test_exactly_nine_languages_are_listed(self):
+        self.assertEqual(
+            [lang["code"] for lang in self.languages],
+            list(EXPECTED_SHIPPED) + list(EXPECTED_SCAFFOLD),
+        )
+
+    def test_codes_are_unique(self):
+        codes = [lang["code"] for lang in self.languages]
+        self.assertEqual(len(codes), len(set(codes)))
+
+    def test_every_language_has_a_native_name_and_a_flag(self):
+        for lang in self.languages:
+            with self.subTest(code=lang["code"]):
+                self.assertTrue(lang["label"], "native name missing")
+                self.assertTrue(lang["flag"], "flag missing")
+                # These are the labels the user recognises, in their own script.
+                self.assertNotIn("language.", lang["label"])
+
+    def test_native_names_are_the_ones_asked_for(self):
+        expected = {
+            "es": "Español",
+            "zh": "简体中文",
+            "ja": "日本語",
+            "pt": "Português",
+            "ko": "한국어",
+        }
+        got = {lang["code"]: lang["label"] for lang in self.languages}
+        for code, label in expected.items():
+            with self.subTest(code=code):
+                self.assertEqual(got[code], label)
+
+    def test_flags_match_the_language(self):
+        expected = {"en": "🇬🇧", "fr": "🇫🇷", "de": "🇩🇪", "it": "🇮🇹",
+                    "es": "🇪🇸", "zh": "🇨🇳", "ja": "🇯🇵", "pt": "🇵🇹", "ko": "🇰🇷"}
+        for lang in self.languages:
+            with self.subTest(code=lang["code"]):
+                self.assertEqual(lang["flag"], expected[lang["code"]])
+
+    def test_status_is_declared_and_partitions_the_list(self):
+        statuses = {lang["code"]: lang["status"] for lang in self.languages}
+        self.assertEqual({c for c, s in statuses.items() if s == "shipped"}, set(EXPECTED_SHIPPED))
+        self.assertEqual({c for c, s in statuses.items() if s == "scaffold"}, set(EXPECTED_SCAFFOLD))
+
+    def test_an_untranslated_language_is_not_auto_selected(self):
+        """A locale with no catalogue must fall back to English, or the picker claims
+        Español while the interface is English and reads as broken."""
+        text = LANGUAGES_FILE.read_text(encoding="utf-8")
+        self.assertIn("TRANSLATED_LANGUAGES", text)
+        self.assertRegex(
+            text,
+            r"TRANSLATED_LANGUAGES\.some\(\(l\) => l\.code === fromNav\)",
+            "detectLanguage must check the OS locale against the translated set",
+        )
+
+
+class BackendLanguageAgreementTests(unittest.TestCase):
+    """A language the picker offers but the backend rejects is a dead control: the
+    choice appears to do nothing. Both gates are asserted against the registry."""
+
+    def _registry_codes(self) -> set:
+        return {lang["code"] for lang in _registry_languages()} | {"auto"}
+
+    def test_the_settings_router_accepts_exactly_the_registry(self):
+        router = SETTINGS_ROUTER.read_text(encoding="utf-8")
+        match = re.search(_LANG_FIELD_RE, router)
+        self.assertIsNotNone(match, "language pattern not found in routers/settings.py")
+        accepted = set(match.group("codes").split("|"))
+        self.assertEqual(accepted, self._registry_codes())
+
+    def test_app_settings_accepts_exactly_the_registry(self):
+        text = APP_SETTINGS.read_text(encoding="utf-8")
+        match = re.search(r'LANGUAGE_CODES = frozenset\(\{(?P<codes>[^}]*)\}\)', text)
+        self.assertIsNotNone(match, "LANGUAGE_CODES not found in app_settings.py")
+        accepted = set(re.findall(r'"([a-z]{2}|auto)"', match.group("codes")))
+        self.assertEqual(accepted, self._registry_codes())
+
+    def test_the_validator_actually_uses_the_shared_constant(self):
+        self.assertRegex(
+            APP_SETTINGS.read_text(encoding="utf-8"),
+            r'"language":\s*lambda v:\s*v in LANGUAGE_CODES',
+            "a literal tuple here would drift from the constant above it",
+        )
+
+    def test_all_nine_codes_are_persistable(self):
+        router = SETTINGS_ROUTER.read_text(encoding="utf-8")
+        # Anchored to `language:` on purpose -- settings.py holds several `pattern=`
+        # fields, and an unanchored match happily reads image formats instead.
+        match = re.search(_LANG_FIELD_RE, router)
+        self.assertIsNotNone(match)
+        accepted = match.group("codes").split("|")
+        for code in ("es", "zh", "ja", "pt", "ko"):
+            with self.subTest(code=code):
+                self.assertIn(code, accepted)
+
+
+def _node_available() -> bool:
+    return shutil.which("node") is not None
+
+
+def _keys_from_node() -> set | None:
+    """The authoritative key list, read out of the real merged object.
+
+    The regex parser above is a reasonable guard on the hand-maintained catalogues, but
+    it silently misses ~22 keys, and a scaffold test built on it would compare against
+    an incomplete reference. The scaffolds are GENERATED from STRINGS by node anyway, so
+    the honest comparison is node's.
+    """
+    if not _node_available():
+        return None
+    script = (
+        'import("./strings.js").then(m => '
+        'process.stdout.write(JSON.stringify(Object.keys(m.STRINGS))))'
+    )
+    proc = subprocess.run(
+        ["node", "--input-type=module", "-e", script],
+        cwd=str(ROOT / "frontend" / "src" / "i18n"),
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if proc.returncode != 0:
+        return None
+    return set(json.loads(proc.stdout))
+
+
+class ScaffoldTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.catalog = _parse_parts()
+        cls.catalog.update(_parse_table(STRINGS_FILE))
+        cls.authoritative = _keys_from_node()
+
+    def test_a_scaffold_exists_for_every_scaffold_language(self):
+        for code in EXPECTED_SCAFFOLD:
+            with self.subTest(code=code):
+                path = SCAFFOLD_DIR / f"{code}.js"
+                self.assertTrue(path.exists(), f"missing scaffold for {code}")
+
+    def test_no_scaffold_strays_into_the_parts_directory(self):
+        """parts/*.js is globbed as a disjoint catalogue of the shipped languages; a
+        second file listing the same keys would read as a duplicate-key collision."""
+        for code in EXPECTED_SCAFFOLD:
+            self.assertFalse((ROOT / "frontend" / "src" / "i18n" / "parts" / f"{code}.js").exists())
+
+    def _scaffold_keys(self, code):
+        text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
+        return {m.group("key") for m in _KEY_LINE_RE.finditer(text)}
+
+    def test_each_scaffold_covers_every_shipped_key(self):
+        expected = self.authoritative
+        if expected is None:
+            self.skipTest("node unavailable; cannot read STRINGS")
+        for code in EXPECTED_SCAFFOLD:
+            with self.subTest(code=code):
+                keys = self._scaffold_keys(code)
+                self.assertEqual(
+                    keys - expected,
+                    set(),
+                    f"{code}.js lists keys that no longer exist",
+                )
+                self.assertEqual(
+                    expected - keys,
+                    set(),
+                    f"{code}.js is missing keys -- regenerate the scaffold",
+                )
+
+    def test_the_legacy_parser_still_sees_a_majority_of_the_keys(self):
+        """Not a new requirement; a tripwire. If this drops, the coverage of the
+        regex-based checks elsewhere in this file is quietly eroding."""
+        if not self.authoritative:
+            self.skipTest("node unavailable")
+        self.assertGreater(
+            len(self.catalog),
+            len(self.authoritative) * 0.9,
+            "the regex parser now sees far fewer keys than STRINGS contains",
+        )
+
+    def test_scaffold_entries_are_never_empty_strings(self):
+        """translate.js falls back with `??`, which ignores "". An empty value ships a
+        blank label instead of falling back to English, so null is the only safe
+        placeholder."""
+        for code in EXPECTED_SCAFFOLD:
+            with self.subTest(code=code):
+                text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
+                for m in _KEY_LINE_RE.finditer(text):
+                    self.assertNotEqual(
+                        m.group("value").strip(), '""', f"{code}: {m.group('key')} is \"\""
+                    )
+
+    def test_scaffold_values_are_null_or_actual_translations(self):
+        for code in EXPECTED_SCAFFOLD:
+            with self.subTest(code=code):
+                text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
+                for m in _KEY_LINE_RE.finditer(text):
+                    value = m.group("value").strip().rstrip(",")
+                    if value == "null":
+                        continue
+                    self.assertTrue(
+                        value.startswith('"') and value.endswith('"'),
+                        f"{code}: {m.group('key')} has unexpected value {value!r}",
+                    )
+
+    def test_every_scaffold_carries_the_english_source_for_the_translator(self):
+        for code in EXPECTED_SCAFFOLD:
+            with self.subTest(code=code):
+                text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
+                for key in ("app.generate", "gallery.empty", "language.title"):
+                    with self.subTest(key=key):
+                        line = next(
+                            (l for l in text.splitlines() if f'"{key}"' in l), None
+                        )
+                        self.assertIsNotNone(line, f"{code}: {key} absent")
+                        self.assertIn("//", line, f"{code}: {key} has no English source")
+
+    def test_the_scaffold_generator_is_committed(self):
+        self.assertTrue((SCAFFOLD_DIR / "generate-scaffold.mjs").exists())

@@ -281,3 +281,66 @@ class StructureRegressionsTests(unittest.TestCase):
     def test_preset_buttons_are_still_gone(self):
         self.assertNotIn("preset-btn", self.form)
         self.assertNotIn("PRESETS", self.form)
+
+
+class CustomInputEditingTests(unittest.TestCase):
+    """The Custom fields must be typable.
+
+    Reported as "can't modify any value". Three faults compounded:
+      * snap() ran on every keystroke, so typing 5 became 256 and the next keystroke
+        appended to that;
+      * the field was controlled straight off width/height, so a transitory value
+        (empty, or "2" below the floor) left state untouched and React reverted the
+        DOM -- nothing could be edited at all;
+      * the floor was applied while typing rather than on commit.
+    A draft plus an explicit commit on blur/Enter is the fix.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        raw = COMPONENT.read_text(encoding="utf-8")
+        cls.code = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
+        cls.code = re.sub(r"//[^\n]*", "", cls.code)
+
+    def test_the_field_shows_a_draft_not_the_committed_value(self):
+        self.assertIn("draft", self.code)
+        self.assertIn("draft.width ?? width", self.code)
+        self.assertIn("draft.height ?? height", self.code)
+
+    def test_typing_only_updates_the_draft(self):
+        self.assertRegex(
+            self.code,
+            r"onChange=\{\(e\) => setDraft\(",
+            "onChange must write the draft, never the size",
+        )
+        self.assertNotIn("onChange={(e) => setSide(", self.code)
+
+    def test_the_size_is_committed_on_blur_and_enter(self):
+        self.assertIn("onBlur={() => commit(", self.code)
+        self.assertIn('if (e.key === "Enter")', self.code)
+
+    def test_commit_snaps_and_the_draft_can_be_abandoned(self):
+        self.assertIn("function commit(", self.code)
+        self.assertIn('e.key === "Escape"', self.code)
+
+    def test_transitory_values_are_not_rejected_while_typing(self):
+        """A draft accepts anything; only the committed value is validated."""
+        commit = re.search(r"function commit\(side\) \{.*?\n  \}", self.code, re.S).group(0)
+        self.assertRegex(commit, r"raw === null")
+        self.assertIn("setSide(side, value)", commit)
+
+    def test_the_floor_is_applied_on_commit_not_on_typing(self):
+        set_side = re.search(r"function setSide\(side, raw\) \{.*?\n  \}", self.code, re.S).group(0)
+        self.assertIn("snap(value)", set_side, "the multiple-of-16 snap belongs in setSide")
+
+    def test_ratio_highlights_distinguish_selected_from_calculated(self):
+        self.assertIn("calculatedRatioId", self.code)
+        self.assertIn("active-muted", self.code)
+        self.assertIn("calculated", self.code)
+
+    def test_locked_state_decides_which_highlight_is_strong(self):
+        self.assertRegex(
+            self.code,
+            r"const selectedIsTruth = lockRatio",
+            "locked means the selection governs; unlocked means the live dimensions do",
+        )
