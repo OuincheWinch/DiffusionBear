@@ -19,6 +19,12 @@ export const appStrings = {
     de: "Browser",
     it: "Browser",
   },
+  "app.navModels": {
+    fr: "🧠 Modèles",
+    en: "🧠 Models",
+    de: "🧠 Modelle",
+    it: "🧠 Modelli",
+  },
   "app.navParams": {
     fr: "⚙️ Paramètres",
     en: "⚙️ Parameters",

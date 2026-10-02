@@ -2,10 +2,20 @@ import { useEffect, useState } from "react";
 import GenerateForm from "./components/GenerateForm";
 import Gallery from "./components/Gallery";
 import ParametersTab from "./components/ParametersTab";
+import ModelsTab from "./components/ModelsTab";
 import { useI18n } from "./i18n/I18nContext";
 import { APP_TITLE, APP_VERSION_LABEL } from "./version";
 import logo from "./assets/logo.png";
 import "./App.css";
+
+// Declared as data rather than as hand-written buttons so the bar cannot drift out of sync
+// with the view switch below -- the tab list and the render conditions are one list now.
+const TABS = [
+  { id: "generate", labelKey: "app.generate" },
+  { id: "browser", labelKey: "app.navBrowser" },
+  { id: "models", labelKey: "app.navModels" },
+  { id: "params", labelKey: "app.navParams" },
+];
 
 export default function App() {
   const { t } = useI18n();
@@ -41,24 +51,16 @@ export default function App() {
           </div>
         </div>
         <nav>
-          <button
-            className={tab === "generate" ? "active" : ""}
-            onClick={() => setTab("generate")}
-          >
-            {t("app.generate")}
-          </button>
-          <button
-            className={tab === "browser" ? "active" : ""}
-            onClick={() => setTab("browser")}
-          >
-            {t("app.navBrowser")}
-          </button>
-          <button
-            className={tab === "params" ? "active" : ""}
-            onClick={() => setTab("params")}
-          >
-            {t("app.navParams")}
-          </button>
+          {TABS.map((entry) => (
+            <button
+              key={entry.id}
+              className={tab === entry.id ? "active" : ""}
+              aria-current={tab === entry.id ? "page" : undefined}
+              onClick={() => setTab(entry.id)}
+            >
+              {t(entry.labelKey)}
+            </button>
+          ))}
         </nav>
       </header>
 
@@ -82,6 +84,9 @@ export default function App() {
               setTab("generate");
             }}
           />
+        </div>
+        <div style={{ display: tab === "models" ? "block" : "none" }}>
+          <ModelsTab onNavigate={setTab} />
         </div>
         <div style={{ display: tab === "params" ? "block" : "none" }}>
           <ParametersTab onNavigate={setTab} />

@@ -61,5 +61,12 @@
     "ja": "⚙️ パラメータ",
     "pt": "⚙️ Parâmetros",
     "ko": "⚙️ 매개변수"
+  },
+  "app.navModels": {
+    "es": "Modelos",
+    "zh": "模型",
+    "ja": "モデル",
+    "pt": "Modelos",
+    "ko": "모델"
   }
 }

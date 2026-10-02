@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 import civitai_service
 import generator
 import hf_service
+import hf_browse
 from .loras import _model_is_fully_cached
 from state import (
     LORA_FILES_DIR,
@@ -643,7 +644,14 @@ def cancel_lora_download(task_id: str):
 
 class ModelDownloadRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
     model_id: str = Field(min_length=1, max_length=120)
+    # Added for the Models tab. The registry (generator.MODELS) used to be the only way in,
+    # so the HF browser could list a repo it could not install. These two let an arbitrary
+    # `org/name` be fetched into ASSET_DIR/models/<install_name>; model_id then becomes just
+    # the task label. Both are optional so existing callers are unaffected.
+    repo_id: str | None = Field(default=None, max_length=200)
+    install_name: str | None = Field(default=None, max_length=120)
 
 
 class _ModelDownloadTqdm:
@@ -681,8 +689,14 @@ class _ReportingTqdm:
         with _MODEL_DOWNLOAD_LOCK:
             task = MODEL_DOWNLOAD_TASKS.get(self._task_id)
             if task and task.get("status") == "downloading":
-                task["downloaded_bytes"] = task.get("downloaded_bytes", 0) + int(n)
                 total = task.get("total_bytes") or 0
+                # Clamp to the known total. tqdm is constructed once per file, so its
+                # cumulative counts get summed across files and can overshoot: a 99.6MB
+                # repo reported 194.3MB downloaded against a 99.7MB total, which made
+                # every progress bar read over 100%. The exact upstream double-report is
+                # not worth chasing here; clamping keeps the displayed number true.
+                bumped = task.get("downloaded_bytes", 0) + int(n)
+                task["downloaded_bytes"] = min(bumped, total) if total else bumped
                 task["progress"] = min(0.99, task["downloaded_bytes"] / total) if total else 0.5
                 now = time.monotonic()
                 elapsed = now - task.get("_speed_t", now)
@@ -765,7 +779,14 @@ def _snapshot_files(root: Path | None) -> set[Path]:
         return set()
 
 
-def _run_model_download(task_id: str, model_id: str, minfo: dict, cancel_event: threading.Event):
+def _run_model_download(
+    task_id: str,
+    model_id: str,
+    minfo: dict,
+    cancel_event: threading.Event,
+    repo_override: str | None = None,
+    install_dir: Path | None = None,
+):
     target_dir = None
     repo = ""
     before_incomplete = set()
@@ -773,12 +794,31 @@ def _run_model_download(task_id: str, model_id: str, minfo: dict, cancel_event: 
     cleanup_root = None
     try:
         _check_cancelled(cancel_event)
-        candidate_repo = generator.model_download_repo(model_id, minfo)
-        if hf_service._valid_repo_id(candidate_repo) is None or str(candidate_repo).startswith("local:"):
-            _fail_model_task(task_id, f"{minfo.get('label', model_id)} has no downloadable Hugging Face repository")
+        if repo_override:
+            repo = repo_override
+        else:
+            candidate_repo = generator.model_download_repo(model_id, minfo)
+            if hf_service._valid_repo_id(candidate_repo) is None or str(candidate_repo).startswith("local:"):
+                _fail_model_task(task_id, f"{minfo.get('label', model_id)} has no downloadable Hugging Face repository")
+                return
+            repo = str(candidate_repo)
+        if hf_service._valid_repo_id(repo) is None:
+            _fail_model_task(task_id, f"Invalid Hugging Face repository: {repo}")
             return
-        repo = str(candidate_repo)
-        if minfo.get("engine") == "sdxl":
+        if install_dir is not None:
+            # HF-browser downloads: a plain directory under ASSET_DIR, not the HF cache and
+            # not a registry model_dir. Reject anything that would escape ASSET_DIR.
+            target_dir = install_dir
+            try:
+                target_dir.resolve().relative_to(generator.ASSET_DIR.resolve())
+            except ValueError:
+                raise ValueError("install path must stay inside the asset directory")
+            target_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+            try:
+                os.chmod(target_dir, 0o700)
+            except OSError:
+                pass
+        elif minfo.get("engine") == "sdxl":
             configured_dir = minfo.get("model_dir")
             if not configured_dir:
                 raise ValueError("model download directory is not configured")
@@ -857,6 +897,63 @@ def _run_model_download(task_id: str, model_id: str, minfo: dict, cancel_event: 
 def download_model(req: ModelDownloadRequest):
     model_id = req.model_id.strip()
     minfo = generator.MODELS.get(model_id)
+    install_dir = None
+
+    if req.repo_id:
+        # HF-browser path: any repo the Models tab listed, not just a registry entry.
+        repo_id = hf_service._valid_repo_id(req.repo_id)
+        if repo_id is None:
+            raise HTTPException(400, "Invalid Hugging Face repository id")
+        name = hf_browse.safe_install_name(repo_id)
+        if req.install_name:
+            name = hf_browse.safe_install_name(req.install_name)
+        if minfo is None:
+            minfo = {"id": model_id, "label": name, "engine": "mflux"}
+        install_dir = generator.ASSET_DIR / "models" / name
+        if not install_dir.exists():
+            with generator._model_maintenance_lock:
+                with _MODEL_DOWNLOAD_LOCK:
+                    for task_id, task in MODEL_DOWNLOAD_TASKS.items():
+                        if task.get("repo_id") == repo_id and task.get("worker_active"):
+                            return {"task_id": task_id, "status": task.get("status", "downloading"), "model_name": task.get("model_name"), "already_running": True}
+            task_id = uuid.uuid4().hex[:12]
+            cancel_event = threading.Event()
+            task = {
+                "id": task_id,
+                "source": "model",
+                "model_id": model_id,
+                "repo_id": repo_id,
+                "model_name": minfo.get("label", model_id),
+                "engine": minfo.get("engine", "mflux"),
+                "status": "downloading",
+                "progress": 0.0,
+                "downloaded_bytes": 0,
+                "total_bytes": 0,
+                "speed_mb_s": 0.0,
+                "status_text": f"Preparing download of {minfo.get('label', model_id)}...",
+                "started_at": time.time(),
+                "finished_at": None,
+                "error": None,
+                "result": None,
+                "install_dir": str(install_dir),
+                "worker_active": True,
+                "cancel_event": cancel_event,
+            }
+            with _MODEL_DOWNLOAD_LOCK:
+                for existing_id, existing in MODEL_DOWNLOAD_TASKS.items():
+                    if existing.get("repo_id") == repo_id and existing.get("worker_active"):
+                        return {"task_id": existing_id, "status": existing.get("status", "downloading"), "model_name": existing.get("model_name"), "already_running": True}
+                MODEL_DOWNLOAD_TASKS[task_id] = task
+            threading.Thread(
+                target=_run_model_download,
+                args=(task_id, model_id, minfo, cancel_event),
+                kwargs={"repo_override": repo_id, "install_dir": install_dir},
+                daemon=True,
+            ).start()
+            return {"task_id": task_id, "status": "downloading", "model_name": task["model_name"], "source": "model"}
+        # Fall through: the directory exists, so treat it like an already-installed model.
+        return {"status": "already_installed", "model_id": model_id, "model_name": minfo.get("label", model_id)}
+
     if minfo is None:
         raise HTTPException(404, f"Unknown model: {model_id}")
     repo_id = generator.model_download_repo(model_id, minfo)
@@ -898,6 +995,38 @@ def download_model(req: ModelDownloadRequest):
             MODEL_DOWNLOAD_TASKS[task_id] = task
         threading.Thread(target=_run_model_download, args=(task_id, model_id, minfo, cancel_event), daemon=True).start()
         return {"task_id": task_id, "status": "downloading", "model_name": task["model_name"], "source": "model"}
+
+
+@router.get("/api/hf/models")
+def search_hf_models(
+    search: str | None = None,
+    author: str | None = None,
+    architecture: str | None = None,
+    quantization: str | None = None,
+    kind: str | None = None,
+    limit: int = 40,
+    sort: str = "downloads",
+    all_kinds: bool = False,
+):
+    """Search one Hugging Face org for downloadable models.
+
+    Architecture and quantisation filters are applied here rather than in the HF query,
+    because both only exist as substrings of the repo id -- there is no structured field
+    for either anywhere in the HF API or in this app's model registry.
+    """
+    try:
+        return hf_browse.search_models(
+            search=search,
+            author=author,
+            architecture=architecture,
+            quantization=quantization,
+            kind=kind,
+            limit=limit,
+            sort=sort,
+            models_only=not all_kinds,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc))
 
 
 @router.get("/api/models/downloads")

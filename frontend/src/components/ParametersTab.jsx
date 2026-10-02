@@ -1,42 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
-import { api } from "../api";
+import { useState } from "react";
 import TokenManager from "./TokenManager";
 import DefaultsSection from "./settings/DefaultsSection";
 import EngineSection from "./settings/EngineSection";
-import ModelsSection from "./settings/ModelsSection";
-import HfCacheSection from "./settings/HfCacheSection";
 import QueueSection from "./settings/QueueSection";
-import StorageSection from "./settings/StorageSection";
 import EnhancerSystemSection from "./settings/EnhancerSystemSection";
 import LanguageSection from "./settings/LanguageSection";
 import { useI18n } from "../i18n/I18nContext";
 import LicencesTab from "./LicencesTab";
 import { useSettings } from "../hooks/useSettings";
+import { useModelsList } from "../hooks/useModelsList";
 
 export default function ParametersTab({ onNavigate }) {
   const { t } = useI18n();
   const { settings, loading: settingsLoading, update, refresh } = useSettings();
-  const [models, setModels] = useState([]);
-  const [modelsLoading, setModelsLoading] = useState(true);
+  const { models } = useModelsList();
   const [feedback, setFeedback] = useState(null);
   const [tokenAutofocus, setTokenAutofocus] = useState(null);
   const [subtab, setSubtab] = useState("prefs");
-
-  const refreshModels = useCallback(async () => {
-    setModelsLoading(true);
-    try {
-      const list = await api("/api/models");
-      setModels(list);
-    } catch {
-      /* transient */
-    } finally {
-      setModelsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refreshModels();
-  }, [refreshModels]);
 
   function handleFeedback(fb) {
     setFeedback(fb);
@@ -122,32 +102,9 @@ export default function ParametersTab({ onNavigate }) {
       </section>
 
       <section className="params-section">
-        <h3>{t("settings.section.modelsTitle")}</h3>
-        <p className="params-section-desc">{t("settings.section.modelsDesc")}</p>
-        <ModelsSection
-          models={models}
-          loading={modelsLoading}
-          onModelsChanged={refreshModels}
-          onFeedback={handleFeedback}
-        />
-      </section>
-
-      <section className="params-section">
         <h3>{t("settings.section.queueTitle")}</h3>
         <p className="params-section-desc">{t("settings.section.queueDesc")}</p>
         <QueueSection onNavigate={onNavigate} />
-      </section>
-
-        <section className="params-section">
-          <h3>{t("settings.section.storageTitle")}</h3>
-          <p className="params-section-desc">{t("settings.section.storageDesc")}</p>
-          <StorageSection onFeedback={handleFeedback} />
-        </section>
-
-      <section className="params-section">
-        <h3>{t("settings.section.hfCacheTitle")}</h3>
-        <p className="params-section-desc">{t("settings.section.hfCacheDesc")}</p>
-        <HfCacheSection onFeedback={handleFeedback} />
       </section>
 
       <section className="params-section">

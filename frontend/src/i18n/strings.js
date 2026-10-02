@@ -282,6 +282,7 @@ import { licencesStrings } from "./parts/licences.js";
 import { installerStrings } from "./parts/installer.js";
 import { tokensStrings } from "./parts/tokens.js";
 import { appStrings } from "./parts/app.js";
+import { modelsStrings } from "./parts/models.js";
 import { fillStrings } from "./parts/fill.js";
 
 // A duplicate key means two files claim the same string, which makes the
@@ -300,6 +301,7 @@ for (const part of [
   tokensStrings,
   appStrings,
   fillStrings,
+  modelsStrings,
 ]) {
   for (const [key, value] of Object.entries(part)) {
     if (key in STRINGS) {

@@ -4787,3 +4787,241 @@ body.native-shell * {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------------------------
+   Models tab -- Hugging Face browser
+   ---------------------------------------------------------------------------
+   Built to read as native macOS controls rather than web forms: 26px control
+   height, 6px radii, hairline borders, and the system's own font stack. The
+   deliberate departure from the rest of this file is the result row, which is a
+   grid rather than a stacked block, because a repo name is long and variable
+   width and a stack made every action sit at a different x.
+
+   Progress reuses .civitai-progress-fill rather than introducing a second bar,
+   so it inherits the scaleX animation that backend/test_progress_animation.py
+   guards. Do not switch either class to an animated `width` -- that test fails
+   the build on it. */
+.hf-browser-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-bottom: 0.6rem;
+}
+
+.hf-browser-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 260px;
+  min-width: 200px;
+  height: 26px;
+  padding: 0 0.5rem 0 1.6rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.hf-browser-search:focus-within {
+  border-color: var(--focus-ring);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.hf-browser-search-icon {
+  position: absolute;
+  left: 0.45rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.hf-browser-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.hf-browser-search input:focus {
+  outline: none;
+}
+
+.hf-browser-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.hf-browser-filter select {
+  height: 26px;
+  min-width: 8.5rem;
+  padding: 0 1.4rem 0 0.45rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.78rem;
+  /* Native select affordance; the app draws its own arrow on top elsewhere. */
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 12px) 11px, calc(100% - 8px) 11px;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.hf-browser-filter select:focus-visible {
+  border-color: var(--focus-ring);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.hf-browser-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: baseline;
+  min-height: 1.1rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.hf-browser-error {
+  color: var(--danger);
+}
+
+.hf-browser-empty {
+  margin: 0.6rem 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.hf-browser-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.hf-browser-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.hf-browser-row:last-child {
+  border-bottom: none;
+}
+
+.hf-browser-row.busy {
+  background: rgba(124, 92, 255, 0.06);
+}
+
+.hf-browser-row-main {
+  min-width: 0;
+}
+
+.hf-browser-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.hf-browser-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  /* Repo names are long and unbreakable; truncate rather than let one row
+     dictate the height of the whole list. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 22rem;
+}
+
+.hf-browser-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.hf-browser-repo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18rem;
+}
+
+.hf-browser-related {
+  color: var(--accent-text);
+}
+
+.hf-chip {
+  padding: 0.05rem 0.35rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-text);
+  background: rgba(124, 92, 255, 0.14);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.hf-chip.subtle {
+  color: var(--muted);
+  background: rgba(138, 138, 160, 0.16);
+}
+
+.hf-chip.alpha {
+  color: var(--success);
+  background: rgba(74, 222, 128, 0.14);
+}
+
+.hf-browser-row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-end;
+}
+
+.hf-browser-download {
+  height: 24px;
+  padding: 0 0.6rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.hf-browser-download:disabled {
+  opacity: 0.6;
+}
+
+.hf-browser-link {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.hf-browser-link:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
+.models-tab-goto-generate {
+  margin-top: 0.6rem;
+}
