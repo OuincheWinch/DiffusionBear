@@ -309,4 +309,58 @@ for (const part of [
   }
 }
 
+// Full per-language overlays for languages added after the four shipped ones.
+//
+// They live in ./lang/<code>.js rather than ./parts/ for two reasons. parts/*.js is
+// globbed as a DISJOINT catalogue of the same four languages, so a file listing all 739
+// keys there would collide with every other part; and a translation is per-language
+// data, not a per-component slice.
+//
+// Each entry is folded INTO the shipped four rather than replacing them, so translate.js
+// keeps its single `entry[lang] ?? entry.en` lookup and needs no changes. An untranslated
+// key is simply absent here, which is what makes it fall back to English -- so a
+// half-finished translation degrades to English instead of going blank.
+import { LANGUAGES as _LANGUAGES } from "./languages";
+import { esStrings } from "./lang/es";
+import { zhStrings } from "./lang/zh";
+import { jaStrings } from "./lang/ja";
+import { ptStrings } from "./lang/pt";
+import { koStrings } from "./lang/ko";
+
+const OVERLAYS = {
+  es: esStrings,
+  zh: zhStrings,
+  ja: jaStrings,
+  pt: ptStrings,
+  ko: koStrings,
+};
+
+for (const [code, overlay] of Object.entries(OVERLAYS)) {
+  const unknown = [];
+  for (const [key, text] of Object.entries(overlay)) {
+    if (!(key in STRINGS)) {
+      // A stale key would otherwise sit here forever, invisible.
+      unknown.push(key);
+      continue;
+    }
+    // null or "" means "not translated". Assigning either would SHADOW the English
+    // fallback, because translate.js falls back with ?? and "" is a real value.
+    if (typeof text !== "string" || text.trim() === "") continue;
+    STRINGS[key][code] = text;
+  }
+  if (unknown.length) {
+    throw new Error(`i18n overlay ${code}.js has keys that no longer exist: ${unknown.join(", ")}`);
+  }
+}
+
+// Coverage for the picker tooltip. This deliberately does NOT decide whether a language
+// counts as shipped: `status` in languages.js is the declaration, and test_i18n.py fails
+// if the declaration and the real coverage disagree. Deciding it here would let a
+// half-finished translation quietly reclassify itself as done.
+for (const lang of _LANGUAGES) {
+  if (!OVERLAYS[lang.code]) continue;
+  const done = Object.keys(OVERLAYS[lang.code]).filter((k) => OVERLAYS[lang.code][k]).length;
+  lang.translationProgress = `${done}/${Object.keys(STRINGS).length}`;
+}
+
 export default STRINGS;

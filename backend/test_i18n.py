@@ -454,9 +454,19 @@ def _keys_from_node() -> set | None:
         'import("./strings.js").then(m => '
         'process.stdout.write(JSON.stringify(Object.keys(m.STRINGS))))'
     )
+    frontend = ROOT / "frontend"
     proc = subprocess.run(
-        ["node", "--input-type=module", "-e", script],
-        cwd=str(ROOT / "frontend" / "src" / "i18n"),
+        # The loader hook is REQUIRED, not optional. Without it the app's extensionless
+        # imports fail, this returns None, and every caller silently skips.
+        [
+            "node",
+            "--import",
+            str(frontend / "tools" / "register-extensionless.mjs"),
+            "--input-type=module",
+            "-e",
+            script,
+        ],
+        cwd=str(frontend / "src" / "i18n"),
         capture_output=True,
         text=True,
         timeout=60,
@@ -489,10 +499,22 @@ class ScaffoldTests(unittest.TestCase):
         text = (SCAFFOLD_DIR / f"{code}.js").read_text(encoding="utf-8")
         return {m.group("key") for m in _KEY_LINE_RE.finditer(text)}
 
+    def test_node_can_actually_read_the_catalogue(self):
+        """Trips if the loader hook goes missing.
+
+        Without it the coverage test below skips, and a skip reports OK. This is the
+        guard against that exact failure: it was silently skipping once already."""
+        if not _node_available():
+            self.skipTest("node not installed")
+        self.assertIsNotNone(
+            self.authoritative,
+            "node could not import strings.js -- the extensionless loader hook is missing",
+        )
+
     def test_each_scaffold_covers_every_shipped_key(self):
         expected = self.authoritative
         if expected is None:
-            self.skipTest("node unavailable; cannot read STRINGS")
+            self.fail("cannot read STRINGS; see test_node_can_actually_read_the_catalogue")
         for code in EXPECTED_SCAFFOLD:
             with self.subTest(code=code):
                 keys = self._scaffold_keys(code)
@@ -511,7 +533,7 @@ class ScaffoldTests(unittest.TestCase):
         """Not a new requirement; a tripwire. If this drops, the coverage of the
         regex-based checks elsewhere in this file is quietly eroding."""
         if not self.authoritative:
-            self.skipTest("node unavailable")
+            self.fail("cannot read STRINGS; see test_node_can_actually_read_the_catalogue")
         self.assertGreater(
             len(self.catalog),
             len(self.authoritative) * 0.9,
@@ -557,3 +579,219 @@ class ScaffoldTests(unittest.TestCase):
 
     def test_the_scaffold_generator_is_committed(self):
         self.assertTrue((SCAFFOLD_DIR / "generate-scaffold.mjs").exists())
+
+
+# --------------------------------------------------------------------------- translations
+#
+# The five added languages are machine-authored and have never been reviewed by a native
+# speaker. Two classes of defect showed up repeatedly while writing them, and both are
+# cheap to detect mechanically, so both are asserted rather than eyeballed.
+
+_OVERLAY_CODES = ("es", "zh", "ja", "pt", "ko")
+_SCRIPT_RANGES = {
+    "han": r"[\u4e00-\u9fff\u3400-\u4dbf]",
+    "kana": r"[\u3040-\u30ff]",
+    "hangul": r"[\uac00-\ud7af\u1100-\u11ff]",
+}
+# Latin words that legitimately appear inside CJK text: product and vendor names, licence
+# identifiers, file extensions. Anything else in a CJK value is corruption -- a French or
+# English fragment that leaked in while authoring five languages in one pass.
+_ALLOWED_LATIN = {
+    # Product, vendor and architecture names that stay in Latin script everywhere.
+    "Civitai", "DeepCache", "FLUX", "LoRA", "LoRAs", "MIT", "SPA", "React", "Vite",
+    "Python", "torch", "SDXL", "sdxl", "Krea", "KREA", "Hugging", "Face", "Z-Image",
+    "Qwen", "Image", "klein", "Turbo", "Juggernaut", "XL", "Lightning", "DiffusionBear",
+    "CoreML", "Apple", "safetensors", "venv", "UNet", "VAE",
+    # Technical shorthand that reads as-is in every one of these languages.
+    "OOM", "HF", "ID", "URL", "AI", "UI", "API", "MP", "px", "In", "Context",
+    "Copyright", "MLX", "mflux", "transformer", "token",
+}
+
+
+def _latin_words(text: str) -> set:
+    """Latin words in a value, ignoring the parts where Latin is required.
+
+    Placeholders, URLs, filesystem paths and HF cache directory names are not prose --
+    they appear verbatim in every language -- so counting them would either drown the
+    signal or force them into the allowlist, where they would hide real corruption.
+    """
+    text = re.sub(r"\{[^}]*\}", " ", text)              # {count}, {label}, ...
+    text = re.sub(r"\S*\S*/\S*", " ", text)               # /path/to/model, URLs
+    text = re.sub(r"\S*--\S*", " ", text)                   # models--org--name
+    text = re.sub(r"#[^\s\]]*", " ", text)                  # #{id}
+    return set(re.findall(r"[A-Za-z]{2,}", text))
+
+
+def _english_from_node() -> dict | None:
+    """key -> English source, read from the real merged catalogue.
+
+    The regex parser misses ~22 keys, and a translation check needs a COMPLETE baseline:
+    a key missing from it looks like a translation that invented a placeholder.
+    """
+    if not _node_available():
+        return None
+    frontend = ROOT / "frontend"
+    script = (
+        'import("./strings.js").then(m => process.stdout.write('
+        'JSON.stringify(Object.fromEntries(Object.entries(m.STRINGS)'
+        '.map(([k, v]) => [k, v.en])))))'
+    )
+    proc = subprocess.run(
+        ["node", "--import", str(frontend / "tools" / "register-extensionless.mjs"),
+         "--input-type=module", "-e", script],
+        cwd=str(frontend / "src" / "i18n"),
+        capture_output=True, text=True, timeout=60,
+    )
+    if proc.returncode != 0:
+        return None
+    return json.loads(proc.stdout)
+
+
+def _overlays() -> dict:
+    """Read each lang/<code>.js as JSON-ish, via node, to get the real values."""
+    frontend = ROOT / "frontend"
+    out = {}
+    for code in _OVERLAY_CODES:
+        script = (
+            f'import("./lang/{code}.js").then('
+            f"m => process.stdout.write(JSON.stringify(m.{code}Strings)))"
+        )
+        proc = subprocess.run(
+            ["node", "--import", str(frontend / "tools" / "register-extensionless.mjs"),
+             "--input-type=module", "-e", script],
+            cwd=str(frontend / "src" / "i18n"),
+            capture_output=True, text=True, timeout=60,
+        )
+        if proc.returncode == 0:
+            out[code] = json.loads(proc.stdout)
+    return out
+
+
+class TranslationIntegrityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.overlays = _overlays()
+        cls.english = _english_from_node() or {}
+        cls.catalog = _parse_parts()
+        cls.catalog.update(_parse_table(STRINGS_FILE))
+
+    def _source(self, key):
+        return self.english.get(key, self.catalog.get(key, {}).get("en", ""))
+
+    def test_the_english_baseline_gap_does_not_grow(self):
+        """The regex parser in this file does not see every key -- 23 as of this commit.
+
+        That is a pre-existing limitation, not something to assert away, but it means
+        every regex-based check here under-verifies. The translation checks therefore
+        read the real catalogue through node instead, and this test pins the remaining
+        gap so it cannot silently widen. Close it and delete this bound.
+        """
+        if not _node_available():
+            self.skipTest("node not installed")
+        self.assertIsNotNone(self.english, "could not read STRINGS via node")
+        gap = len(set(self.english) - set(self.catalog))
+        self.assertLessEqual(
+            gap, 23, f"the regex parser now misses {gap} keys; raise the bound deliberately"
+        )
+
+    def test_every_overlay_is_readable(self):
+        if not _node_available():
+            self.skipTest("node not installed")
+        for code in _OVERLAY_CODES:
+            with self.subTest(code=code):
+                self.assertIn(code, self.overlays, f"lang/{code}.js could not be read")
+                self.assertGreater(len(self.overlays[code]), 0)
+
+    def test_placeholders_survive_translation(self):
+        """A lost {label} renders literally as "{label}" in the interface.
+
+        This is the highest-value check in this file: the placeholder is the only part of
+        a string that MUST survive translation untouched, and it is exactly what breaks
+        when a translator rewords a sentence."""
+        pattern = re.compile(r"\{(\w+)\}")
+        for code, table in self.overlays.items():
+            for key, text in table.items():
+                source = self._source(key)
+                with self.subTest(code=code, key=key):
+                    self.assertTrue(source, f"{key} has no English source to compare against")
+                    self.assertEqual(
+                        sorted(pattern.findall(text)),
+                        sorted(pattern.findall(source)),
+                        f"{code}:{key} changed the placeholders (en: {source!r})",
+                    )
+
+    def test_romance_languages_contain_no_asian_scripts(self):
+        for code in ("es", "pt"):
+            for key, text in self.overlays.get(code, {}).items():
+                with self.subTest(code=code, key=key):
+                    for name, rng in _SCRIPT_RANGES.items():
+                        self.assertIsNone(
+                            re.search(rng, text),
+                            f"{code}:{key} contains {name} characters: {text!r}",
+                        )
+
+    def test_each_cjk_language_is_written_in_its_own_script(self):
+        """Guards against a translation landing in the wrong language, and against the
+        corruption mode seen while authoring: a CJK slot filled with another CJK
+        language, or with a stray Latin fragment."""
+        expect = {"zh": "han", "ja": "kana", "ko": "hangul"}
+        forbid = {"zh": ("kana", "hangul"), "ja": ("hangul",), "ko": ("kana",)}
+        for code, needed in expect.items():
+            for key, text in self.overlays.get(code, {}).items():
+                # Pure-technical values legitimately stay Latin.
+                latin = _latin_words(text) - _ALLOWED_LATIN
+                if not re.search(_SCRIPT_RANGES[needed], text) and not latin:
+                    continue
+                with self.subTest(code=code, key=key):
+                    self.assertTrue(
+                        re.search(_SCRIPT_RANGES[needed], text) or not latin,
+                        f"{code}:{key} is not {needed}: {text!r}",
+                    )
+                    for other in forbid[code]:
+                        self.assertIsNone(
+                            re.search(_SCRIPT_RANGES[other], text),
+                            f"{code}:{key} contains {other} script: {text!r}",
+                        )
+
+    def test_cjk_values_contain_no_unexplained_latin_words(self):
+        """The corruption mode this file exists to catch: while emitting five languages in
+        one pass, a fragment of another language lands mid-string. Every Latin word in a
+        CJK value must be a known product or vendor name."""
+        for code in ("zh", "ja", "ko"):
+            for key, text in self.overlays.get(code, {}).items():
+                stray = _latin_words(text) - _ALLOWED_LATIN
+                with self.subTest(code=code, key=key):
+                    self.assertEqual(
+                        stray, set(), f"{code}:{key} has unexplained Latin: {sorted(stray)} in {text!r}"
+                    )
+
+    def test_no_translation_is_blank_or_placeholder_text(self):
+        for code, table in self.overlays.items():
+            for key, text in table.items():
+                with self.subTest(code=code, key=key):
+                    self.assertIsInstance(text, str)
+                    self.assertNotEqual(text.strip(), "", f"{code}:{key} is blank")
+                    self.assertNotIn(text.strip().lower(), ("tbd", "todo", "n/a", "-"))
+
+    # Strings that are correct in every one of these languages, and so are written out
+    # verbatim. Anything added here should be a closed-circuit term, not a sentence.
+    _VERBATIM_OK = {
+        "licences.copyright",        # "Copyright" is the legal term in all five
+        "lora.civitaiTagSuffix",     # "[Civitai #123]" is a literal tag
+        "params.ref.inContextBadge", # "FLUX.2 In-Context" is the feature name
+        "params.size.baseTitle",     # "Base 512 px"
+        "params.size.shapePreviewTitle",  # "{width} x {height}", no words to translate
+    }
+
+    def test_translations_are_not_verbatim_copies_of_english(self):
+        """A copy usually means the slot was filled with English instead of a
+        translation. The exceptions are listed in _VERBATIM_OK."""
+        identical = []
+        for code, table in self.overlays.items():
+            for key, text in table.items():
+                source = self._source(key)
+                if len(source) >= 12 and text == source and key not in self._VERBATIM_OK:
+                    identical.append(f"{code}:{key}")
+        self.assertEqual(
+            identical, [], f"{len(identical)} strings were copied from English: {identical[:10]}"
+        )

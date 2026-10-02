@@ -26,7 +26,6 @@ export default function LanguageSection() {
           aria-pressed={preference === "auto"}
           title={t("language.auto")}
         >
-          <span className="language-flag" aria-hidden="true">🌐</span>
           <span className="language-name">{t("language.auto")}</span>
         </button>
         {LANGUAGES.map((entry) => (

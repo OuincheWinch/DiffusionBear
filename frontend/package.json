@@ -7,7 +7,9 @@
     "dev": "caffeinate -s vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i18n:build": "node --import ./tools/register-extensionless.mjs src/i18n/lang/build-lang.mjs",
+    "i18n:scaffold": "node src/i18n/scaffold/generate-scaffold.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

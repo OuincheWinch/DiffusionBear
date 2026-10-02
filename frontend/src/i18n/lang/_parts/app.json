@@ -1,0 +1,65 @@
+{
+  "app.generate": {
+    "es": "Generar",
+    "zh": "生成",
+    "ja": "生成",
+    "pt": "Gerar",
+    "ko": "생성"
+  },
+  "app.cancel": {
+    "es": "Cancelar",
+    "zh": "取消",
+    "ja": "キャンセル",
+    "pt": "Cancelar",
+    "ko": "취소"
+  },
+  "app.close": {
+    "es": "Cerrar",
+    "zh": "关闭",
+    "ja": "閉じる",
+    "pt": "Fechar",
+    "ko": "닫기"
+  },
+  "app.copy": {
+    "es": "Copiar",
+    "zh": "复制",
+    "ja": "コピー",
+    "pt": "Copiar",
+    "ko": "복사"
+  },
+  "app.copied": {
+    "es": "Copiado",
+    "zh": "已复制",
+    "ja": "コピーしました",
+    "pt": "Copiado",
+    "ko": "복사됨"
+  },
+  "app.retry": {
+    "es": "Reintentar",
+    "zh": "重试",
+    "ja": "再試行",
+    "pt": "Tentar novamente",
+    "ko": "다시 시도"
+  },
+  "app.dismiss": {
+    "es": "Descartar",
+    "zh": "忽略",
+    "ja": "閉じる",
+    "pt": "Dispensar",
+    "ko": "무시"
+  },
+  "app.navBrowser": {
+    "es": "Navegador",
+    "zh": "浏览器",
+    "ja": "ブラウザー",
+    "pt": "Navegador",
+    "ko": "브라우저"
+  },
+  "app.navParams": {
+    "es": "⚙️ Parámetros",
+    "zh": "⚙️ 参数",
+    "ja": "⚙️ パラメータ",
+    "pt": "⚙️ Parâmetros",
+    "ko": "⚙️ 매개변수"
+  }
+}
