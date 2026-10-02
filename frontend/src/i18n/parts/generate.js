@@ -14,6 +14,13 @@ export const generateStrings = {
   "generate.palette.crimson": { fr: "Cramoisi", en: "Crimson", de: "Karmoisin", it: "Cremisi" },
   "generate.palette.emerald": { fr: "Émeraude", en: "Emerald", de: "Smaragd", it: "Smeraldo" },
 
+  "generate.error.title": {
+    fr: "La génération a échoué",
+    en: "Generation failed",
+    de: "Generierung fehlgeschlagen",
+    it: "Generazione non riuscita",
+  },
+
   "generate.error.modelNotInRegistry": {
     fr: "Le modèle « {model} » n'est pas disponible dans le registre actuel.",
     en: "The model \"{model}\" is not available in the current registry.",

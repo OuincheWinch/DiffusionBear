@@ -763,3 +763,68 @@ class ShippedStatusAgreementTests(unittest.TestCase):
                 self.assertEqual(entry["done"], len(self.english) - len(
                     _INTENTIONALLY_UNTRANSLATED & set(self.english)
                 ))
+
+
+class TranslationBuildTests(unittest.TestCase):
+    """`npm run i18n:build` must actually build something.
+
+    It once derived its target languages from SCAFFOLD_LANGUAGES. That was correct only
+    while the five were untranslated; when they were marked "shipped" the list went empty
+    and the script wrote an empty coverage.json, regenerated nothing, and left the
+    existing overlays stale -- so a newly added key would silently not reach any of the
+    five languages. Nothing failed. The next key DID reach them, only because the failure
+    was noticed by hand.
+    """
+
+    BUILD = ROOT / "frontend" / "src" / "i18n" / "lang" / "build-lang.mjs"
+    LANG_DIR = ROOT / "frontend" / "src" / "i18n" / "lang"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.build = cls.BUILD.read_text(encoding="utf-8")
+        cls.strings = (ROOT / "frontend" / "src" / "i18n" / "strings.js").read_text(encoding="utf-8")
+
+    def test_the_script_exists(self):
+        self.assertTrue(self.BUILD.exists(), "npm run i18n:build points at this")
+
+    def test_the_target_list_is_not_derived_from_status(self):
+        """status describes translation progress; it must not decide what gets built.
+
+        Checked against the code with comments stripped: the history is worth writing
+        down, but a mention of the old symbol in prose must not read as a live reference
+        or the assertion becomes something people learn to work around."""
+        code = re.sub(r"/\*.*?\*/", "", self.build, flags=re.S)
+        code = re.sub(r"//[^\n]*", "", code)
+        self.assertNotIn("SCAFFOLD_LANGUAGES", code)
+        self.assertRegex(self.build, r"const TRANSLATABLE = \[")
+
+    def test_the_target_list_covers_every_generated_file(self):
+        listed = set(re.findall(r'"([a-z]{2})"', re.search(r"const TRANSLATABLE = \[([^\]]*)\]", self.build).group(1)))
+        on_disk = {p.stem for p in self.LANG_DIR.glob("*.js")}
+        self.assertEqual(listed, on_disk, "a generated file exists that the build no longer writes")
+
+    def test_the_target_list_matches_the_overlay_imports(self):
+        imported = set(re.findall(r'import \{ (\w+)Strings \} from "\./lang/(\w+)"', self.strings))
+        imported = {code for _, code in imported}
+        listed = set(re.findall(r'"([a-z]{2})"', re.search(r"const TRANSLATABLE = \[([^\]]*)\]", self.build).group(1)))
+        self.assertEqual(listed, imported, "strings.js and build-lang.mjs generate different sets")
+
+    def test_every_target_is_declared_in_the_registry(self):
+        codes = {lang["code"] for lang in _registry_languages()}
+        listed = set(re.findall(r'"([a-z]{2})"', re.search(r"const TRANSLATABLE = \[([^\]]*)\]", self.build).group(1)))
+        self.assertTrue(listed <= codes, f"built but not offered in the picker: {listed - codes}")
+
+    def test_running_the_build_produces_a_full_catalogue(self):
+        """End to end: run it, then confirm nothing regressed to stale."""
+        if not _node_available():
+            self.skipTest("node not installed")
+        frontend = ROOT / "frontend"
+        proc = subprocess.run(
+            ["node", "--import", str(frontend / "tools" / "register-extensionless.mjs"),
+             str(self.BUILD)],
+            capture_output=True, text=True, timeout=180, cwd=str(frontend),
+        )
+        self.assertEqual(proc.returncode, 0, f"build failed:\n{proc.stderr[-800:]}")
+        self.assertIn("739/740", proc.stdout, f"build wrote nothing useful:\n{proc.stdout[-400:]}")
+        data = json.loads((self.LANG_DIR / "coverage.json").read_text())
+        self.assertEqual(sorted(data), ["es", "ja", "ko", "pt", "zh"])

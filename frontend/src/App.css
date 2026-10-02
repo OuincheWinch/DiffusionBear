@@ -4629,3 +4629,99 @@ body.native-shell * {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   margin-bottom: 0.75rem;
 }
+
+/* ============================================================================
+   Error banner.
+
+   A generation failure must be impossible to miss. It used to be a 0.85rem red
+   paragraph at the BOTTOM of the form, below the prompt, the canvas controls and the
+   advanced panels -- so the reason a two-minute generation produced nothing was the last
+   thing on the page. And the raw MLX text it carries ("[METAL] Command buffer execution
+   failed: Insufficient Memory (00000008:kiOGPUCommandBufferCallbackErrorOutOfMemory)")
+   reads as a stray console line, not as an answer.
+
+   Sticky, because the failure arrives after a long wait, by which point the user has
+   usually scrolled away from the top of the form.
+   ========================================================================== */
+
+.error-banner {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid #b3453f;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: rgba(120, 30, 28, 0.28);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  animation: error-banner-in 160ms ease-out;
+}
+
+@keyframes error-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .error-banner {
+    animation: none;
+  }
+}
+
+.error-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.error-banner-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.error-banner-title {
+  flex: 1;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+  color: #ffd9d6;
+}
+
+.error-banner-dismiss {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #ffb3ae;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.error-banner-dismiss:hover {
+  border-color: #b3453f;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+}
+
+.error-banner-body {
+  margin: 0;
+  color: #ffe4e2;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  /* The message is a raw exception with long unbreakable tokens like
+     kiOGPUCommandBufferCallbackErrorOutOfMemory, which would otherwise push the banner
+     wider than the form and re-introduce the horizontal bleed the detail panel had. */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

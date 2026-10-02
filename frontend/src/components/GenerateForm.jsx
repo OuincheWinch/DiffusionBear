@@ -892,6 +892,36 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
+          {/* Errors live at the TOP of the form, not the bottom.
+
+              They used to render as a quiet 0.85rem paragraph after <GenerationStack />,
+              i.e. below the prompt, the canvas controls and the advanced panels. By the
+              time a generation failed you had to scroll to the end of a long form to find
+              out why -- and a raw MLX message like "[METAL] Command buffer execution
+              failed: Insufficient Memory (00000008:kiOGPU...)" reads as a stray log line
+              rather than as the reason nothing happened.
+
+              Sticky, because the failure almost always arrives after a long wait during
+              which the user has scrolled away from the top of the form. */}
+          {error && (
+            <div className="error-banner" role="alert" aria-live="assertive">
+              <div className="error-banner-head">
+                <span className="error-banner-icon" aria-hidden="true">⛔</span>
+                <strong className="error-banner-title">{t("generate.error.title")}</strong>
+                <button
+                  type="button"
+                  className="error-banner-dismiss"
+                  onClick={() => setError(null)}
+                  title={t("app.dismiss")}
+                  aria-label={t("app.dismiss")}
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="error-banner-body">{error}</p>
+            </div>
+          )}
+
           <div className="prompt-toolbar">
             <div className="prompt-toolbar-left">
               {activeTriggerWords.length > 0 && (
@@ -1305,11 +1335,6 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
         </p>
       )}
       <GenerationStack />
-       {error && (
-         <p className="error" role="alert">
-           {error}
-         </p>
-       )}
        {enhanceFeedback && (
          <p
            className={`civitai-feedback ${enhanceFeedback.type}`}

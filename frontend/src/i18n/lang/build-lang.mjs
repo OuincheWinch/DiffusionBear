@@ -24,7 +24,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { STRINGS } from "../strings.js";
-import { LANGUAGES, SCAFFOLD_LANGUAGES } from "../languages.js";
+import { LANGUAGES } from "../languages.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PARTS = join(HERE, "_parts");
@@ -35,11 +35,21 @@ const PARTS = join(HERE, "_parts");
 const ORDER = Object.keys(STRINGS);
 const GROUP_OF = (key) => key.split(".")[0];
 
-// Only the languages that have an overlay file. fr/de/it are listed in LANGUAGES and
-// ship their strings from ./parts/, so including them here made the coverage report claim
-// 739 keys missing for French, which has every one of them.
-const SCAFFOLD_CODES = SCAFFOLD_LANGUAGES.map((l) => l.code);
-const TRANSLATABLE = LANGUAGES.filter((l) => SCAFFOLD_CODES.includes(l.code)).map((l) => l.code);
+
+// The languages this script owns an overlay for.
+//
+// The languages this script generates overlays for.
+//
+// Deliberately NOT derived from `status`. It used to be derived from SCAFFOLD_LANGUAGES,
+// which worked only while these five were untranslated. The moment they were marked
+// "shipped" that list went empty and this script became a SILENT NO-OP: it wrote an empty
+// coverage.json, regenerated nothing, and left the previously built overlays stale -- a
+// new key would silently not reach any of the five languages. A codegen step that quietly
+// does nothing is worse than one that fails.
+//
+// So the targets are stated. test_i18n.py asserts this list matches both the lang/*.js
+// files on disk and the overlay imports in ../strings.js, so it cannot drift unnoticed.
+const TRANSLATABLE = ["es", "zh", "ja", "pt", "ko"];
 
 /** @type {Record<string, Record<string, Record<string, string>>>} */
 const parts = {};
