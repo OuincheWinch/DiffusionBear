@@ -1009,8 +1009,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.alignment = .center
 
+        // Default width chosen by measurement, not taste.
+        //
+        // The Generate form switches to two columns at >=1024px, which squeezes the
+        // parameter column to 450-570px -- and the nine aspect-ratio buttons need about
+        // 625px. At the old 1280 default they wrapped onto a second line. Measured across
+        // widths: one line at 900 (single column), WRAPPED 1024-1280, one line again from
+        // 1366 up. 1400 clears it with room to spare.
+        //
+        // Clamped to the screen so a 1400pt default cannot open off the edge of a 1280pt
+        // display.
+        let screenFrame = NSScreen.main?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let contentWidth = min(CGFloat(1400), screenFrame.width)
+        let contentHeight = min(CGFloat(900), screenFrame.height)
+
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1280, height: 840),
+            contentRect: NSRect(x: 0, y: 0, width: contentWidth, height: contentHeight),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
         window.title = "DiffusionBear"

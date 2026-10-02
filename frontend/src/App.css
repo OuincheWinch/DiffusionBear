@@ -4569,24 +4569,18 @@ body.native-shell * {
   line-height: 1;
 }
 
-/* Ratio buttons carry two distinct states, and telling them apart is the point of the
-   pair. The SELECTED ratio is what the user last clicked; the CALCULATED one is what
-   the current width/height actually describe. With the ratio locked the selection is
-   what governs, so it is the strong one. Unlocked, the dimensions are about to move on
-   their own, so the calculated ratio is the strong one and the selection fades -- which
-   is the visual warning that the shape is no longer what was picked. */
-.size-ratio-btn.calculated {
-  border-color: var(--success);
-  background: rgba(74, 222, 128, 0.18);
-  color: var(--text);
-  font-weight: 600;
-}
+/* The ratio row states.
 
-.size-ratio-btn.calculated .size-ratio-glyph {
-  opacity: 1;
-}
+   "active" is deliberately the SAME rule the Size row uses, so the two rows read as one
+   control. The distinction that survives is not colour but authority: when the selected
+   ratio and the ratio the current dimensions describe disagree, the one in effect gets
+   .active and the other gets .active-muted, so the row still says which shape you will
+   actually get.
 
-/* Selected but overridden by the live dimensions: present, not authoritative. */
+   An earlier version coloured the calculated ratio green to match a request for
+   "active green, calculated grey". That was dropped: it made the ratio row the only
+   purple-free control in the form, and green here read as "warning" rather than
+   "selected". */
 .size-ratio-btn.active-muted {
   border-color: var(--border);
   background: transparent;
@@ -4597,6 +4591,7 @@ body.native-shell * {
 .size-ratio-btn.active-muted .size-ratio-glyph {
   opacity: 0.45;
 }
+
 
 /* A language whose catalogue is still empty. It stays selectable -- the point is that
    translators can see it in the product -- but it is dimmed and carries a dot, so

@@ -257,6 +257,16 @@ export default function SizeSelector({
   // say out loud.
   const selectedIsTruth = lockRatio;
 
+  // The ONE ratio that governs the shape right now. Deriving it here rather than
+  // re-deciding per button is what keeps exactly one chip lit.
+  //
+  // The ?? ratioId fallback matters: dimensions are snapped to a multiple of 16, so at a
+  // small base 16:9 lands on 448x256 (1.75, not 1.778) and matches no entry in RATIOS at
+  // all. Without the fallback calculatedRatioId was null, effectiveRatioId was null, and
+  // the whole row rendered with nothing selected -- which reads as a broken control when
+  // in fact the user picked that ratio and rounding moved it a hair.
+  const effectiveRatioId = selectedIsTruth ? ratioId : (calculatedRatioId ?? ratioId);
+
   const budget =
     maxPixels == null || maxPixels === "" ? null : Number(maxPixels);
   const hasBudget = Number.isFinite(budget) && budget > 0;
@@ -300,14 +310,25 @@ export default function SizeSelector({
             <button
               key={r.id}
               type="button"
+              /* Exactly one button gets "active", and it is whichever of the two is
+               * currently in effect -- so the ratio row uses precisely the same colour
+               * language as the Size row above it. The other, when they disagree, is
+               * muted.
+               *
+               * Previously a ratio that was BOTH selected and calculated got
+               * "calculated active-muted" together, and because .active-muted is declared
+               * later at equal specificity it won: the button rendered as plain grey. No
+               * ratio looked selected at all, which is what the screenshot showed. */
               className={[
                 "size-ratio-btn",
-                ratioId === r.id ? (selectedIsTruth ? "active" : "active-muted") : "",
-                calculatedRatioId === r.id && !selectedIsTruth ? "calculated" : "",
+                r.id === effectiveRatioId ? "active" : "",
+                // The selected chip when the two disagree: still present, no longer in
+                // charge, so it reads as muted rather than selected.
+                r.id === ratioId && r.id !== effectiveRatioId ? "active-muted" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
-              aria-pressed={ratioId === r.id || calculatedRatioId === r.id}
+              aria-pressed={r.id === ratioId || r.id === effectiveRatioId}
               onClick={() => selectRatio(r.id)}
               title={t("params.size.ratioTitle", { ratio: r.id })}
             >

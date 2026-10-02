@@ -404,3 +404,89 @@ class ParamVisibilityTests(unittest.TestCase):
         </div> wrong here produces an unparseable component, so the counts are asserted."""
         details = self._region('<details className="advanced-settings">', "</details>")
         self.assertEqual(details.count("<div"), details.count("</div>"))
+
+
+class RatioHighlightTests(unittest.TestCase):
+    """Exactly one ratio chip is lit, in the same colour as the Size row.
+
+    Reported as "ratio selection must have same colour as Size selection". The
+    screenshot showed no ratio highlighted at all, which had two separate causes.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        raw = COMPONENT.read_text(encoding="utf-8")
+        cls.code = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
+        cls.code = re.sub(r"//[^\n]*", "", cls.code)
+
+    def test_exactly_one_chip_is_decided_up_front(self):
+        """Derived once, not re-decided per button.
+
+        A per-button decision is how this broke twice: first a ratio that was both
+        selected and calculated picked up two classes and rendered grey, then a chained
+        comparison `a === b === flag` evaluated (a === b) === flag and lit all nine."""
+        self.assertIn("const effectiveRatioId =", self.code)
+        self.assertIn('r.id === effectiveRatioId ? "active" : ""', self.code)
+
+    def test_no_chained_equality_comparison_in_the_class_logic(self):
+        self.assertNotRegex(
+            self.code, r"=== \w+ ===",
+            "chained equality compares left to right and silently lights every button",
+        )
+
+    def test_the_row_falls_back_to_the_selection_when_rounding_breaks_the_ratio(self):
+        """Dimensions snap to a multiple of 16, so 16:9 at a small base lands on
+        448x256 and matches no entry in RATIOS. The row must still show the choice."""
+        self.assertRegex(
+            self.code, r"calculatedRatioId \?\? ratioId",
+            "without this the whole row renders unselected",
+        )
+
+    def test_only_the_overridden_chip_is_muted(self):
+        self.assertIn('r.id === ratioId && r.id !== effectiveRatioId ? "active-muted" : ""', self.code)
+
+    def test_the_colour_scheme_matches_the_size_row(self):
+        """The green scheme was removed: it made the ratio row the only non-purple
+        control in the form, and green read as a warning rather than a selection."""
+        css = (COMPONENT.parents[1] / "App.css").read_text(encoding="utf-8")
+        self.assertNotIn("size-ratio-btn.calculated", css, "the green override is gone")
+        self.assertIn(".size-base-btn.active,\n.size-ratio-btn.active", css.replace(" ", " "))
+
+
+class QueuePanelTests(unittest.TestCase):
+    """Queue & pending jobs must be clearable without expanding anything.
+
+    Reported from the Parameters tab: with "0 active / 9 recoverable" the panel offered
+    no way to delete anything -- Cancel all only rendered when something was running,
+    and Clear history lived inside the expanded Recovery box.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        root = Path(__file__).resolve().parents[1] / "frontend" / "src"
+        cls.code = re.sub(r"//[^\n]*", "", (root / "components" / "settings" / "QueueSection.jsx").read_text())
+        cls.css = (root / "App.css").read_text(encoding="utf-8")
+
+    def _inline_row(self) -> str:
+        start = self.code.index('className="settings-inline"')
+        end = self.code.index("</div>", start)
+        return self.code[start:end]
+
+    def test_clear_history_is_in_the_always_visible_row(self):
+        row = self._inline_row()
+        self.assertIn("clearRecovery", row, "Clear history must not require expanding Recovery")
+        self.assertIn("recovery.length > 0", row)
+
+    def test_it_is_not_duplicated_inside_the_expanded_box(self):
+        self.assertEqual(
+            self.code.count("settings.queue.clearHistory"),
+            1,
+            "two Clear history buttons in one panel is a trap",
+        )
+
+    def test_the_delete_button_looks_destructive(self):
+        row = self._inline_row()
+        self.assertIn('className="btn-mini danger"', row)
+
+    def test_danger_is_defined_and_not_shadowed(self):
+        self.assertIn(".danger {", self.css)

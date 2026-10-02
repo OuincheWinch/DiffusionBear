@@ -123,9 +123,28 @@ export default function QueueSection({ onNavigate }) {
         <span className={`settings-badge ${live ? "ok" : ""}`}>
           {t("settings.queue.counts", { active: active.length, recovery: recovery.length })}
         </span>
+        {/* Both destructive actions live HERE, in the row that is always visible.
+         *
+         * They used to be reachable only by expanding Recovery, and Cancel all only
+         * appeared when something was running. So in the most common state -- 0 active
+         * and a few recoverable prompts left over from a crash -- the panel offered no way
+         * to delete anything at all: you had to expand a list just to find the button
+         * that clears it. Nothing is lost by expanding a list to read it; losing the
+         * ability to delete without a pointless detour is a real defect. */}
         {active.length > 0 && (
           <button type="button" className="btn-mini" disabled={busy} onClick={cancelAll}>
             {t("settings.queue.cancelAll")}
+          </button>
+        )}
+        {recovery.length > 0 && (
+          <button
+            type="button"
+            className="btn-mini danger"
+            disabled={busy}
+            onClick={clearRecovery}
+            title={t("settings.queue.clearRecoveryConfirm")}
+          >
+            {t("settings.queue.clearHistory")}
           </button>
         )}
         <button
@@ -183,9 +202,6 @@ export default function QueueSection({ onNavigate }) {
               <>
                 <button type="button" className="btn-mini" disabled={busy} onClick={() => restoreItem(null)}>
                   {t("settings.queue.requeueAll", { count: recovery.length })}
-                </button>
-                <button type="button" className="btn-mini" onClick={clearRecovery}>
-                  {t("settings.queue.clearHistory")}
                 </button>
               </>
             )}
