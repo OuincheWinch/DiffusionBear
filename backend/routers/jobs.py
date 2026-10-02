@@ -150,6 +150,13 @@ def list_jobs(limit: int = 25):
             output.append({
                 "id": job["id"],
                 "status": job["status"],
+                # The worker has always stored the failure message (state.py sets
+                # job["error"]); this projection just never exposed it. So the generation
+                # stack could only ever render a bare "X Error" with no reason, while the
+                # banner at the top of the form showed the real Metal message -- two
+                # surfaces reporting the same failure in two different ways, which read as
+                # two separate errors.
+                "error": job.get("error"),
                 "phase": job.get("phase"),
                 "phase_detail": job.get("phase_detail"),
                 "progress": progress or None,

@@ -215,6 +215,18 @@ function GenerationStack() {
               <div className="gen-stack-prompt" title={j.prompt}>
                 {j.prompt}
               </div>
+              {/* The reason, when there is one.
+
+                  This row used to say only "X Error" with no explanation, while the banner
+                  at the top of the form carried the real Metal message. Two surfaces
+                  describing the same failure differently read as two separate errors -- and
+                  the stack is what you look at after dismissing the banner, so it was the
+                  worse of the two: no reason at all. */}
+              {j.status === "error" && j.error && (
+                <div className="gen-stack-error" title={j.error}>
+                  {j.error}
+                </div>
+              )}
               {pct != null && (
                 <div className="progress-bar-hairline">
                   <div className="progress-fill" style={{ width: `${pct}%` }} />

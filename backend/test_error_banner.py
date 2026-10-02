@@ -48,11 +48,21 @@ class ErrorBannerTests(unittest.TestCase):
         """It belongs next to the reference controls it refers to."""
         self.assertIn('className="error" role="alert"', self.form)
 
-    def test_it_sticks_to_the_top(self):
-        """The failure arrives after a long wait, by which point the user has scrolled
-        away from the top of the form."""
-        self.assertRegex(self._rule(".error-banner"), r"position:\s*sticky")
-        self.assertRegex(self._rule(".error-banner"), r"top:\s*0")
+    def test_it_is_not_sticky(self):
+        """Sticky was my own addition and it broke the first version in the real app:
+        scrolling form content passed under the banner. Reported as the banner looking
+        clipped, with the Enhance/JSON/colour buttons printed over the last line of the
+        Metal error."""
+        self.assertNotRegex(self._rule(".error-banner"), r"position:\s*sticky")
+
+    def test_the_background_is_opaque(self):
+        """The other half of the same defect: at 0.28 alpha whatever was underneath showed
+        through the banner, which is what made it read as overlapping text."""
+        rule = self._rule(".error-banner")
+        alpha = re.search(r"background:\s*rgba\([^)]*?,\s*([\d.]+)\s*\)\s*;", rule)
+        if alpha:
+            self.fail(f"translucent banner background: rgba alpha {alpha.group(1)}")
+        self.assertRegex(rule, r"background:\s*#[0-9a-fA-F]{3,6}", "use a solid colour")
 
     def test_it_is_announced_assertively(self):
         self.assertIn('role="alert"', self.form)
@@ -87,3 +97,44 @@ class ErrorBannerTests(unittest.TestCase):
         strings = (FORM.parents[1] / "i18n" / "parts" / "generate.js").read_text(encoding="utf-8")
         self.assertIn('"generate.error.title"', strings)
         self.assertIn("generate.error.title", self.form)
+
+
+class FailedJobReasonTests(unittest.TestCase):
+    """The generation stack must be able to say WHY a job failed.
+
+    Reported as "got 2 errors message": the banner showed the real Metal error while the
+    stack row below said only "X Error", so the same failure looked like two unrelated
+    problems. The stack row is what you look at after dismissing the banner, and it had no
+    reason at all.
+
+    The worker has always stored the message (backend/state.py sets job["error"]); the
+    /api/jobs projection simply never exposed it.
+    """
+
+    ROUTER = Path(__file__).resolve().parent / "routers" / "jobs.py"
+    STATE = Path(__file__).resolve().parent / "state.py"
+    STACK = Path(__file__).resolve().parents[1] / "frontend" / "src" / "components" / "GenerationStack.jsx"
+    CSS = Path(__file__).resolve().parents[1] / "frontend" / "src" / "App.css"
+
+    def test_the_worker_stores_the_message(self):
+        self.assertIn('job["error"] = str(e)', self.STATE.read_text(encoding="utf-8"))
+
+    def test_the_jobs_projection_exposes_it(self):
+        router = self.ROUTER.read_text(encoding="utf-8")
+        self.assertRegex(
+            router, r'"error":\s*job\.get\("error"\)',
+            "without this the client can never learn why a job failed",
+        )
+
+    def test_the_stack_row_renders_it(self):
+        stack = self.STACK.read_text(encoding="utf-8")
+        self.assertIn("gen-stack-error", stack)
+        self.assertIn("j.status === \"error\" && j.error", stack)
+
+    def test_the_row_is_truncated_rather_than_unbounded(self):
+        """A raw Metal message is long; the banner keeps the full text."""
+        css = re.sub(r"/\*.*?\*/", "", self.CSS.read_text(encoding="utf-8"), flags=re.S)
+        m = re.search(r"\.gen-stack-error\s*\{([^}]*)\}", css)
+        self.assertIsNotNone(m, ".gen-stack-error rule missing")
+        self.assertIn("-webkit-line-clamp: 2", m.group(1))
+        self.assertIn("overflow-wrap: break-word", m.group(1))
