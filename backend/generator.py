@@ -1862,13 +1862,37 @@ def _get_pipeline(model_id: str, quantization: int, loras: list[dict], variant: 
 
         _install_krea_sampler_scalar_cache()
         local = ASSET_DIR / "models" / "krea2-turbo-q4"
-        _pipeline = Krea2(
-            quantize=4,
-            model_path=local_arg or str(local),
-            lora_paths=[l["path"] for l in loras] or None,
-            lora_scales=scales or None,
-            bake_lora=False,
-        )
+        krea_source = local_arg or str(local)
+
+        # Load the quantised encoder from disk instead of letting mflux materialise
+        # 7.5GB of bf16 first. The flag has to be set BEFORE Krea2() is constructed,
+        # because by the time it returns the bf16 weights are already resident.
+        disk_te = None
+        if os.environ.get("MLX_DISABLE_KREA_TE_CACHE") != "1":
+            _install_krea_te_bf16_skip()
+            disk_te = _krea_te_from_disk(krea_source, bits=4, group_size=64)
+            _krea_te_skip_bf16["on"] = disk_te is not None
+        try:
+            _pipeline = Krea2(
+                quantize=4,
+                model_path=krea_source,
+                lora_paths=[l["path"] for l in loras] or None,
+                lora_scales=scales or None,
+                bake_lora=False,
+            )
+        finally:
+            _krea_te_skip_bf16["on"] = False
+
+        if disk_te is not None:
+            # The encoder module mflux built is now weightless (we skipped its load),
+            # so drop it before adopting the on-disk copy.
+            stale = getattr(_pipeline, "text_encoder", None)
+            if stale is not None:
+                _pipeline.text_encoder = None
+                del stale
+                gc.collect()
+                mx.clear_cache()
+            _pipeline.text_encoder = disk_te
         # Tiled VAE decode.
         #
         # mflux 0.20.0 made --vae-tiling actually work on Krea 2, where the flag was
@@ -1885,12 +1909,14 @@ def _get_pipeline(model_id: str, quantization: int, loras: list[dict], variant: 
         # assigning it after construction is enough -- no patch to mflux is needed.
         _apply_krea_vae_tiling(_pipeline)
 
-        # Explicitly quantize the Qwen3-VL text encoder (7.5GB bf16 -> ~1.9GB q4).
-        # mflux skips it by default (skip_quantization=True), leaving 7.5GB of raw bf16 weights
-        # which causes resident memory to exceed 15GB and trigger Metal CommandBuffer OOM on 16GB Macs.
-        # The pass costs 65-69s, so it is cached across pipeline rebuilds.
-        if hasattr(_pipeline, "text_encoder") and _pipeline.text_encoder is not None:
-            _krea_quantized_text_encoder(_pipeline, local_arg or str(local), bits=4, group_size=64)
+# Explicitly quantize the Qwen3-VL text encoder (7.5GB bf16 -> ~1.9GB q4).
+        # mflux skips it by default (skip_quantization=True), leaving 7.5GB of raw bf16 weight
+        # which causes resident memory to exceed 15GB and trigger Metal CommandBuffer OOM on 1
+        # The pass costs 65-69s, so it is cached in-process AND on disk: the first build
+        # pays it once and writes the result out, and every later process reads the q4
+        # weights directly instead of loading bf16 at all.
+        if disk_te is None and hasattr(_pipeline, "text_encoder") and _pipeline.text_encoder is not None:
+            _krea_quantized_text_encoder(_pipeline, krea_source, bits=4, group_size=64)
     elif model_id == "qwen-image-2.1":
         from mflux.models.qwen21.variants.txt2img.qwen_image_21 import QwenImage21
 
@@ -2793,6 +2819,105 @@ def _apply_krea_vae_tiling(pipe) -> None:
         print(f"[generator] krea2 VAE tiling unavailable: {exc}", flush=True)
 
 
+_krea_te_skip_bf16: dict = {"on": False}
+_krea_te_skip_installed = False
+
+
+def _krea_te_disk_path(model_path, bits, group_size):
+    """Where the quantised Krea 2 text encoder is persisted between processes.
+
+    The in-memory cache below dies with the process, so every app restart used to pay
+    the full bf16 load again. Hashing the model path keeps this tied to the checkpoint
+    it was built from, so swapping the model re-derives instead of loading stale weights.
+    """
+    import hashlib
+
+    digest = hashlib.sha256(str(model_path).encode()).hexdigest()[:10]
+    name = Path(str(model_path)).name or "krea2"
+    return ASSET_DIR / "models" / f"{name}-te-q{bits}-g{group_size}-{digest}.safetensors"
+
+
+def _install_krea_te_bf16_skip() -> None:
+    """Stop mflux loading the 7.5GB bf16 encoder when we already have a q4 copy on disk.
+
+    mflux builds Krea2TextEncoder as a plain bf16 module and WeightApplier._set_weights
+    then loads the bf16 tensors into it (krea2's weight definition sets
+    skip_quantization=True on that component). Those two steps are the spike: the encoder
+    is resident before we ever get a chance to quantise it.
+
+    _set_weights simply iterates `models` and calls model.update(...), so dropping the
+    entry from the dict is enough to skip the load entirely. The patch is deliberately
+    narrow twice over: it only fires while the flag is set, and only for a models dict
+    that actually contains a Krea2TextEncoder, so no other engine can be affected.
+    """
+    global _krea_te_skip_installed
+    if _krea_te_skip_installed:
+        return
+    from mflux.models.common.weights.loading.weight_applier import WeightApplier
+
+    original = WeightApplier._set_weights
+
+    def _patched(weights, models, components=None):
+        if _krea_te_skip_bf16["on"] and any(
+            type(m).__name__ == "Krea2TextEncoder" for m in models.values()
+        ):
+            models = {k: v for k, v in models.items() if k != "text_encoder"}
+        return original(weights, models, components)
+
+    WeightApplier._set_weights = staticmethod(_patched)
+    _krea_te_skip_installed = True
+
+
+def _krea_te_from_disk(model_path, bits, group_size):
+    """Rebuild the quantised encoder straight from disk, or None if there is no cache."""
+    import mlx.core as mx
+    import mlx.nn as nn
+    from mlx.utils import tree_flatten
+    from mflux.models.krea2.model.krea2_text_encoder.text_encoder import Krea2TextEncoder
+
+    path = _krea_te_disk_path(model_path, bits, group_size)
+    if not path.exists():
+        return None
+    try:
+        module = Krea2TextEncoder()
+        # Build the quantised *structure* first, then drop the saved q4 tensors in --
+        # the same order mflux uses when a checkpoint declares a quantization level.
+        nn.quantize(module, bits=bits, group_size=group_size)
+        module.load_weights(str(path))
+        mx.eval(module)
+        return module
+    except Exception as exc:  # a corrupt or truncated cache must never be fatal
+        print(f"[generator] WARN Krea 2 q4 text-encoder cache unusable ({exc}); falling back", flush=True)
+        # Self-heal: a truncated or mismatched cache would otherwise be re-read (and
+        # re-rejected) on every single start, forever.
+        try:
+            path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return None
+
+
+def _krea_te_save_disk(module, model_path, bits, group_size) -> None:
+    """Persist the quantised encoder so later processes never load bf16 at all."""
+    import mlx.core as mx
+    from mlx.utils import tree_flatten
+
+    path = _krea_te_disk_path(model_path, bits, group_size)
+    # mx.save_safetensors APPENDS .safetensors to any path that does not already end in
+    # it, so a plain ".partial" temp name silently lands on ".partial.safetensors" and
+    # the rename below then fails with ENOENT. The temp must keep the real suffix.
+    tmp = path.with_name(path.stem + ".partial.safetensors")
+    try:
+        mx.save_safetensors(str(tmp), dict(tree_flatten(module.parameters())))
+        os.replace(tmp, path)  # atomic: a crash mid-write can never poison the cache
+    except Exception as exc:
+        print(f"[generator] WARN could not persist Krea 2 q4 text encoder ({exc})", flush=True)
+        try:
+            tmp.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
 def _krea_quantized_text_encoder(pipe, model_path, bits, group_size):
     """Return a 4-bit Krea 2 Qwen3-VL text encoder, reusing the last one if we can.
 
@@ -2833,6 +2958,7 @@ def _krea_quantized_text_encoder(pipe, model_path, bits, group_size):
         if not disabled:
             _krea_te_cache["key"] = key
             _krea_te_cache["module"] = fresh
+            _krea_te_save_disk(fresh, model_path, bits, group_size)
         return fresh
 
 
