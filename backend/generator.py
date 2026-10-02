@@ -10,6 +10,7 @@ import select
 import signal
 import subprocess
 import sys
+import traceback
 import threading
 import time
 import uuid
@@ -53,6 +54,50 @@ try:
     _mflux_img_util.ImageUtil._to_numpy = _safe_mflux_to_numpy
 except Exception as _patch_err:
     print(f"[generator] WARN failed to patch ImageUtil._to_numpy: {_patch_err}", flush=True)
+
+# Second layer, added after the 2026-10-02 abort.
+#
+# The patch above only protects ImageUtil._to_numpy, and the backend still died with
+# SIGABRT. The crash report is unambiguous about the mechanism:
+#
+#   mlx::core::eval_impl -> mlx::core::array::eval -> _PyManagedBuffer_FromObject
+#     -> numpy PyArray_FromAny -> numpy array_array
+#
+# i.e. numpy pulled the buffer protocol off an MLX array. pybind11's exception
+# translator only wraps Python->C calls, so a Metal error raised inside a C callback
+# that numpy invokes escapes it entirely and hits std::terminate() -> abort(). Asking
+# for 40GB directly demonstrates both halves of this, in a subprocess:
+#
+#   mx.eval(x) in Python scope -> RuntimeError (catchable)
+#   np.array(x) un-evaluated    -> SIGABRT (process gone)
+#
+# so the fix is to make sure eval happens in Python scope first. Measured independently,
+# and the distinction is the whole point: it is not a heuristic.
+#
+# This wrapper applies that rule to EVERY np.array() call in the process rather than one
+# known call site, because the 2026-10-02 crash proves the offending call site is not
+# ImageUtil._to_numpy and we have not identified it yet. It also prints the caller's
+# stack when it fires, so the first real occurrence names the culprit instead of
+# leaving us guessing again.
+try:
+    import mlx.core as _mx_for_np_guard
+
+    _orig_np_array = np.array
+
+    def _np_array_eval_guard(obj, *args, **kwargs):
+        if type(obj).__module__.split(".")[0] == "mlx":
+            # Force evaluation in Python scope while we can still catch the error.
+            _mx_for_np_guard.eval(obj)
+            print(
+                "[generator] mlx->numpy conversion outside ImageUtil._to_numpy:\n"
+                + "".join(traceback.format_stack()[-8:]),
+                flush=True,
+            )
+        return _orig_np_array(obj, *args, **kwargs)
+
+    np.array = _np_array_eval_guard
+except Exception as _guard_err:
+    print(f"[generator] WARN np.array eval guard not installed: {_guard_err}", flush=True)
 
 try:
     from mflux.models.krea2 import Krea2
