@@ -1900,7 +1900,19 @@ def _validate_sampler(sampler, minfo):
         return "Euler"
     value = sampler or (minfo.get("default_sampler") or allowed[0])
     if value not in allowed:
-        raise ValueError(f"unsupported sampler for {minfo['label']}: {value}")
+        # A sampler picked on one model and carried over to another whose list differs is
+        # a stale UI value, not a hostile one: the picker only ever offers samplers from
+        # `allowed`, so by the time it arrives here it is known to be a value this app
+        # itself produced. Refusing the whole generation over it cost the user their
+        # prompt for a reason they could neither see nor fix, so fall back to the model's
+        # default instead. Unknown values from anywhere else are still rejected upstream.
+        fallback = minfo.get("default_sampler") or allowed[0]
+        print(
+            f"[generator] sampler {value!r} not offered by {minfo.get('id')}; "
+            f"falling back to {fallback!r}",
+            flush=True,
+        )
+        return fallback
     return value
 
 

@@ -4552,3 +4552,12 @@ body.native-shell * {
   background: currentColor;
   opacity: 0.55;
 }
+
+/* Steps, seed and batch. Always visible, so they get the full width and sit above the
+   disclosure rather than sharing its collapsed state. minmax(200px) keeps each control
+   wide enough for its label and quick-actions on one row, where the 160px used inside the
+   disclosure was forcing the seed buttons onto a second line. */
+.param-grid-primary {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: 0.75rem;
+}

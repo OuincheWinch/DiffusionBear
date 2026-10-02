@@ -344,3 +344,63 @@ class CustomInputEditingTests(unittest.TestCase):
             r"const selectedIsTruth = lockRatio",
             "locked means the selection governs; unlocked means the live dimensions do",
         )
+
+
+class ParamVisibilityTests(unittest.TestCase):
+    """Steps, seed and batch are primary controls, not advanced ones.
+
+    They were moved out of the collapsed "Advanced Settings" panel, and the sampler
+    select is hidden unless the model actually offers a choice.
+    """
+
+    PARAMS = Path(__file__).resolve().parents[1] / "frontend" / "src" / "components" / "GenerationParams.jsx"
+
+    @classmethod
+    def setUpClass(cls):
+        raw = cls.PARAMS.read_text(encoding="utf-8")
+        cls.code = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
+        cls.code = re.sub(r"//[^\n]*", "", cls.code)
+
+    def _region(self, start_marker, end_marker):
+        start = self.code.index(start_marker)
+        end = self.code.index(end_marker, start)
+        return self.code[start:end]
+
+    def test_the_three_primary_controls_sit_outside_the_disclosure(self):
+        """Before <details> is the primary grid; the disclosure opens after it."""
+        grid = self.code.index('<div className="param-grid param-grid-primary">')
+        details = self.code.index('<details className="advanced-settings">')
+        self.assertLess(grid, details, "the primary grid must precede the disclosure")
+        head = self.code[:details]
+        for key in ("params.steps.label", "params.seed.label", "params.batch.label"):
+            with self.subTest(key=key):
+                self.assertIn(key, head, f"{key} is still inside the disclosure")
+
+    def test_the_disclosure_keeps_what_is_advanced_by_nature(self):
+        tail = self.code[self.code.index('<details className="advanced-settings">'):]
+        for key in ("params.maxPixels.label", "params.sampler.label",
+                    "params.deepCache.label"):
+            with self.subTest(key=key):
+                self.assertIn(key, tail)
+        for key in ("params.steps.label", "params.seed.label", "params.batch.label"):
+            with self.subTest(key=key):
+                self.assertNotIn(key, tail, f"{key} does not belong in Advanced Settings")
+
+    def test_the_sampler_needs_more_than_one_choice(self):
+        """A one-option select is a readout, not a control."""
+        self.assertRegex(
+            self.code, r"samplerChoices\.length > 1",
+            "the sampler select must require a real choice",
+        )
+        self.assertNotIn("modelInfo.samplers &&", self.code)
+
+    def test_sampler_choices_are_deduplicated(self):
+        """A registry that repeats a name must not be able to fake a choice."""
+        self.assertIn("new Set(modelInfo.samplers || [])", self.code)
+
+    def test_the_disclosed_body_stays_balanced(self):
+        """The disclosure nests a grid inside its body and then carries on with the
+        negative prompt, sampler and DeepCache as siblings of that grid. Getting one
+        </div> wrong here produces an unparseable component, so the counts are asserted."""
+        details = self._region('<details className="advanced-settings">', "</details>")
+        self.assertEqual(details.count("<div"), details.count("</div>"))

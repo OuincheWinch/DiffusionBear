@@ -40,7 +40,11 @@ function GenerationParams({
   setMaxPixels,
 }) {
    const { t } = useI18n();
-   const maxRefImages = Math.max(1, Number(maxReferenceImages) || 1);
+   // De-duplicated and sorted so the dropdown order is stable regardless of how the
+  // registry listed them, and so a registry repeating a name cannot fake a choice.
+  const samplerChoices = [...new Set(modelInfo.samplers || [])].sort();
+
+  const maxRefImages = Math.max(1, Number(maxReferenceImages) || 1);
 
 
   function randomizeSeed() {
@@ -56,48 +60,18 @@ function GenerationParams({
 
   return (
     <div className="generation-params-container">
-      {/* Collapsed by default. These five (plus negative prompt, DeepCache and the
-          pixel cap, which are advanced by nature) are the controls people reach for
-          rarely; leaving them open is what made the primary path feel heavy. */}
-      <details className="advanced-settings">
-        <summary className="advanced-settings-summary">
-          <span className="advanced-settings-chevron" aria-hidden="true" />
-          {t("params.advanced.label")}
-        </summary>
-      <div className="advanced-settings-body">
-      <div className="param-grid">
-        {modelInfo.max_pixels ? (
-          <label>
-            <span className="step-label-header">
-              {t("params.maxPixels.label")}
-              <span
-                className="distill-subtle-tag"
-                 title={t("params.maxPixels.oomGuardTitle")}
+      {/* Steps, seed and batch sit outside the disclosure on purpose.
 
-              >
-                {t("params.maxPixels.oomGuardTag")}
-              </span>
-            </span>
-            <input
-              type="number"
-              min="65536"
-              max={modelInfo.max_pixels}
-              step="16384"
-              value={Number(maxPixels) || modelInfo.max_pixels}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (!e.target.value) return;
-                const clamped = Math.max(65536, Math.min(Number(modelInfo.max_pixels), Math.round(v)));
-                setMaxPixels(clamped);
-                const ratio = Math.sqrt(clamped / (Number(width) * Number(height)));
-                if (Number(width) * Number(height) > clamped) {
-                  setWidth(Math.max(256, Math.round(Number(width) * ratio / 16) * 16));
-                  setHeight(Math.max(256, Math.round(Number(height) * ratio / 16) * 16));
-                }
-              }}
-            />
-          </label>
-        ) : null}
+          These are not "advanced". A generation is tuned by changing the step count, and
+          a seed is how you get a different image or come back to one you liked; hiding
+          either behind a collapsed panel made the primary path feel lighter only by
+          making the primary path worse. They are the three controls people actually
+          reach for, so they are visible without a click.
+
+          What stays behind the disclosure is advanced BY NATURE: the negative prompt
+          (unsupported on FLUX.2), the sampler (only where there is a real choice), the
+          pixel cap and DeepCache. */}
+      <div className="param-grid param-grid-primary">
 
         <label>
           <span className="step-label-header">
@@ -116,20 +90,6 @@ function GenerationParams({
             onChange={(e) => setSteps(Number(e.target.value))}
           />
         </label>
-
-        {modelInfo.supports_guidance && (
-          <label>
-            {t("params.guidance.label")}
-            <input
-              type="number"
-              min="0"
-              max="10"
-              step="0.1"
-              value={guidance}
-              onChange={(e) => setGuidance(e.target.value)}
-            />
-          </label>
-        )}
 
         <label>
           <div className="seed-label-row">
@@ -168,7 +128,6 @@ function GenerationParams({
             onChange={(e) => setSeed(e.target.value)}
           />
         </label>
-
         <label>
           {t("params.batch.label")}
           <select
@@ -185,6 +144,61 @@ function GenerationParams({
         </label>
       </div>
 
+      <details className="advanced-settings">
+        <summary className="advanced-settings-summary">
+          <span className="advanced-settings-chevron" aria-hidden="true" />
+          {t("params.advanced.label")}
+        </summary>
+      <div className="advanced-settings-body">
+        <div className="param-grid">
+          {modelInfo.max_pixels ? (
+          <label>
+            <span className="step-label-header">
+              {t("params.maxPixels.label")}
+              <span
+                className="distill-subtle-tag"
+                 title={t("params.maxPixels.oomGuardTitle")}
+
+              >
+                {t("params.maxPixels.oomGuardTag")}
+              </span>
+            </span>
+            <input
+              type="number"
+              min="65536"
+              max={modelInfo.max_pixels}
+              step="16384"
+              value={Number(maxPixels) || modelInfo.max_pixels}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (!e.target.value) return;
+                const clamped = Math.max(65536, Math.min(Number(modelInfo.max_pixels), Math.round(v)));
+                setMaxPixels(clamped);
+                const ratio = Math.sqrt(clamped / (Number(width) * Number(height)));
+                if (Number(width) * Number(height) > clamped) {
+                  setWidth(Math.max(256, Math.round(Number(width) * ratio / 16) * 16));
+                  setHeight(Math.max(256, Math.round(Number(height) * ratio / 16) * 16));
+                }
+              }}
+            />
+          </label>
+          ) : null}
+
+        {modelInfo.supports_guidance && (
+          <label>
+            {t("params.guidance.label")}
+            <input
+              type="number"
+              min="0"
+              max="10"
+              step="0.1"
+              value={guidance}
+              onChange={(e) => setGuidance(e.target.value)}
+            />
+          </label>
+        )}
+        </div>
+
       {modelInfo.supports_negative && (
         <label>
           {t("params.negative.label")}
@@ -197,11 +211,19 @@ function GenerationParams({
         </label>
       )}
 
-      {modelInfo.samplers && (
+      {/* Only shown when there is a real choice.
+
+          A select with one option is not a control, it is a readout -- and it invites the
+          question "what should I pick here?" for a question the engine has already
+          answered. Most models expose no sampler list at all (FLUX.2, Krea 2, Z-Image are
+          guidance-distilled and always use their native schedule), so the old truthy check
+          hid those correctly. A single-sampler model would have slipped through and shown
+          a one-item dropdown, which is why the test is a count and not a presence. */}
+      {samplerChoices.length > 1 && (
         <label>
           {t("params.sampler.label")}
           <select value={sampler} onChange={(e) => setSampler(e.target.value)}>
-            {modelInfo.samplers.map((sm) => (
+            {samplerChoices.map((sm) => (
               <option key={sm} value={sm}>
                 {sm}
               </option>
