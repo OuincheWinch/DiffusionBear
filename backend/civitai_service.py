@@ -250,7 +250,18 @@ def get_civitai_api_key(api_key: str | None = None) -> str | None:
     resolved = _valid_token(env_key)
     if resolved:
         return resolved
-    token_file = Path(__file__).resolve().parent / "data" / "civitai_token.txt"
+    # Read the token from DATA_DIR, which is where routers/tokens.py WRITES it (the
+    # Parameters -> Secrets UI). Reading it from __file__/data only worked in a source
+    # checkout, where the two happen to be the same directory. In the standalone app they
+    # are not -- the bundle's data/ is excluded by build_app.sh -- so the token the user
+    # saved through the UI was never found here, and every gated Civitai download would
+    # have failed with 401. Verified: auth=False from the installed app before this change.
+    try:
+        import app_settings
+
+        token_file = app_settings.DATA_DIR / "civitai_token.txt"
+    except Exception:
+        token_file = Path(__file__).resolve().parent / "data" / "civitai_token.txt"
     if token_file.is_file():
         try:
             return _valid_token(token_file.read_text("utf-8"))

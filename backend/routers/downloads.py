@@ -18,6 +18,7 @@ import civitai_service
 import generator
 import hf_service
 import hf_browse
+import civitai_browse
 from .loras import _model_is_fully_cached
 from state import (
     LORA_FILES_DIR,
@@ -995,6 +996,123 @@ def download_model(req: ModelDownloadRequest):
             MODEL_DOWNLOAD_TASKS[task_id] = task
         threading.Thread(target=_run_model_download, args=(task_id, model_id, minfo, cancel_event), daemon=True).start()
         return {"task_id": task_id, "status": "downloading", "model_name": task["model_name"], "source": "model"}
+
+
+
+class CivitaiModelDownloadRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_id: int = Field(ge=1)
+    model_version_id: int = Field(ge=1)
+    name: str | None = Field(default=None, max_length=120)
+    token: str | None = Field(default=None, max_length=8192)
+
+
+def _run_civitai_model_download(task_id: str, version_id: int, name: str, token: str | None,
+                                cancel_event: threading.Event):
+    """Stream a Civitai model file into ASSET_DIR/models/<name>/.
+
+    Civitai's /api/download/models/{versionId} answers with a 302 to a pre-signed URL on
+    third-party storage. civitai_service.open_public_https_stream already follows that
+    redirect, re-validates the host as public on every hop, and -- importantly -- strips
+    the Authorization header once the redirect leaves civitai.com, so the token is never
+    handed to the storage provider.
+    """
+    target_dir = generator.ASSET_DIR / "models" / name
+    try:
+        _check_cancelled(cancel_event)
+        auth = civitai_service._valid_token(token) or civitai_service.get_civitai_api_key()
+        headers = {"Authorization": f"Bearer {auth}"} if auth else {}
+        url = f"{civitai_browse.API_BASE.replace('/api/v1', '')}/api/download/models/{version_id}?type=Model&format=SafeTensor"
+        with _MODEL_DOWNLOAD_LOCK:
+            task = MODEL_DOWNLOAD_TASKS.get(task_id)
+            if task and task.get("status") == "downloading":
+                task["status_text"] = f"Downloading {name} from Civitai..."
+        response, final_url = civitai_service.open_public_https_stream(
+            url, headers=headers, auth_hosts=civitai_service._CIVITAI_AUTH_HOSTS,
+            cancel_event=cancel_event, deadline=civitai_service.download_deadline_seconds(),
+        )
+        with response:
+            disposition = response.headers.get("Content-Disposition") or ""
+            filename = civitai_service._safe_filename(
+                disposition.split("filename=", 1)[-1].strip('" ') if "filename=" in disposition else None,
+                fallback=f"{name}.safetensors",
+            )
+            target_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+            destination = target_dir / filename
+            expected = int(response.headers.get("Content-Length") or 0)
+            with _MODEL_DOWNLOAD_LOCK:
+                task = MODEL_DOWNLOAD_TASKS.get(task_id)
+                if task and task.get("status") == "downloading" and expected:
+                    task["total_bytes"] = expected
+            written = 0
+            started = time.monotonic()
+            last = started
+            for chunk in response.iter_content(chunk_size=1 << 20):
+                if cancel_event.is_set():
+                    raise civitai_service.DownloadCancelled("Download cancelled by user")
+                if not chunk:
+                    continue
+                with destination.open("ab") as fh:
+                    fh.write(chunk)
+                written += len(chunk)
+                now = time.monotonic()
+                if now - last >= 0.4:
+                    with _MODEL_DOWNLOAD_LOCK:
+                        task = MODEL_DOWNLOAD_TASKS.get(task_id)
+                        if task and task.get("status") == "downloading":
+                            task["downloaded_bytes"] = min(written, expected) if expected else written
+                            task["progress"] = min(0.99, task["downloaded_bytes"] / expected) if expected else 0.5
+                            task["speed_mb_s"] = (task["downloaded_bytes"] / (1 << 20)) / max(now - started, 1e-6)
+                    last = now
+            if not civitai_service.is_valid_safetensors(destination):
+                destination.unlink(missing_ok=True)
+                raise ValueError("downloaded file is not a valid safetensors checkpoint")
+        _finish_model_task(task_id, f"{name} installed successfully!")
+    except civitai_service.DownloadCancelled:
+        _fail_model_task(task_id, "Download cancelled by user")
+    except Exception as exc:
+        _fail_model_task(task_id, exc)
+
+
+@router.get("/api/civitai/models")
+def search_civitai_models(
+    query: str | None = None,
+    types: str | None = None,
+    sort: str = "Most Downloaded",
+    limit: int = 40,
+):
+    try:
+        return civitai_browse.search_models(query=query, types=types, sort=sort, limit=limit)
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc))
+
+
+@router.post("/api/civitai/models/download")
+def download_civitai_model(req: CivitaiModelDownloadRequest):
+    name = hf_browse.safe_install_name(req.name or f"civitai-{req.model_id}")
+    install_dir = generator.ASSET_DIR / "models" / name
+    with _MODEL_DOWNLOAD_LOCK:
+        for task_id, task in MODEL_DOWNLOAD_TASKS.items():
+            if task.get("model_id") == f"civitai-{req.model_version_id}" and task.get("worker_active"):
+                return {"task_id": task_id, "status": task.get("status", "downloading"),
+                        "model_name": task.get("model_name"), "already_running": True}
+    task_id = uuid.uuid4().hex[:12]
+    cancel_event = threading.Event()
+    task = {
+        "id": task_id, "source": "civitai", "model_id": f"civitai-{req.model_version_id}",
+        "repo_id": f"civitai/{req.model_id}/{req.model_version_id}", "model_name": name,
+        "engine": "mflux", "status": "downloading", "progress": 0.0, "downloaded_bytes": 0,
+        "total_bytes": 0, "speed_mb_s": 0.0,
+        "status_text": f"Preparing Civitai download of {name}...",
+        "started_at": time.time(), "finished_at": None, "error": None, "result": None,
+        "install_dir": str(install_dir), "worker_active": True, "cancel_event": cancel_event,
+    }
+    with _MODEL_DOWNLOAD_LOCK:
+        MODEL_DOWNLOAD_TASKS[task_id] = task
+    threading.Thread(target=_run_civitai_model_download,
+                     args=(task_id, req.model_version_id, name, req.token, cancel_event), daemon=True).start()
+    return {"task_id": task_id, "status": "downloading", "model_name": name, "source": "civitai"}
 
 
 @router.get("/api/hf/models")

@@ -125,6 +125,34 @@
     "pt": "downloads",
     "ko": "다운로드"
   },
+  "models.civitaiSort.downloads": {
+    "es": "Descargas",
+    "zh": "下载量",
+    "ja": "ダウンロード数",
+    "pt": "Downloads",
+    "ko": "다운로드 수"
+  },
+  "models.civitaiSort.rated": {
+    "es": "Mejor valorados",
+    "zh": "评分最高",
+    "ja": "評価順",
+    "pt": "Melhor avaliados",
+    "ko": "평점순"
+  },
+  "models.civitaiSort.newest": {
+    "es": "Más recientes",
+    "zh": "最新",
+    "ja": "新着順",
+    "pt": "Mais recentes",
+    "ko": "최신순"
+  },
+  "models.civitaiSort.liked": {
+    "es": "Más gustados",
+    "zh": "最受欢迎",
+    "ja": "いいね順",
+    "pt": "Mais curtidos",
+    "ko": "좋아요순"
+  },
   "models.notRunnable": {
     "es": "No se puede ejecutar aquí",
     "zh": "此处无法运行",

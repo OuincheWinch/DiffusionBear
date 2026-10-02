@@ -5,6 +5,16 @@ import { useI18n } from "../i18n/I18nContext";
 const POLL_MS = 1000;
 const KIND_ORDER = ["diffusion", "lora", "upscaler"];
 const SORTS = ["downloads", "likes", "lastModified"];
+// Civitai names its sorts differently; they cannot share one list.
+const SOURCE_SORTS = {
+  huggingface: [["downloads", "models.sort.downloads"], ["likes", "models.sort.likes"], ["lastModified", "models.sort.lastModified"]],
+  civitai: [
+    ["Most Downloaded", "models.civitaiSort.downloads"],
+    ["Highest Rated", "models.civitaiSort.rated"],
+    ["Newest", "models.civitaiSort.newest"],
+    ["Most Liked", "models.civitaiSort.liked"],
+  ],
+};
 
 function formatCount(n) {
   if (typeof n !== "number") return "";
@@ -56,6 +66,8 @@ export default function HfModelBrowser({ onInstalled }) {
   const [kind, setKind] = useState("");
   const [sort, setSort] = useState("downloads");
   const [author, setAuthor] = useState("mlx-community");
+  const [source, setSource] = useState("huggingface");
+  const [sourceSort, setSourceSort] = useState("Most Downloaded");
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -76,14 +88,22 @@ export default function HfModelBrowser({ onInstalled }) {
     setError("");
     try {
       const params = new URLSearchParams();
-      if (author) params.set("author", author);
-      if (search.trim()) params.set("search", search.trim());
-      if (architecture) params.set("architecture", architecture);
-      if (quantization) params.set("quantization", quantization);
-      if (kind) params.set("kind", kind);
-      params.set("sort", sort);
       params.set("limit", "48");
-      const data = await api(`/api/hf/models?${params.toString()}`);
+      if (source === "civitai") {
+        // Civitai filters server-side on its own vocabulary and has no
+        // architecture/quantisation query params -- those are classified per item.
+        if (search.trim()) params.set("query", search.trim());
+        params.set("types", kind === "lora" ? "LORA" : "Checkpoint");
+        params.set("sort", sourceSort);
+      } else {
+        if (author) params.set("author", author);
+        if (search.trim()) params.set("search", search.trim());
+        if (architecture) params.set("architecture", architecture);
+        if (quantization) params.set("quantization", quantization);
+        if (kind) params.set("kind", kind);
+        params.set("sort", sort);
+      }
+      const data = await api(`/api/${source === "civitai" ? "civitai" : "hf"}/models?${params.toString()}`);
       if (!mounted.current || seq !== requestSeq.current) return;
       setResult(data);
     } catch (e) {
@@ -92,7 +112,7 @@ export default function HfModelBrowser({ onInstalled }) {
     } finally {
       if (mounted.current && seq === requestSeq.current) setLoading(false);
     }
-  }, [search, architecture, quantization, kind, sort, author]);
+  }, [search, architecture, quantization, kind, sort, author, source, sourceSort]);
 
   useEffect(() => {
     load();
@@ -190,14 +210,25 @@ export default function HfModelBrowser({ onInstalled }) {
     setBusyRepo(item.id);
     setError("");
     try {
-      await api("/api/models/download", {
-        method: "POST",
-        body: JSON.stringify({
-          model_id: item.install_name,
-          repo_id: item.repo_id,
-          install_name: item.install_name,
-        }),
-      });
+      if (item.source === "civitai") {
+        await api("/api/civitai/models/download", {
+          method: "POST",
+          body: JSON.stringify({
+            model_id: item.civitai_model_id,
+            model_version_id: item.civitai_version_id,
+            name: item.label,
+          }),
+        });
+      } else {
+        await api("/api/models/download", {
+          method: "POST",
+          body: JSON.stringify({
+            model_id: item.install_name,
+            repo_id: item.repo_id,
+            install_name: item.install_name,
+          }),
+        });
+      }
       const list = await api("/api/models/downloads");
       if (mounted.current) setTasks(Array.isArray(list) ? list : []);
     } catch (e) {
@@ -237,48 +268,60 @@ export default function HfModelBrowser({ onInstalled }) {
       <h3>{t("models.browserTitle")}</h3>
       <p className="params-section-desc">{t("models.browserDesc")}</p>
 
+      <div className="hf-source-toggle" role="tablist">
+        {/* Literal proper nouns, like the brand name in App.jsx -- "Hugging Face" and
+            "Civitai" are the services' own names and must not be translated. */}
+        {[["huggingface", "Hugging Face"], ["civitai", "Civitai"]].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={source === key}
+            className={`hf-source-btn${source === key ? " active" : ""}`}
+            onClick={() => setSource(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="hf-browser-controls">
-        <label className="hf-browser-filter">
-          <span>{t("models.filterOrg")}</span>
-          <select value={author} onChange={(e) => setAuthor(e.target.value)}>
-            {(result?.orgs || []).map((org) => (
-              <option key={org.key} value={org.key}>{org.label}</option>
-            ))}
-            {/* Fallback before the first response lands, so the control is never empty. */}
-            {!result && <option value="mlx-community">mlx-community</option>}
-          </select>
-        </label>
+        {source === "huggingface" && (
+          <label className="hf-browser-filter">
+            <span>{t("models.filterOrg")}</span>
+            <select value={author} onChange={(e) => setAuthor(e.target.value)}>
+              {(result?.orgs || []).map((org) => (
+                <option key={org.key} value={org.key}>{org.label}</option>
+              ))}
+              {/* Fallback before the first response lands, so the control is never empty. */}
+              {!result && <option value="mlx-community">mlx-community</option>}
+            </select>
+          </label>
+        )}
 
-        <div className="hf-browser-search">
-          <span className="hf-browser-search-icon" aria-hidden="true">⌕</span>
-          <input
-            type="search"
-            value={search}
-            placeholder={t("models.searchPlaceholder")}
-            aria-label={t("models.searchLabel")}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        {source === "huggingface" && (
+          <>
+            <label className="hf-browser-filter">
+              <span>{t("models.filterArchitecture")}</span>
+              <select value={architecture} onChange={(e) => setArchitecture(e.target.value)}>
+                <option value="">{t("models.filterAll")}</option>
+                {archOptions.map((o) => (
+                  <option key={o.key} value={o.key}>{o.label} ({o.count})</option>
+                ))}
+              </select>
+            </label>
 
-        <label className="hf-browser-filter">
-          <span>{t("models.filterArchitecture")}</span>
-          <select value={architecture} onChange={(e) => setArchitecture(e.target.value)}>
-            <option value="">{t("models.filterAll")}</option>
-            {archOptions.map((o) => (
-              <option key={o.key} value={o.key}>{o.label} ({o.count})</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="hf-browser-filter">
-          <span>{t("models.filterQuantization")}</span>
-          <select value={quantization} onChange={(e) => setQuantization(e.target.value)}>
-            <option value="">{t("models.filterAll")}</option>
-            {quantOptions.map((o) => (
-              <option key={o.key} value={o.key}>{o.label} ({o.count})</option>
-            ))}
-          </select>
-        </label>
+            <label className="hf-browser-filter">
+              <span>{t("models.filterQuantization")}</span>
+              <select value={quantization} onChange={(e) => setQuantization(e.target.value)}>
+                <option value="">{t("models.filterAll")}</option>
+                {quantOptions.map((o) => (
+                  <option key={o.key} value={o.key}>{o.label} ({o.count})</option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
 
         <label className="hf-browser-filter">
           <span>{t("models.filterType")}</span>
@@ -292,11 +335,19 @@ export default function HfModelBrowser({ onInstalled }) {
 
         <label className="hf-browser-filter">
           <span>{t("models.sortBy")}</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value)}>
-            {SORTS.map((s) => (
-              <option key={s} value={s}>{t(`models.sort.${s}`)}</option>
-            ))}
-          </select>
+          {source === "huggingface" ? (
+            <select value={sort} onChange={(e) => setSort(e.target.value)}>
+              {SORTS.map((s) => (
+                <option key={s} value={s}>{t(`models.sort.${s}`)}</option>
+              ))}
+            </select>
+          ) : (
+            <select value={sourceSort} onChange={(e) => setSourceSort(e.target.value)}>
+              {SOURCE_SORTS.civitai.map(([value, key]) => (
+                <option key={value} value={value}>{t(key)}</option>
+              ))}
+            </select>
+          )}
         </label>
       </div>
 
@@ -347,7 +398,9 @@ export default function HfModelBrowser({ onInstalled }) {
                   )}
                 </div>
                 <div className="hf-browser-row-meta">
-                  <span className="hf-browser-repo">{item.id}</span>
+                  <span className="hf-browser-repo">{item.repo_id}</span>
+                  {item.creator && <span>{item.creator}</span>}
+                  {item.size_bytes > 0 && <span>{formatBytes(item.size_bytes)}</span>}
                   {item.downloads > 0 && (
                     <span>{formatCount(item.downloads)} {t("models.downloads")}</span>
                   )}
@@ -430,7 +483,11 @@ export default function HfModelBrowser({ onInstalled }) {
                 )}
                 <a
                   className="hf-browser-link"
-                  href={`https://huggingface.co/${item.repo_id}`}
+                  href={
+                    source === "civitai"
+                      ? `https://civitai.com/models/${item.civitai_model_id}`
+                      : `https://huggingface.co/${item.repo_id}`
+                  }
                   target="_blank"
                   rel="noreferrer noopener"
                 >

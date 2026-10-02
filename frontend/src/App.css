@@ -5035,3 +5035,34 @@ body.native-shell * {
   border: 1px dashed var(--checkbox-border);
   cursor: help;
 }
+
+/* Source segmented control, in the macOS segmented-control idiom: the selected segment is
+   a raised fill rather than a coloured border, and the whole group shares one hairline. */
+.hf-source-toggle {
+  display: inline-flex;
+  margin-bottom: 0.5rem;
+  padding: 2px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.hf-source-btn {
+  padding: 0.2rem 0.7rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.hf-source-btn.active {
+  color: var(--text);
+  background: rgba(124, 92, 255, 0.22);
+}
+
+.hf-source-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}

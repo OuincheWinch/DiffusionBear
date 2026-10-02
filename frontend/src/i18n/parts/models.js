@@ -177,6 +177,30 @@ export const modelsStrings = {
     de: "{model} ist bereits vorhanden",
     it: "Hai già {model}",
   },
+  "models.civitaiSort.downloads": {
+    fr: "Plus téléchargés",
+    en: "Most downloaded",
+    de: "Meist heruntergeladen",
+    it: "Più scaricati",
+  },
+  "models.civitaiSort.rated": {
+    fr: "Mieux notés",
+    en: "Highest rated",
+    de: "Bestbewertet",
+    it: "Più votati",
+  },
+  "models.civitaiSort.newest": {
+    fr: "Nouveautés",
+    en: "Newest",
+    de: "Neueste",
+    it: "Più recenti",
+  },
+  "models.civitaiSort.liked": {
+    fr: "Plus aimés",
+    en: "Most liked",
+    de: "Meistgeliked",
+    it: "Più apprezzati",
+  },
   "models.notRunnable": {
     fr: "Non exécutable ici",
     en: "Not runnable here",
