@@ -1001,9 +1001,14 @@ option.model-option-offline {
 
 .civitai-progress-fill {
   height: 100%;
+  /* Width is set to 100% and the visible portion comes from scaleX() in the JSX, so the
+     animation runs on the compositor. Transitioning `width` instead forced a layout pass
+     on every progress tick. transform-origin left keeps the bar growing from the left. */
+  width: 100%;
+  transform-origin: left center;
   background: linear-gradient(90deg, #1971c2, #339af0);
   border-radius: 3px;
-  transition: width 0.25s ease;
+  transition: transform 0.25s ease;
 }
 
 .civitai-progress-fill.done {
@@ -1323,8 +1328,11 @@ button {
 
 .progress-fill {
   height: 100%;
+  /* scaleX, not width -- see .civitai-progress-fill. */
+  width: 100%;
+  transform-origin: left center;
   background: var(--accent);
-  transition: width 0.5s ease-out;
+  transition: transform 0.5s ease-out;
 }
 
 .error {
@@ -3701,8 +3709,10 @@ dd {
 }
 
 .enhancer-save-btn {
-  transition: background 0.15s ease, color 0.15s ease, padding 0.15s ease,
-    font-size 0.15s ease;
+  /* padding and font-size dropped from the transition: both are layout properties, and
+     animating them re-runs layout on every frame for no visual gain. background and color
+     are cheap. */
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .enhancer-save-btn:disabled {
@@ -4149,9 +4159,15 @@ p.warning {
 
 .fill-brush-progress-fill {
   height: 100%;
+  /* scaleX for the determinate case. The INDETERMINATE case deliberately keeps width:
+     its keyframes animate transform: translateX(), which would replace a scaleX()
+     outright and pin the bar at full width. The two states cannot share one transform
+     channel, so they are kept distinct on purpose. */
+  width: 100%;
+  transform-origin: left center;
   border-radius: inherit;
   background: var(--primary);
-  transition: width 220ms ease-out;
+  transition: transform 220ms ease-out;
 }
 
 /* Used while the phase has no step count (model load, VAE decode). A full-width bar

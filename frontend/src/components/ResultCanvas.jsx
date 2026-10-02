@@ -53,7 +53,8 @@ function CanvasProgressOverlay({ busy, progress, standalone = false, generatingP
           <div
             className="progress-fill"
             style={{
-              width: `${Math.min(100, (progress.step / progress.steps) * 100)}%`,
+              // scaleX rather than width: animating width re-runs layout every tick.
+              transform: `scaleX(${Math.min(100, (progress.step / progress.steps) * 100) / 100})`,
             }}
           />
         </div>

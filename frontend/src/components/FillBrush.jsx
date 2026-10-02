@@ -453,9 +453,18 @@ export default function FillBrush({
               <div
                 className="fill-brush-progress-fill"
                 style={{
-                  width: progress.steps
-                    ? `${Math.min(100, Math.round((progress.step / progress.steps) * 100))}%`
-                    : "100%",
+                  // Determinate animates scaleX; indeterminate must NOT, because its
+                  // keyframes animate transform: translateX() and one element cannot
+                  // carry both -- a scaleX here would be replaced by the translate and the
+                  // bar would sit at full width. So the indeterminate state keeps width.
+                  ...(progress.steps
+                    ? {
+                        transform: `scaleX(${Math.min(
+                          100,
+                          Math.round((progress.step / progress.steps) * 100),
+                        ) / 100})`,
+                      }
+                    : { width: "100%" }),
                   // Indeterminate while the phase is unknown (model load, VAE decode):
                   // a bar stuck at 0% for 30s reads as broken, a moving one reads as
                   // working. Both use the same element so the layout does not jump.

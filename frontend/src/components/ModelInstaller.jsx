@@ -160,7 +160,8 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
               className={`civitai-progress-fill${
                 task?.status === "done" ? " done" : task?.status === "error" ? " error" : ""
               }`}
-              style={{ width: `${task?.status === "done" ? 100 : pct}%` }}
+              // scaleX rather than width: animating width re-runs layout every tick.
+              style={{ transform: `scaleX(${(task?.status === "done" ? 100 : pct) / 100})` }}
             />
           </div>
           <div className="civitai-download-footer">

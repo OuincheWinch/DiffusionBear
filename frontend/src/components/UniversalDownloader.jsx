@@ -286,7 +286,8 @@ export default function UniversalDownloader({
               <div className="civitai-progress-track">
                 <div
                   className={`civitai-progress-fill ${dl.status}`}
-                  style={{ width: `${Math.round((dl.progress || 0) * 100)}%` }}
+                  // scaleX rather than width: animating width re-runs layout every tick.
+                  style={{ transform: `scaleX(${Math.round((dl.progress || 0) * 100) / 100})` }}
                 />
               </div>
               <div className="civitai-download-footer">

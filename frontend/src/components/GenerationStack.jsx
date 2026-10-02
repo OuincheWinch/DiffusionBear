@@ -229,7 +229,11 @@ function GenerationStack() {
               )}
               {pct != null && (
                 <div className="progress-bar-hairline">
-                  <div className="progress-fill" style={{ width: `${pct}%` }} />
+                  <div
+                    className="progress-fill"
+                    // scaleX rather than width: animating width re-runs layout every tick.
+                    style={{ transform: `scaleX(${pct / 100})` }}
+                  />
                 </div>
               )}
               {p ? (
