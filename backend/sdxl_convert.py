@@ -168,6 +168,31 @@ def safe_open_keys(path):
 
 _normalise_clip_keys(target)
 
+# Tokenizers: save_pretrained writes ONLY the fast tokenizer (tokenizer.json +
+# tokenizer_config.json), but mlx_diffuser loads the SLOW CLIPTokenizer, which reads
+# vocab.json and merges.txt. With those absent, transformers resolves vocab_file/merges_file
+# to None and dies with the deeply unhelpful
+#   TypeError: expected str, bytes or os.PathLike object, not NoneType
+# Both files are recoverable from tokenizer.json's "model" section: "vocab" is the token->id
+# map, "merges" holds ["left","right"] pairs that have to be joined with a space.
+def _restore_slow_tokenizer_files(target):
+    import json as _json
+    for sub in ("tokenizer", "tokenizer_2"):
+        folder = target / sub
+        src = folder / "tokenizer.json"
+        if not src.is_file() or (folder / "vocab.json").is_file():
+            continue
+        model = _json.loads(src.read_text("utf-8")).get("model") or {}
+        vocab, merges = model.get("vocab"), model.get("merges")
+        if not vocab or not merges:
+            continue
+        (folder / "vocab.json").write_text(_json.dumps(vocab, ensure_ascii=False), encoding="utf-8")
+        lines = [" ".join(m) if isinstance(m, (list, tuple)) else str(m) for m in merges]
+        (folder / "merges.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        emit("stage", stage="restored tokenizer files", progress=0.995)
+
+_restore_slow_tokenizer_files(target)
+
 emit("stage", stage="done", progress=1.0)
 '''
 
