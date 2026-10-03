@@ -414,7 +414,7 @@ export const jaStrings = {
   "settings.section.secretsDescTail": "ブラウザのクライアントには一切送信されず、ログにも記録されず、APIからも公開されません。サーバー上で Civitai / Hugging Face への外向きリクエストを認証するためにのみ使用されます。",
   "settings.queue.tokenFallback": "注意：ゲート制限のある Hugging Face リポジトリも以下の保存済みトークンを使用します：",
   "settings.defaults.artistCredit": "🖋 作者クレジット",
-  "settings.defaults.artistHint": "生成されたすべての画像の EXIF / Civitai メタデータに埋め込まれます。空の場合は「MLX-DIFFUSION」が使われます。",
+  "settings.defaults.artistHint": "生成されたすべての画像の EXIF / Civitai メタデータに埋め込まれます。空の場合は「DiffusionBear」が使われます。",
   "settings.defaults.saveArtist": "作者を保存",
   "settings.defaults.outputFormat": "既定の出力形式",
   "settings.defaults.formatPng": "PNG（可逆圧縮）",

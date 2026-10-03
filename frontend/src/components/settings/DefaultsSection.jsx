@@ -89,7 +89,7 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
               type="text"
               value={artistName}
               onChange={(e) => setArtistName(e.target.value)}
-              placeholder="MLX-DIFFUSION"
+              placeholder="DiffusionBear"
               maxLength={200}
             />
             <button

@@ -128,10 +128,10 @@ export const settingsStrings = {
     it: "🖋 Credito artista",
   },
   "settings.defaults.artistHint": {
-    fr: "Inscrit dans les métadonnées EXIF / Civitai de chaque image générée. Vide, il utilise « MLX-DIFFUSION ».",
-    en: "Embedded in EXIF / Civitai metadata of every generated image. Empty uses \"MLX-DIFFUSION\".",
-    de: "Wird in die EXIF-/Civitai-Metadaten jedes generierten Bildes geschrieben. Leer bedeutet „MLX-DIFFUSION“.",
-    it: "Inserito nei metadati EXIF / Civitai di ogni immagine generata. Se vuoto usa «MLX-DIFFUSION».",
+    fr: "Inscrit dans les métadonnées EXIF / Civitai de chaque image générée. Vide, il utilise « DiffusionBear ».",
+    en: "Embedded in EXIF / Civitai metadata of every generated image. Empty uses \"DiffusionBear\".",
+    de: "Wird in die EXIF-/Civitai-Metadaten jedes generierten Bildes geschrieben. Leer bedeutet „DiffusionBear“.",
+    it: "Inserito nei metadati EXIF / Civitai di ogni immagine generata. Se vuoto usa «DiffusionBear».",
   },
   "settings.defaults.saveArtist": {
     fr: "Enregistrer l'artiste",

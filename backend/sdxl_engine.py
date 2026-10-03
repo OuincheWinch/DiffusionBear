@@ -1,4 +1,4 @@
-"""SDXL engine for MLX-DIFFUSION.
+"""SDXL engine for DiffusionBear.
 
 Runs under venv-sdxl (Python >= 3.11, mlx-diffuser). Invoked by the main
 backend as a subprocess with a JSON request on argv[1]; writes a PNG into

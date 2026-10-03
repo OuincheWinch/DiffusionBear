@@ -414,7 +414,7 @@ export const koStrings = {
   "settings.section.secretsDescTail": "브라우저 클라이언트로 전송되지 않고, 로그에 남지 않으며, API로 노출되지도 않습니다. 서버에서 Civitai / Hugging Face로 나가는 요청을 인증하는 데에만 사용됩니다.",
   "settings.queue.tokenFallback": "참고: 접근이 제한된 Hugging Face 저장소도 다음 위치에 저장된 토큰을 사용합니다:",
   "settings.defaults.artistCredit": "🖋 作者 크레딧",
-  "settings.defaults.artistHint": "생성된 모든 이미지의 EXIF / Civitai 메타데이터에 포함됩니다. 비워 두면 \"MLX-DIFFUSION\"을 사용합니다.",
+  "settings.defaults.artistHint": "생성된 모든 이미지의 EXIF / Civitai 메타데이터에 포함됩니다. 비워 두면 \"DiffusionBear\"을 사용합니다.",
   "settings.defaults.saveArtist": "作者 저장",
   "settings.defaults.outputFormat": "기본 출력 형식",
   "settings.defaults.formatPng": "PNG(무손실)",

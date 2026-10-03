@@ -154,11 +154,11 @@
     "ko": "🖋 作者 크레딧"
   },
   "settings.defaults.artistHint": {
-    "es": "Incrustado en los metadatos EXIF / Civitai de cada imagen generada. Si se deja vacío se usa «MLX-DIFFUSION».",
-    "zh": "嵌入到每张生成图像的 EXIF / Civitai 元数据中。留空则使用“MLX-DIFFUSION”。",
-    "ja": "生成されたすべての画像の EXIF / Civitai メタデータに埋め込まれます。空の場合は「MLX-DIFFUSION」が使われます。",
-    "pt": "Incrustado nos metadados EXIF / Civitai de cada imagem gerada. Se vazio, usa \"MLX-DIFFUSION\".",
-    "ko": "생성된 모든 이미지의 EXIF / Civitai 메타데이터에 포함됩니다. 비워 두면 \"MLX-DIFFUSION\"을 사용합니다."
+    "es": "Incrustado en los metadatos EXIF / Civitai de cada imagen generada. Si se deja vacío se usa «DiffusionBear».",
+    "zh": "嵌入到每张生成图像的 EXIF / Civitai 元数据中。留空则使用“DiffusionBear”。",
+    "ja": "生成されたすべての画像の EXIF / Civitai メタデータに埋め込まれます。空の場合は「DiffusionBear」が使われます。",
+    "pt": "Incrustado nos metadados EXIF / Civitai de cada imagem gerada. Se vazio, usa \"DiffusionBear\".",
+    "ko": "생성된 모든 이미지의 EXIF / Civitai 메타데이터에 포함됩니다. 비워 두면 \"DiffusionBear\"을 사용합니다."
   },
   "settings.defaults.saveArtist": {
     "es": "Guardar autor",

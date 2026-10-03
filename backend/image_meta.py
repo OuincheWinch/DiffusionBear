@@ -299,8 +299,8 @@ def build_generation_metadata_text(meta: dict) -> str:
             param_parts.append(f"Generation Time: {float(gen_time):.2f}s")
         except (TypeError, ValueError):
             pass
-    param_parts.append("Software: MLX-DIFFUSION")
-    param_parts.append("Generator: MLX-DIFFUSION")
+    param_parts.append("Software: DiffusionBear")
+    param_parts.append("Generator: DiffusionBear")
 
     if hashes_map:
         param_parts.append(f"Hashes: {json.dumps(hashes_map, separators=(',', ':'))}")
@@ -368,8 +368,8 @@ def build_generation_metadata_text(meta: dict) -> str:
         "enhancedCompatibility": False,
         "quantity": 1,
         "resources": civitai_meta_resources,
-        "software": "MLX-DIFFUSION",
-        "generator": "MLX-DIFFUSION",
+        "software": "DiffusionBear",
+        "generator": "DiffusionBear",
         "artist": _artist_fallback(meta.get("artist")),
     }
     if ref_strength is not None:
@@ -390,7 +390,7 @@ def build_image_exif(meta: dict, metadata_text: str | None = None, image_size: t
     exif[ExifTags.Base.ResolutionUnit] = 2
     exif[ExifTags.Base.XResolution] = 72.0
     exif[ExifTags.Base.YResolution] = 72.0
-    exif[ExifTags.Base.Software] = "MLX-DIFFUSION"
+    exif[ExifTags.Base.Software] = "DiffusionBear"
     exif[ExifTags.Base.Artist] = to_latin1_clean(_artist_fallback(meta.get("artist")))
 
     created_at = meta.get("created_at") or time.time()
@@ -428,10 +428,10 @@ def build_pnginfo(meta: dict, metadata_text: str | None = None) -> PngInfo:
     info = PngInfo()
     if metadata_text:
         info.add_text("parameters", to_latin1_clean(metadata_text))
-    info.add_text("Software", "MLX-DIFFUSION")
-    info.add_text("software", "MLX-DIFFUSION")
-    info.add_text("Generator", "MLX-DIFFUSION")
-    info.add_text("generator", "MLX-DIFFUSION")
+    info.add_text("Software", "DiffusionBear")
+    info.add_text("software", "DiffusionBear")
+    info.add_text("Generator", "DiffusionBear")
+    info.add_text("generator", "DiffusionBear")
     artist_clean = to_latin1_clean(_artist_fallback(meta.get("artist")))
     info.add_text("Artist", artist_clean)
     info.add_text("artist", artist_clean)
@@ -574,16 +574,16 @@ def extract_image_metadata(img_path_or_file) -> dict:
             return {
                 "has_metadata": False,
 "artist": _artist_fallback(artist),
-                "software": software or "MLX-DIFFUSION",
-                "generator": "MLX-DIFFUSION",
+                "software": software or "DiffusionBear",
+                "generator": "DiffusionBear",
             }
 
         res = {
             "has_metadata": True,
             "raw_text": raw_text,
             "artist": _artist_fallback(artist),
-            "software": software or "MLX-DIFFUSION",
-            "generator": "MLX-DIFFUSION",
+            "software": software or "DiffusionBear",
+            "generator": "DiffusionBear",
             "prompt": "",
             "negative_prompt": "",
             "params": {},

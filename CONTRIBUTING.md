@@ -1,4 +1,4 @@
-# Contributing to MLX-Diffusion
+# Contributing to DiffusionBear
 
 Thanks for helping with the public beta! This is a small, personal project — a fully local image-generation studio for Apple Silicon. Everything below is intentionally light.
 
@@ -39,7 +39,7 @@ cd frontend && npm run lint && npm run build
 
 ## A note on this project's DNA
 
-MLX-Diffusion is **heavily coded by AI** (Gemini, 0xAlpha, Big Pickle) alongside its author [Ouinche](https://www.ouinche.com). AI-assisted patches are expected and welcome — but every change still needs a human review, a clear description, and a benchmark or reproduction when it touches performance.
+DiffusionBear is **heavily coded by AI** (Gemini, 0xAlpha, Big Pickle) alongside its author [Ouinche](https://www.ouinche.com). AI-assisted patches are expected and welcome — but every change still needs a human review, a clear description, and a benchmark or reproduction when it touches performance.
 
 ## Pull requests
 

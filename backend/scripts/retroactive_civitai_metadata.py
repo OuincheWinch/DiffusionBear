@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Retroactively re-embeds Civitai-compliant metadata into images in backend/data/generated.
-- Ensures Generator Software is "MLX Diffusion"
+- Ensures Generator Software is "DiffusionBear"
 - Ensures Artist is the configured artist (data/settings.json "artist_name") or "MLX-DIFFUSION"
 - Ensures Model and Model hash are in the parameters text chunk
 - Ensures Civitai resources and Hashes are embedded

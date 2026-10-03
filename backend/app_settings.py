@@ -1,4 +1,4 @@
-"""Persistent user-configurable settings for MLX-DIFFUSION.
+"""Persistent user-configurable settings for DiffusionBear.
 
 Settings are stored as plain JSON in ``data/settings.json`` next to the other
 runtime state (LoRA registry, downloads, …). Loads lazily, writes atomically,
@@ -70,7 +70,7 @@ _SAMPLERS = {
 }
 
 DEFAULTS = {
-    # Personalization: credit embedded in Civitai/EXIF metadata. Empty -> "MLX-DIFFUSION".
+    # Personalization: credit embedded in Civitai/EXIF metadata. Empty -> "DiffusionBear".
     "artist_name": "",
     # Default output format for new generations ("png" | "jpeg").
     "default_output_format": "png",
@@ -330,7 +330,7 @@ def artist_name() -> str:
 def metadata_artist() -> str:
     """Artist credit embedded in image metadata/EXIF. Falls back to a neutral
     product name when the user has not personalized it."""
-    return artist_name() or "MLX-DIFFUSION"
+    return artist_name() or "DiffusionBear"
 
 
 def update_settings(updates: dict) -> dict:

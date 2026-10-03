@@ -3,6 +3,6 @@
 // bundle's CFBundleShortVersionString is read from. This file used to hold a
 // second, separately-edited copy and drifted: the bundle said 0.2.1 while this
 // badge said 0.1.2.
-export const APP_VERSION = "0.2.1";
-export const APP_VERSION_LABEL = "v0.2.1 (beta)";
+export const APP_VERSION = "0.3.1";
+export const APP_VERSION_LABEL = "v0.3.1 (beta)";
 export const APP_TITLE = `DiffusionBear · ${APP_VERSION_LABEL}`;

@@ -67,7 +67,7 @@ function findDragImages(node) {
 
 /**
  * Pre-fetches the full-resolution image and caches it as a File object.
- * Because MLX-DIFFUSION runs locally on localhost:8001, loopback fetch takes <8ms,
+ * Because DiffusionBear runs locally on localhost:8001, loopback fetch takes <8ms,
  * ensuring the File is ready in memory before human drag movement reaches dragstart.
  */
 // Cache for the on-disk file:// URL used by the macOS Finder drag channel.

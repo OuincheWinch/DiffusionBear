@@ -414,7 +414,7 @@ export const zhStrings = {
   "settings.section.secretsDescTail": "它们绝不会发送给浏览器客户端，绝不会写入日志，API 也绝不暴露它们 —— 仅在服务端用于向 Civitai / Hugging Face 发出请求时进行身份验证。",
   "settings.queue.tokenFallback": "注意：受限的 Hugging Face 仓库也会使用保存在以下位置的令牌：",
   "settings.defaults.artistCredit": "🖋 作者署名",
-  "settings.defaults.artistHint": "嵌入到每张生成图像的 EXIF / Civitai 元数据中。留空则使用“MLX-DIFFUSION”。",
+  "settings.defaults.artistHint": "嵌入到每张生成图像的 EXIF / Civitai 元数据中。留空则使用“DiffusionBear”。",
   "settings.defaults.saveArtist": "保存作者",
   "settings.defaults.outputFormat": "默认输出格式",
   "settings.defaults.formatPng": "PNG（无损）",

@@ -1,4 +1,4 @@
-# MLX-Diffusion
+# DiffusionBear
 
 **Beta — v0.1.2**
 
@@ -201,12 +201,12 @@ cd frontend && npm install && cd ..
 
 ### 2. Run
 
-Launch MLX-Diffusion
+Launch DiffusionBear
 
 ```bash
 ./run.sh
 ```
-Type CTRL+C in your terminal to close MLX-Diffusion
+Type CTRL+C in your terminal to close DiffusionBear
 
 > `run.sh` uses `./venv/bin/python -m uvicorn main:app` (never the stale
 > console-script shebangs) and keeps the Mac awake with `caffeinate` during

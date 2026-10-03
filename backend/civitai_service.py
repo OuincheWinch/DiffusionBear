@@ -398,7 +398,7 @@ def normalize_base_model(civitai_base: str | None) -> str:
     b = str(civitai_base).lower().strip()
     if any(k in b for k in ("sd 1.5", "sd 1.4", "sd 2.0", "sd 2.1", "sd15", "sd14", "sd21")):
         raise ValueError(
-            f"Civitai model architecture '{civitai_base}' is SD 1.5/2.x, which is not supported by MLX-DIFFUSION. "
+            f"Civitai model architecture '{civitai_base}' is SD 1.5/2.x, which is not supported by DiffusionBear. "
             f"Supported architectures: SDXL (Lightning/Pony/Illustrious), FLUX.2-klein, Krea 2, Z-Image Turbo."
         )
     if any(k in b for k in ("flux.1", "flux1", "flux dev", "flux schnell")):
@@ -406,7 +406,7 @@ def normalize_base_model(civitai_base: str | None) -> str:
             f"Civitai model architecture '{civitai_base}' is FLUX.1 (12B), which is incompatible with FLUX.2-klein (4B)."
         )
     if any(k in b for k in ("cascade", "pixart", "auraflow", "hunyuan")):
-        raise ValueError(f"Civitai model architecture '{civitai_base}' is not supported by MLX-DIFFUSION.")
+        raise ValueError(f"Civitai model architecture '{civitai_base}' is not supported by DiffusionBear.")
     if any(k in b for k in ("sdxl", "pony", "illustrious", "sd xl")):
         return "sdxl"
     if any(k in b for k in ("flux.2", "flux2", "klein")):

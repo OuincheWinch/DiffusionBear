@@ -414,7 +414,7 @@ export const ptStrings = {
   "settings.section.secretsDescTail": "Nunca são enviadas aos clientes do navegador, nunca são registradas em log e nunca são expostas pela API — são usadas apenas no servidor para autenticar as requisições de saída para Civitai / Hugging Face.",
   "settings.queue.tokenFallback": "Observação: repositórios do Hugging Face com restrição também usam o token salvo em",
   "settings.defaults.artistCredit": "🖋 Crédito do autor",
-  "settings.defaults.artistHint": "Incrustado nos metadados EXIF / Civitai de cada imagem gerada. Se vazio, usa \"MLX-DIFFUSION\".",
+  "settings.defaults.artistHint": "Incrustado nos metadados EXIF / Civitai de cada imagem gerada. Se vazio, usa \"DiffusionBear\".",
   "settings.defaults.saveArtist": "Salvar autor",
   "settings.defaults.outputFormat": "Formato de saída padrão",
   "settings.defaults.formatPng": "PNG (sem perdas)",

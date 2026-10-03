@@ -34,7 +34,7 @@ export function useSettings() {
     return data;
   }, []);
 
-  const artistName = (settings?.artist_name || "").trim() || "MLX-DIFFUSION";
+  const artistName = (settings?.artist_name || "").trim() || "DiffusionBear";
 
   return { settings, loading, error, refresh, update, artistName };
 }

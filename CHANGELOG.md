@@ -1,6 +1,43 @@
 # Changelog
 
-All notable changes to **MLX-Diffusion** are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
+All notable changes to **DiffusionBear** are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
+
+## [0.3.1] — beta — 2026-10-03
+
+### Added
+- **Civitai as a model source**: browse/search Civitai alongside Hugging Face and download
+  checkpoints directly, with token auth and structured `baseModel` classification into the
+  SDXL/Flux/Krea buckets.
+- **Single-file → diffusers conversion** for Civitai SDXL checkpoints, run out of process so a
+  slow conversion cannot stall the API. Normalises CLIP `text_model.*` keys and restores the
+  slow tokenizer's `vocab.json`/`merges.txt`, which diffusers loaders otherwise choke on.
+- **Register a model from a local folder**, so a converted or hand-assembled diffusers
+  directory can be run without touching the model store.
+- **Models tab**: detected downloads, runnable-model registration, and honest states for
+  models that are present but not runnable.
+
+### Changed
+- **New icon and official artwork** — the neon bear/goggles badge is now the app icon, the
+  header logo and the favicon, regenerated into `AppIcon.icns` at all required sizes.
+- Version is defined once in `backend/app_version.py`; `frontend/src/version.js` and
+  `package.json` are generated from it, and a test fails if they drift.
+- EXIF `Software`/`Generator` now read `DiffusionBear`. Images written by earlier versions
+  keep their original value.
+
+### Fixed
+- **Krea 2 text encoder cache**: the community q4 release ships Krea's encoder as bf16 while
+  labelling it `quantization_level: 4` (399 keys, zero `.scales`, 7.5 GB). The first build now
+  quantises once and persists a ~2.1 GB q4 copy, cutting later loads to 2.26 GB.
+- **Wired-memory budget** is auto-derived from unified memory and Apple's recommended working
+  set instead of a hardcoded pin, removing a stale 9 GB setting that starved the encoder pass.
+- **SDXL conversion failures** now surface the subprocess traceback instead of a bare timeout.
+- **Civitai downloads** follow redirects securely and resolve the API token from the settings
+  file.
+
+### Known limitations
+- Qwen-Image 2.1 needs roughly 5 GB of free memory before it starts. Below that the bf16 VAE
+  decode exhausts Metal and the engine dies after writing the image but before reporting
+  success, so the job shows as failed while a valid PNG is on disk.
 
 ## [0.1.2] — beta — 2026-09-26
 

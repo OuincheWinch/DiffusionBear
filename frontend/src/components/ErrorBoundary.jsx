@@ -11,7 +11,7 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("MLX-DIFFUSION React Runtime Crash:", error, errorInfo);
+    console.error("DiffusionBear React Runtime Crash:", error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -44,7 +44,7 @@ export default class ErrorBoundary extends Component {
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
           }}>
             <h2 style={{ color: "#ef4444", marginTop: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span>⚠️</span> MLX-DIFFUSION Interface Recovery
+              <span>⚠️</span> DiffusionBear Interface Recovery
             </h2>
             <p style={{ color: "#94a3b8", lineHeight: 1.6 }}>
               A client-side interface error occurred. Rather than leaving you with a black screen, this recovery boundary caught the exception.
