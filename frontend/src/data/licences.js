@@ -1,4 +1,4 @@
-export const GITHUB_REPO_URL = "https://github.com/OuincheWinch/MLX-Diffusion";
+export const GITHUB_REPO_URL = "https://github.com/OuincheWinch/DiffusionBear";
 export const GITHUB_LICENSE_URL = `${GITHUB_REPO_URL}/blob/main/LICENSE`;
 export const AUTHOR_WEBSITE = "https://www.ouinche.com";
 export const AI_CREDITS = ["Gemini", "0xAlpha", "Big Pickle"];

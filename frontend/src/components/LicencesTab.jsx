@@ -51,7 +51,7 @@ export default function LicencesTab() {
           <ExtLink href={GITHUB_LICENSE_URL}>{t("licences.mitLicense")}</ExtLink>,{" "}
           {t("licences.copyright", { year: 2026 })}{" "}
           <ExtLink href={AUTHOR_WEBSITE}>Ouinche</ExtLink>. {t("licences.source")}{" "}
-          <ExtLink href={GITHUB_REPO_URL}>github.com/OuincheWinch/MLX-Diffusion</ExtLink>.
+          <ExtLink href={GITHUB_REPO_URL}>github.com/OuincheWinch/DiffusionBear</ExtLink>.
         </p>
         <p>
           <strong>{t("licences.aiAuthored")}</strong> —{" "}

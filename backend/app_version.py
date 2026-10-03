@@ -5,5 +5,5 @@ APP_VERSION = "0.3.1"
 APP_VERSION_LABEL = "v0.3.1"
 APP_AUTHOR = "Ouinche"
 APP_WEBSITE = "https://www.ouinche.com"
-APP_REPO = "https://github.com/OuincheWinch/MLX-Diffusion"  # public repo keeps its name
+APP_REPO = "https://github.com/OuincheWinch/DiffusionBear"
 AI_CREDITS = ["Gemini", "0xAlpha", "Big Pickle"]

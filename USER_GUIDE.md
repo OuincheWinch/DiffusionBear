@@ -1,4 +1,4 @@
-# MLX-DIFFUSION — User Guide
+# DiffusionBear — User Guide
 
 Local generative playground for Apple Silicon running on **MLX** and **mflux**.
 Supports **FLUX.2-klein 4B**, **Juggernaut XL Lightning (SDXL)**, **Krea 2 Turbo**, and **Z-Image Turbo**.
@@ -38,13 +38,13 @@ If you prefer running backend and frontend in separate terminals:
 
 **Terminal 1 — Backend (FastAPI API on Port 8001):**
 ```bash
-cd /Volumes/Externe/IA/MLX-DIFFUSION/backend
+cd /path/to/DiffusionBear/backend
 ../venv/bin/uvicorn main:app --reload --port 8001
 ```
 
 **Terminal 2 — Frontend (React / Vite on Port 5174):**
 ```bash
-cd /Volumes/Externe/IA/MLX-DIFFUSION/frontend
+cd /path/to/DiffusionBear/frontend
 npm run dev
 ```
 
@@ -199,9 +199,9 @@ To manage DiffusionBear effortlessly from any terminal:
 
 ```bash
 # 🚀 1-command launch: frees ports, starts backend & frontend, opens browser, traps Ctrl+C
-alias run-mlx='/YOUR/PATH/TO/MLX-DIFFUSION/run.sh'
+alias run-db='/YOUR/PATH/TO/DiffusionBear/run.sh'
 
-# 🛑 Kill all MLX-DIFFUSION processes (backend, SDXL engine, Vite, caffeinate)
+# 🛑 Kill all DiffusionBear processes (backend, SDXL engine, Vite, caffeinate)
 alias kill-mlx='pkill -f "uvicorn main:app" ; pkill -f sdxl_engine.py ; pkill -f "vite" ; pkill -f "caffeinate.*uvicorn"'
 
 # 🧹 Force-free MLX ports (8001 & 5174)

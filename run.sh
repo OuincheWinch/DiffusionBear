@@ -27,7 +27,7 @@ FRONTEND_DIR="$PROJECT_DIR/frontend"
 # Private DEV convenience: reuse the sibling working copy's model/SDXL/LoRA store
 # so DEV never re-downloads weights. Never published to the public repo.
 if [ -z "${DIFFUSIONBEAR_ASSET_DIR:-}" ]; then
-    SHARED_ASSET_DIR="$PROJECT_DIR/../MLX-DIFFUSION OpenCode/backend/data"
+    SHARED_ASSET_DIR="$PROJECT_DIR/../DiffusionBear/backend/data"
     if [ -d "$SHARED_ASSET_DIR/models" ]; then
         export DIFFUSIONBEAR_ASSET_DIR="$SHARED_ASSET_DIR"
     fi
@@ -59,7 +59,7 @@ if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
 fi
 
 say "================================================="
-say "        🚀 Starting MLX-DIFFUSION Studio — $APP_VERSION"
+say "        🚀 Starting DiffusionBear Studio — $APP_VERSION"
 say "================================================="
 say "  project: $PROJECT_DIR"
 say "  backend: $BACKEND_DIR"
@@ -195,7 +195,7 @@ sleep 1.5
 
 say ""
 say "================================================="
-say "  🎨 MLX-DIFFUSION is LIVE!                      "
+say "  🎨 DiffusionBear is LIVE!                      "
 say "  👉 Web UI:        http://localhost:5174         "
 say "  👉 API Docs:      http://localhost:8001/docs    "
 say "  (Press Ctrl+C to stop all services)            "

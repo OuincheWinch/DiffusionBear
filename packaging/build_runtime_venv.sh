@@ -6,7 +6,7 @@
 #   venv/pyvenv.cfg says `home = /opt/homebrew/opt/python@3.10/bin`, so the
 #   existing venv needs Homebrew installed and is not relocatable. 38 of its
 #   console scripts also carry shebangs containing the space in
-#   "MLX-DIFFUSION OpenCode", which macOS truncates at the first space -- the
+#   "DiffusionBear", which macOS truncates at the first space -- the
 #   documented cause of the app silently booting under a stale interpreter.
 #   pbs has no absolute paths (resolves its stdlib from its own executable), so
 #   the whole tree can live inside an .app at a space-free path.

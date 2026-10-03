@@ -646,7 +646,7 @@ class FileUrlRouteTests(unittest.TestCase):
         )
 
     def test_the_path_survives_a_space_in_the_directory_name(self):
-        """The regression this route exists beside: /Volumes/Externe/IA/MLX-DIFFUSION
+        """The regression this route exists beside: /Volumes/Externe/IA/DiffusionBear
         OpenCode. An unencoded space truncates the path at the first one, and Finder
         would silently receive a path that does not exist."""
         r = self.client.get(f"/api/images/{self.image_id}/file-url")

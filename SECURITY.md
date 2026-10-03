@@ -13,7 +13,7 @@ DiffusionBear is a **local-first** application:
 
 Please **do not open a public GitHub issue** for security problems. Report privately instead:
 
-- Open a [private vulnerability report](https://github.com/OuincheWinch/MLX-Diffusion/security/advisories/new) (GitHub's "Report a vulnerability" flow), or
+- Open a [private vulnerability report](https://github.com/OuincheWinch/DiffusionBear/security/advisories/new) (GitHub's "Report a vulnerability" flow), or
 - Email the repo author with the subject `[DiffusionBear security]`.
 
 You should get an acknowledgement within 3 working days. Treat PoCs as embargoed until the issue is fixed or declined.

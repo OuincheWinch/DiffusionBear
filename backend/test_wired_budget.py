@@ -110,7 +110,7 @@ class MigrationRecordTests(unittest.TestCase):
 
     def test_the_running_settings_file_is_on_auto(self):
         path = Path(
-            "/Volumes/Externe/IA/MLX-DIFFUSION OpenCode/backend/data/settings.json"
+            "/Volumes/Externe/IA/DiffusionBear/backend/data/settings.json"
         )
         if not path.exists():
             self.skipTest("live settings file not present on this machine")
@@ -125,7 +125,7 @@ class MigrationRecordTests(unittest.TestCase):
 
     def test_a_backup_of_the_previous_values_exists(self):
         path = Path(
-            "/Volumes/Externe/IA/MLX-DIFFUSION OpenCode/backend/data/settings.json"
+            "/Volumes/Externe/IA/DiffusionBear/backend/data/settings.json"
             ".bak-before-auto-wired-limit"
         )
         if not path.exists():

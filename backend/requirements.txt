@@ -1,4 +1,4 @@
-# MLX-DIFFUSION — Primary Backend Dependencies (Python 3.10)
+# DiffusionBear — Primary Backend Dependencies (Python 3.10)
 # Engine: FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo via mflux
 # Prompt Enhancer: Qwen2.5-0.5B-Instruct via mlx-lm
 

@@ -96,7 +96,7 @@ private struct Paths {
         return root.appendingPathComponent("data", isDirectory: true)
     }
     /// Backend stdout/stderr. Deliberately NOT under `support`: that path can fall back
-    /// to the pre-rename "MLX-Diffusion" directory, so a fill bug would have been
+    /// to a relocated store, so a fill bug would have been
     /// reported to a log path that does not mention the app you are running. The log
     /// is a debugging aid, it is not worth migrating, and it is tiny.
     static var logFile: URL {

@@ -1,4 +1,4 @@
-# MLX-DIFFUSION — SDXL Engine Dependencies (Python 3.14)
+# DiffusionBear — SDXL Engine Dependencies (Python 3.14)
 # Model: Juggernaut XL Lightning (4-step distilled) via mlx_diffuser
 
 # Core Runtime (Torch-free inference on Apple Silicon)
