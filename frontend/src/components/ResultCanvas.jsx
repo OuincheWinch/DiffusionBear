@@ -1,32 +1,38 @@
 import { useState, memo } from "react";
 import { api, downloadImage, fetchImageBlob, imageUrl } from "../api";
-import { bindFullImageDrag } from "../utils/dragDrop";
+import { nativeDragSuppression, bindFullImageDrag } from "../utils/dragDrop";
+import { useI18n } from "../i18n/I18nContext";
 
 function CanvasProgressOverlay({ busy, progress, standalone = false, generatingPrompt = null, phase = null, phaseDetail = null }) {
+  const { t } = useI18n();
   if (!busy) return null;
   const isProgress = progress && progress.steps > 0;
   const batchTotal = progress?.batch || 1;
   const batchIdx = (progress?.image_index != null ? progress.image_index : progress?.saved_index ? progress.saved_index - 1 : 0) + 1;
   const isBatch = batchTotal > 1;
 
-  let mainText = "Preparing generation…";
+  let mainText = t("canvas.progress.preparing");
   if (isProgress) {
     if (phase === "saving" || progress.step >= progress.steps) {
-      mainText = `🎨 Decoding VAE (${Math.round(progress.elapsed || 0)}s)…`;
+      mainText = t("canvas.progress.decodingVae", { elapsed: Math.round(progress.elapsed || 0) });
     } else {
-      mainText = `Step ${progress.step}/${progress.steps} (${Math.round(progress.elapsed || 0)}s)`;
+      mainText = t("canvas.progress.step", {
+        step: progress.step,
+        steps: progress.steps,
+        elapsed: Math.round(progress.elapsed || 0),
+      });
     }
   } else {
     if (phase === "downloading") {
-      mainText = "📥 Downloading model weights…";
+      mainText = t("canvas.progress.phaseDownloading");
     } else if (phase === "loading_model") {
-      mainText = "🧠 Loading model into unified memory…";
+      mainText = t("canvas.progress.phaseLoadingModel");
     } else if (phase === "compiling") {
-      mainText = "⚡ Compiling Metal shaders & encoding prompt…";
+      mainText = t("canvas.progress.phaseCompiling");
     } else if (phase === "saving") {
-      mainText = "🎨 Finalizing image & saving…";
+      mainText = t("canvas.progress.phaseSaving");
     } else if (standalone) {
-      mainText = "Starting engine & loading model…";
+      mainText = t("canvas.progress.phaseStandalone");
     }
   }
 
@@ -35,7 +41,7 @@ function CanvasProgressOverlay({ busy, progress, standalone = false, generatingP
       <div className="spinner" />
       {isBatch && (
         <span className="canvas-batch-pill">
-          Image {batchIdx} / {batchTotal}
+          {t("canvas.batchPill", { index: batchIdx, total: batchTotal })}
         </span>
       )}
       <p>{mainText}</p>
@@ -47,7 +53,8 @@ function CanvasProgressOverlay({ busy, progress, standalone = false, generatingP
           <div
             className="progress-fill"
             style={{
-              width: `${Math.min(100, (progress.step / progress.steps) * 100)}%`,
+              // scaleX rather than width: animating width re-runs layout every tick.
+              transform: `scaleX(${Math.min(100, (progress.step / progress.steps) * 100) / 100})`,
             }}
           />
         </div>
@@ -75,6 +82,7 @@ function ResultCanvas({
    canSetReference = false,
    maxReferenceImages = 1,
  }) {
+   const { t } = useI18n();
    const [upscaling, setUpscaling] = useState(null); // null | "lanczos-2" | "lanczos-4"
    const [copiedField, setCopiedField] = useState(null); // null | "image" | "prompt" | "seed"
     const [downloading, setDownloading] = useState(false);
@@ -92,7 +100,7 @@ function ResultCanvas({
       });
       onSetCurrentImage?.(upscaled);
     } catch (e) {
-      setActionError(e?.message || "Upscale failed.");
+      setActionError(e?.message || t("canvas.error.upscaleFailed"));
       console.error("Upscale failed:", e);
     } finally {
       setUpscaling(null);
@@ -138,10 +146,11 @@ function ResultCanvas({
        const filename = currentImage.file
          || `${currentImage.id}.${currentImage.format || "png"}`;
        await downloadImage(currentImage.id, filename);
-      } catch (err) {
-        setActionError(err?.message || "Download failed.");
-        console.error("Download failed:", err);
-      } finally {
+       } catch (err) {
+         setActionError(err?.message || t("canvas.error.downloadFailed"));
+         console.error("Download failed:", err);
+       } finally {
+
        setDownloading(false);
      }
    }
@@ -150,24 +159,38 @@ function ResultCanvas({
 
     <div className="result-canvas-panel">
       <div className="canvas-header">
-        <h3>Studio Canvas</h3>
+        <h3>{t("canvas.heading")}</h3>
         {busy ? (
-          <span className={`canvas-meta-pill busy-pill ${phase ? `phase-${phase}` : ""}`}>
+          /* role="status" + aria-live="polite": a render here runs 30-280s, and
+             the step pill is the only place that reports it. Without a live region
+             a screen reader user has no way of knowing the app is doing anything.
+             "polite" rather than "assertive" because the steps tick every few
+             seconds and must not interrupt. */
+          <span
+            className={`canvas-meta-pill busy-pill ${phase ? `phase-${phase}` : ""}`}
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
             {phase === "downloading"
-              ? "📥 Downloading Model"
+              ? t("canvas.pill.downloadingModel")
               : phase === "loading_model"
-                ? "🧠 Loading into Memory"
+                ? t("canvas.pill.loadingMemory")
                 : phase === "compiling"
-                  ? "⚡ Compiling Shaders"
+                  ? t("canvas.pill.compilingShaders")
                   : phase === "saving"
-                    ? "🎨 Finalizing Image"
+                    ? t("canvas.pill.finalizingImage")
                     : progress?.steps > 0
-                      ? `⚙ Step ${progress.step}/${progress.steps}`
-                      : "⚙ Working…"}
+                      ? t("canvas.pill.step", { step: progress.step, steps: progress.steps })
+                      : t("canvas.pill.working")}
           </span>
         ) : currentImage ? (
           <span className="canvas-meta-pill">
-            {currentImage.width}×{currentImage.height} · {currentImage.generation_time}s
+            {t("canvas.metaPill", {
+              width: currentImage.width,
+              height: currentImage.height,
+              time: currentImage.generation_time,
+            })}
           </span>
         ) : null}
       </div>
@@ -178,12 +201,15 @@ function ResultCanvas({
             <img
               key={currentImage.id}
               src={imageUrl(currentImage.id)}
-              alt={currentImage.prompt || "Generated image"}
+              alt={currentImage.prompt || t("canvas.image.altFallback")}
               className="canvas-image"
-              title="Drag for full-resolution image"
-              {...bindFullImageDrag(currentImage)}
-            />
-            <CanvasProgressOverlay
+              data-mlx-image-id={currentImage.id}
+              data-mlx-file-url={currentImage.file_url || ""}
+              style={nativeDragSuppression()}
+              title={t("canvas.image.dragTitle")}
+{...bindFullImageDrag(currentImage)}
+              />
+                          <CanvasProgressOverlay
               busy={busy}
               progress={progress}
               phase={phase}
@@ -205,9 +231,9 @@ function ResultCanvas({
             ) : (
               <>
                 <div className="empty-icon">🎨</div>
-                <p className="empty-title">Your creation will appear here</p>
+                <p className="empty-title">{t("canvas.empty.title")}</p>
                 <p className="empty-subtitle">
-                  Enter a prompt and click Generate to start rendering
+                  {t("canvas.empty.subtitle")}
                 </p>
               </>
             )}
@@ -220,11 +246,16 @@ function ResultCanvas({
         <div className="canvas-batch-strip">
           <div className="batch-strip-header">
             <span className="batch-strip-title">
-              Batch Gallery ({batchImages.length}{progress?.batch && progress.batch > batchImages.length ? `/${progress.batch}` : ""})
+              {t("canvas.batchStrip.title", {
+                count: batchImages.length,
+                totalSuffix: progress?.batch && progress.batch > batchImages.length
+                  ? t("canvas.batchStrip.totalSuffix", { total: progress.batch })
+                  : "",
+              })}
             </span>
             {busy && progress?.batch && batchImages.length < progress.batch && (
               <span className="batch-strip-status">
-                Rendering #{batchImages.length + 1}...
+                {t("canvas.batchStrip.rendering", { n: batchImages.length + 1 })}
               </span>
             )}
           </div>
@@ -242,19 +273,19 @@ function ResultCanvas({
                     onSetCurrentImage?.(img);
                   }
                 }}
-                title={`Image #${idx + 1} (Seed: ${img.seed}) - Click to preview · Drag for full-resolution image`}
+                title={t("canvas.batchStrip.thumbTitle", { n: idx + 1, seed: img.seed })}
                 {...bindFullImageDrag(img)}
               >
                 <img
                   src={imageUrl(img.id, true)}
-                  alt={`Batch #${idx + 1}`}
+                  alt={t("canvas.batchStrip.thumbAlt", { n: idx + 1 })}
                   {...bindFullImageDrag(img)}
                 />
                 <span className="batch-thumb-badge">#{idx + 1}</span>
               </div>
             ))}
             {busy && progress?.batch && batchImages.length < progress.batch && (
-              <div className="batch-strip-thumb placeholder" title={`Rendering image #${batchImages.length + 1}...`}>
+              <div className="batch-strip-thumb placeholder" title={t("canvas.batchStrip.renderingImage", { n: batchImages.length + 1 })}>
                 <div className="mini-spinner" />
                 <span className="batch-thumb-badge">#{batchImages.length + 1}</span>
               </div>
@@ -267,8 +298,8 @@ function ResultCanvas({
         <div className={`canvas-details ${busy ? "canvas-details-prev" : ""}`}>
           {busy && (
             <div className="canvas-prev-note">
-              <span className="canvas-prev-tag">Previous Result</span>
-              <span className="canvas-prev-hint">Showing last completed creation while new image renders</span>
+              <span className="canvas-prev-tag">{t("canvas.prevTag")}</span>
+              <span className="canvas-prev-hint">{t("canvas.prevHint")}</span>
             </div>
           )}
           <p className="canvas-prompt" title={currentImage.prompt}>
@@ -277,27 +308,27 @@ function ResultCanvas({
 
           <div className="canvas-badges">
             <span className="badge">
-              <strong>Model:</strong> {currentImage.model?.split("/").pop()}
+              <strong>{t("canvas.badge.model")}</strong> {currentImage.model?.split("/").pop()}
             </span>
             <span className="badge">
-              <strong>Seed:</strong> {currentImage.seed}
+              <strong>{t("canvas.badge.seed")}</strong> {currentImage.seed}
             </span>
             <span className="badge">
-              <strong>Steps:</strong> {currentImage.steps}
+              <strong>{t("canvas.badge.steps")}</strong> {currentImage.steps}
             </span>
             {currentImage.sampler && (
               <span className="badge">
-                <strong>Sampler:</strong> {currentImage.sampler}
+                <strong>{t("canvas.badge.sampler")}</strong> {currentImage.sampler}
               </span>
             )}
             {currentImage.guidance != null && (
               <span className="badge">
-                <strong>CFG:</strong> {currentImage.guidance}
+                <strong>{t("canvas.badge.cfg")}</strong> {currentImage.guidance}
               </span>
             )}
             {currentImage.fast_vae && (
               <span className="badge">
-                <strong>VAE:</strong> SOTA ⚡
+                <strong>{t("canvas.badge.vae")}</strong>{t("canvas.badge.vaeValue")}
               </span>
             )}
           </div>
@@ -309,20 +340,20 @@ function ResultCanvas({
                className="action-btn"
                onClick={() => handleUpscale(2)}
                disabled={upscaling != null || busy}
-               title="Fast Resampling 2x (Lanczos + Unsharp)"
+               title={t("canvas.action.upscale2xTitle")}
              >
 
-              {upscaling === "lanczos-2" ? "Fast 2x…" : "⚡ Fast 2x"}
+              {upscaling === "lanczos-2" ? t("canvas.action.upscale2xBusy") : t("canvas.action.upscale2xIdle")}
             </button>
              <button
                type="button"
                className="action-btn"
                onClick={() => handleUpscale(4)}
                disabled={upscaling != null || busy}
-               title="Fast Resampling 4x (Lanczos + Unsharp)"
+               title={t("canvas.action.upscale4xTitle")}
              >
 
-              {upscaling === "lanczos-4" ? "Fast 4x…" : "⚡ Fast 4x"}
+              {upscaling === "lanczos-4" ? t("canvas.action.upscale4xBusy") : t("canvas.action.upscale4xIdle")}
             </button>
              {canSetReference && (
                <button
@@ -335,9 +366,9 @@ function ResultCanvas({
                      preview: imageUrl(currentImage.id),
                    });
                  }}
-                 title={`Use this image as a reference (up to ${maxReferenceImages})`}
+                 title={t("canvas.action.useAsRefTitle", { max: maxReferenceImages })}
                >
-                 🖼️ Use as Reference
+                 {t("canvas.action.useAsRef")}
                </button>
              )}
 
@@ -346,34 +377,34 @@ function ResultCanvas({
                className="action-btn"
                onClick={() => onVariation?.(currentImage)}
                disabled={busy}
-               title="Generate a variation with Seed + 1"
+               title={t("canvas.action.variationTitle")}
              >
 
-              🔄 Variation
+              {t("canvas.action.variation")}
             </button>
              <button
                type="button"
                className="action-btn"
                onClick={copyImageToClipboard}
-               title="Copy PNG pixels to system clipboard"
+               title={t("canvas.action.copyImageTitle")}
              >
 
-              {copiedField === "image" ? "Image Copied ✓" : "📋 Copy Image"}
+              {copiedField === "image" ? t("canvas.action.copyImageDone") : t("canvas.action.copyImageIdle")}
             </button>
-             <button type="button" className="action-btn" onClick={copyPrompt} title="Copy Prompt">
-               {copiedField === "prompt" ? "Prompt Copied ✓" : "📋 Copy Prompt"}
+             <button type="button" className="action-btn" onClick={copyPrompt} title={t("canvas.action.copyPromptTitle")}>
+               {copiedField === "prompt" ? t("canvas.action.copyPromptDone") : t("canvas.action.copyPromptIdle")}
              </button>
-             <button type="button" className="action-btn" onClick={copySeed} title="Copy Seed">
-               {copiedField === "seed" ? "Seed Copied ✓" : "📋 Copy Seed"}
+             <button type="button" className="action-btn" onClick={copySeed} title={t("canvas.action.copySeedTitle")}>
+               {copiedField === "seed" ? t("canvas.action.copySeedDone") : t("canvas.action.copySeedIdle")}
              </button>
              <button
                type="button"
                className="action-btn"
                onClick={handleDownload}
                disabled={downloading}
-               title="Download the full-resolution image"
+               title={t("canvas.action.downloadTitle")}
              >
-               {downloading ? "Downloading…" : "⬇ Download"}
+               {downloading ? t("canvas.action.downloadBusy") : t("canvas.action.downloadIdle")}
              </button>
 
 

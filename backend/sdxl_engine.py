@@ -1,4 +1,4 @@
-"""SDXL engine for MLX-DIFFUSION.
+"""SDXL engine for DiffusionBear.
 
 Runs under venv-sdxl (Python >= 3.11, mlx-diffuser). Invoked by the main
 backend as a subprocess with a JSON request on argv[1]; writes a PNG into
@@ -168,11 +168,13 @@ try:
 except Exception as _e:
     print(f"[sdxl] WARN failed to patch schedulers: {_e}", file=sys.stderr)
 
-_configured_asset_dir = os.environ.get("MLX_DIFFUSION_ASSET_DIR", "").strip()
+_configured_asset_dir = (
+    os.environ.get("DIFFUSIONBEAR_ASSET_DIR", "").strip()
+)
 if _configured_asset_dir:
     _asset_dir = Path(_configured_asset_dir).expanduser()
     if not _asset_dir.is_absolute():
-        raise ValueError("MLX_DIFFUSION_ASSET_DIR must be an absolute path")
+        raise ValueError("DIFFUSIONBEAR_ASSET_DIR must be an absolute path")
     ASSET_DIR = _asset_dir.resolve()
 else:
     ASSET_DIR = Path(__file__).resolve().parent.parent / "backend" / "data"

@@ -34,6 +34,7 @@ import re
 import sys
 import threading
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -639,6 +640,7 @@ def enhance_prompt(
         raise
     except Exception as e:
         print(f"[prompt_enhancer] ERROR: {e}", file=sys.stderr)
+        print("[prompt_enhancer] traceback:\n" + traceback.format_exc(), file=sys.stderr)
         return {
             "original": cleaned_prompt,
             "enhanced": cleaned_prompt,

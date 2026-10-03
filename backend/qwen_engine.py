@@ -21,6 +21,73 @@ MODEL = "mlx-community/Qwen-Image-2.1-MLX-4bit"
 QWEN_SCHEDULERS = {"linear": "linear", "euler": "flow_match_euler_discrete"}
 _MAX_PROMPT_BYTES = 128 * (1 << 10)
 
+# (model_path, quantization) -> (pipeline, load_time_of_the_cold_load).
+# The engine used to spawn one interpreter per generation, so this was rebuilt
+# every single time: 2.1-2.9s of weight load measured on every Qwen job in the
+# gallery history, never 0.0. The weights are a pure function of
+# (model_path, quantization) - Qwen-Image 2.1 has no LoRA support at all - so a
+# warm daemon can hand the same module to every subsequent request.
+_PIPELINE_CACHE: dict = {}
+
+
+def _get_pipeline(model_path, quantization, phase_cb=False):
+    key = (str(model_path), int(quantization))
+    hit = _PIPELINE_CACHE.get(key)
+    if hit is not None:
+        return hit[0], 0.0
+    if phase_cb:
+        emit({"phase": "loading_model", "detail": "Loading Qwen-Image-2.1 4-bit pipeline into unified memory..."})
+    t0 = time.time()
+    pipe = QwenImage21(quantize=quantization, model_path=str(model_path))
+    pipe.prompt_cache = _BoundedPromptCache(pipe.prompt_cache)
+    load_time = round(time.time() - t0, 2)
+    _PIPELINE_CACHE.clear()
+    _PIPELINE_CACHE[key] = (pipe, load_time)
+    return pipe, load_time
+
+
+def _serve() -> int:
+    """Read one JSON request per stdin line, write one JSON result per stdout line.
+
+    Mirrors sdxl_engine's --serve mode and the parent's existing JSON-lines
+    plumbing (_start_json_reader / _read_engine_message), so the parent can hold
+    the process open between generations instead of paying a fresh interpreter
+    plus a fresh weight load for each one.
+    """
+    def _handle_signal(signum, frame):
+        raise KeyboardInterrupt
+
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(signum, _handle_signal)
+        except (ValueError, OSError):
+            pass
+
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            req = json.loads(line)
+        except Exception as e:
+            emit({"error": f"bad request: {e}"})
+            continue
+        if not isinstance(req, dict) or req.get("shutdown"):
+            break
+        try:
+            _run(req, keep_alive=True)
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            emit({"error": f"{type(e).__name__}: {e}"})
+        gc.collect()
+    _PIPELINE_CACHE.clear()
+    try:
+        mx.clear_cache()
+    except Exception:
+        pass
+    return 0
+
 
 def _wired_budget(requested=None):
     if requested is not None:
@@ -124,6 +191,8 @@ class _StepCB:
 
 def main() -> int:
     _dump_env_if_requested()
+    if "--serve" in sys.argv[1:]:
+        return _serve()
     try:
         raw = sys.argv[1]
         if raw.lstrip().startswith("{"):
@@ -133,7 +202,10 @@ def main() -> int:
     except Exception as e:
         emit({"error": f"bad request: {e}"})
         return 2
+    return _run(req)
 
+
+def _run(req: dict, keep_alive: bool = False) -> int:
     try:
         prompt = str(req.get("prompt") or "")
         if not prompt.strip():
@@ -149,8 +221,8 @@ def main() -> int:
             raise ValueError("Qwen width and height must be multiples of 16 within 128-2048")
         if width * height > 589824:
             raise ValueError("Qwen-Image 2.1 is limited to 589824 pixels on 16GB Apple Silicon")
-        if steps < 1 or steps > 50:
-            raise ValueError("steps must be between 1 and 50")
+        if steps < 1 or steps > 25:
+            raise ValueError("Qwen-Image 2.1 steps must be between 1 and 25 on this machine")
         negative = str(req.get("negative_prompt") or "")
         if len(negative.encode("utf-8")) > _MAX_PROMPT_BYTES:
             raise ValueError("negative prompt exceeds the 128 KiB limit")
@@ -199,13 +271,8 @@ def main() -> int:
             pass
 
     try:
-        if req.get("phase_cb"):
-            phase("loading_model", "Loading Qwen-Image-2.1 4-bit pipeline into unified memory...")
-        t0 = time.time()
         model_path = req.get("model_path") or MODEL
-        pipe = QwenImage21(quantize=quantization, model_path=str(model_path))
-        pipe.prompt_cache = _BoundedPromptCache(pipe.prompt_cache)
-        load_time = time.time() - t0
+        pipe, load_time = _get_pipeline(model_path, quantization, phase_cb=bool(req.get("phase_cb")))
 
         needs_tiling = bool(refs) or max(width, height) > 512
         if needs_tiling:
@@ -220,11 +287,22 @@ def main() -> int:
         else:
             pipe.tiling_config = None
 
+        # mx.compile() mutates the decoder in place, so the compiled version would
+        # leak into the next request of a warm daemon. Keep the original and
+        # restore it whenever this request did not ask for the compiled path.
         if not bool(req.get("fast_vae", True)) and hasattr(pipe, "vae") and hasattr(pipe.vae, "decoder"):
             try:
-                pipe.vae.decoder = mx.compile(pipe.vae.decoder)
+                raw_decoder = getattr(pipe, "_qwen_raw_decoder", None)
+                if raw_decoder is None:
+                    raw_decoder = pipe.vae.decoder
+                    pipe._qwen_raw_decoder = raw_decoder
+                pipe.vae.decoder = mx.compile(raw_decoder)
             except Exception:
                 pass
+        else:
+            raw_decoder = getattr(pipe, "_qwen_raw_decoder", None)
+            if raw_decoder is not None:
+                pipe.vae.decoder = raw_decoder
 
         if os.environ.get("QWEN_ENGINE_DIAG"):
             from mflux.models.common.config.config import Config as _Config
@@ -322,17 +400,20 @@ def main() -> int:
                 signal.signal(signum, handler)
             except (ValueError, OSError):
                 pass
-        if pipe is not None:
+        if not keep_alive:
+            # One-shot mode: give every byte back before the process exits.
+            if pipe is not None:
+                try:
+                    pipe.prompt_cache.clear()
+                except Exception:
+                    pass
+            pipe = None
+            _PIPELINE_CACHE.clear()
+            gc.collect()
             try:
-                pipe.prompt_cache.clear()
+                mx.clear_cache()
             except Exception:
                 pass
-        pipe = None
-        gc.collect()
-        try:
-            mx.clear_cache()
-        except Exception:
-            pass
 
 
 if __name__ == "__main__":

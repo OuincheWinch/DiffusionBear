@@ -24,6 +24,15 @@ PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 
+# Private DEV convenience: reuse the sibling working copy's model/SDXL/LoRA store
+# so DEV never re-downloads weights. Never published to the public repo.
+if [ -z "${DIFFUSIONBEAR_ASSET_DIR:-}" ]; then
+    SHARED_ASSET_DIR="$PROJECT_DIR/../DiffusionBear/backend/data"
+    if [ -d "$SHARED_ASSET_DIR/models" ]; then
+        export DIFFUSIONBEAR_ASSET_DIR="$SHARED_ASSET_DIR"
+    fi
+fi
+
 # Locate a usable Python venv (prefer repo venv, then venv-sdxl isn't one for the API).
 # NOTE: use venv/bin/python (not the venv/bin/uvicorn console script) — console-script
 # shebangs can point at a stale no-space venv path after a folder rename, silently
@@ -50,7 +59,7 @@ if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
 fi
 
 say "================================================="
-say "        🚀 Starting MLX-DIFFUSION Studio — $APP_VERSION"
+say "        🚀 Starting DiffusionBear Studio — $APP_VERSION"
 say "================================================="
 say "  project: $PROJECT_DIR"
 say "  backend: $BACKEND_DIR"
@@ -61,7 +70,7 @@ BACKEND_PID=""
 FRONTEND_PID=""
 EVENT_PID=""
 EVENT_LOG=""
-API_TOKEN_VALUE="${MLX_DIFFUSION_API_TOKEN:-${MLX_API_TOKEN:-${LOCAL_API_TOKEN:-}}}"
+API_TOKEN_VALUE="${DIFFUSIONBEAR_API_TOKEN:-${MLX_API_TOKEN:-${LOCAL_API_TOKEN:-}}}"
 if [ -n "$API_TOKEN_VALUE" ] && [ -z "${VITE_API_TOKEN:-}" ]; then
     export VITE_API_TOKEN="$API_TOKEN_VALUE"
 fi
@@ -133,16 +142,16 @@ trap cleanup SIGINT SIGTERM EXIT
 
 # 2. Launch Backend
 if [ "$SILENT" -eq 1 ]; then
-    EVENT_LOG="$(mktemp "${TMPDIR:-/tmp}/mlx-diffusion-events.XXXXXX")"
+    EVENT_LOG="$(mktemp "${TMPDIR:-/tmp}/diffusionbear-events.XXXXXX")"
     : > "$EVENT_LOG"
     tail -F "$EVENT_LOG" &
     EVENT_PID=$!
-    export MLX_DIFFUSION_EVENT_LOG="$EVENT_LOG"
+    export DIFFUSIONBEAR_EVENT_LOG="$EVENT_LOG"
     say "📦 Starting FastAPI backend on http://127.0.0.1:8001..."
     cd "$BACKEND_DIR"
     caffeinate -s "$VENV_PY" -m uvicorn main:app --reload --port 8001 --no-access-log --log-level info &
 else
-    unset MLX_DIFFUSION_EVENT_LOG || true
+    unset DIFFUSIONBEAR_EVENT_LOG || true
     say "📦 Starting FastAPI backend on http://127.0.0.1:8001..."
     cd "$BACKEND_DIR"
     caffeinate -s "$VENV_PY" -m uvicorn main:app --reload --port 8001 &
@@ -186,7 +195,7 @@ sleep 1.5
 
 say ""
 say "================================================="
-say "  🎨 MLX-DIFFUSION is LIVE!                      "
+say "  🎨 DiffusionBear is LIVE!                      "
 say "  👉 Web UI:        http://localhost:5174         "
 say "  👉 API Docs:      http://localhost:8001/docs    "
 say "  (Press Ctrl+C to stop all services)            "

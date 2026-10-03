@@ -1,0 +1,863 @@
+{
+  "settings.tab.preferences": {
+    "es": "Preferencias",
+    "zh": "首选项",
+    "ja": "環境設定",
+    "pt": "Preferências",
+    "ko": "환경설정"
+  },
+  "settings.tab.enhancer": {
+    "es": "Indicaciones del mejorador (experimental)",
+    "zh": "提示词增强器的提示（实验性）",
+    "ja": "プロンプト強化のプロンプト（実験的）",
+    "pt": "Prompts do aprimorador (experimental)",
+    "ko": "개선기 프롬프트(실험 기능)"
+  },
+  "settings.tab.enhancerTitle": {
+    "es": "🧠 Mejorador de indicaciones — prompts del sistema (experimental)",
+    "zh": "🧠 提示词增强器 —— 系统提示词（实验性）",
+    "ja": "🧠 プロンプト強化 — システムプロンプト（実験的）",
+    "pt": "🧠 Aprimorador de prompts — prompts de sistema (experimental)",
+    "ko": "🧠 프롬프트 개선기 — 시스템 프롬프트(실험 기능)"
+  },
+  "settings.tab.enhancerDesc": {
+    "es": "Personaliza el prompt del sistema que usa el LLM local (Qwen2.5-0.5B-Instruct mediante MLX) cuando haces clic en ✨ Mejorar. Un prompt editable por motor: FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo y Z-Image Turbo. Las anulaciones guardadas se aplican de inmediato. El contrato impuesto es una salida solo de prompt dentro del límite de longitud de cada motor (sin preámbulo ni explicación), pero la función en sí es experimental.",
+    "zh": "自定义本地 LLM（通过 MLX 运行的 Qwen2.5-0.5B-Instruct）在点击 ✨ 增强时所使用的系统提示词。每个引擎一个可编辑提示词 —— FLUX.2 Klein、SDXL Lightning、Krea 2 Turbo 和 Z-Image Turbo。保存的覆盖会立即生效。强制约束是在各引擎的长度上限内仅输出提示词（无前言、无解释），但该功能本身仍属实验性。",
+    "ja": "✨ 強化▼をクリックしたときにローカル LLM（MLX 経由の Qwen2.5-0.5B-Instruct）が使うシステムプロンプトをカスタマイズします。エンジンごとに1つ編集可能で、FLUX.2 Klein、SDXL Lightning、Krea 2 Turbo、Z-Image Turbo に対応します。保存した上書きはすぐに反映されます。強制される契約は、各エンジンの文字数上限内でのプロンプトのみの出（前置きも説明もなし）ですが、機能自体は実験的です。",
+    "pt": "Personalize o prompt de sistema que o LLM local (Qwen2.5-0.5B-Instruct via MLX) usa quando você clica em ✨ Aprimorar. Um prompt editável por mecanismo — FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo e Z-Image Turbo. As substituições salvas passam a valer imediatamente. O contrato imposto é saída apenas de prompt, dentro do limite de tamanho de cada mecanismo (sem preâmbulo, sem explicação), mas o recurso em si é experimental.",
+    "ko": "✨ 개선을 클릭할 때 로컬 LLM(MLX를 통해 실행되는 Qwen2.5-0.5B-Instruct)이 사용하는 시스템 프롬프트를 사용자 지정합니다. 엔진마다 하나씩 편집할 수 있습니다 — FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo, Z-Image Turbo. 저장한 재정의는 즉시 적용됩니다. 강제되는 계약은 각 엔진의 길이 제한 내 프롬프트 전용 출력(서론이나 설명 없음)이며, 기능 자체는 실험 단계입니다."
+  },
+  "settings.section.defaultsTitle": {
+    "es": "🖋 Valores predeterminados y personalización",
+    "zh": "🖋 默认值与个性化",
+    "ja": "🖋 既定値とパーソナライズ",
+    "pt": "🖋 Padrões e personalização",
+    "ko": "🖋 기본값 및 개인화"
+  },
+  "settings.section.defaultsDesc": {
+    "es": "Preferencias de generación predeterminadas para las imágenes nuevas, además del crédito de autor incrustado en cada resultado. Tu nombre de autor sustituye al crédito anterior codificado en el programa; ideal para una publicación pública.",
+    "zh": "新图像的默认生成偏好，以及嵌入到每个输出中的作者署名。你的作者名会替换原先硬编码的署名 —— 对公开发布非常合适。",
+    "ja": "新しい画像の既定の生成設定と、すべての出力に埋め込まれる作者クレジット。ハードコードされていた作者クレジットがあなたの作者名に置き換わります。公開リリースに最適です。",
+    "pt": "Preferências padrão de geração para novas imagens, além do crédito de autor embutido em cada saída. Seu nome de autor substitui o crédito fixado no código — ótimo para um lançamento público.",
+    "ko": "새 이미지에 적용되는 기본 생성 환경설정과 모든 출력에 포함되는 作者 크레딧. 作者 이름이 기존 하드코딩 크레딧을 대체하므로 공개 배포에 적합합니다."
+  },
+  "settings.section.engineTitle": {
+    "es": "🖥 Motor y GPU",
+    "zh": "🖥 引擎与 GPU",
+    "ja": "🖥 エンジンとGPU",
+    "pt": "🖥 Motor e GPU",
+    "ko": "🖥 엔진 및 GPU"
+  },
+  "settings.section.engineDesc": {
+    "es": "Uso de Metal en vivo, presupuestos de memoria conectada, canalizaciones mflux/SDXL residentes y la cuenta atrás de liberación automática.",
+    "zh": "实时 Metal 使用情况、连线内存预算常驻的 mflux/SDXL 管线，以及空闲自动释放倒计时。",
+    "ja": "Metal のリアルタイム使用量、ワイドメモリ制限、常駐中の mflux/SDXL パイプライン、アイドル時の自動解放までのカウントダウン。",
+    "pt": "Uso de Metal ao vivo, limites de memória conectada, pipelines mflux/SDXL residentes e a contagem para liberação automática.",
+    "ko": "실시간 Metal 사용량, 유선 메모리 한도, 상주 중인 mflux/SDXL 파이프라인, 유휴 시 자동 해제 카운트다운."
+  },
+  "settings.section.modelsTitle": {
+    "es": "🗂 Gestión de modelos",
+    "zh": "🗂 模型管理",
+    "ja": "🗂 モデルの管理",
+    "pt": "🗂 Gerenciamento de modelos",
+    "ko": "🗂 모델 관리"
+  },
+  "settings.section.modelsDesc": {
+    "es": "Estado de instalación y espacio en disco de cada motor. Elimina pesos para liberar espacio; se vuelven a descargar bajo demanda.",
+    "zh": "每个引擎的安装状态和磁盘占用。删除权重可释放空间，需要时会重新下载。",
+    "ja": "各エンジンのインストール状況とディスク使用量。重みを削除して空き容量を確保できます。必要に応じて再ダウンロードされます。",
+    "pt": "Status de instalação e espaço em disco de cada motor. Remova os pesos para liberar espaço; eles são baixados novamente sob demanda.",
+    "ko": "각 엔진의 설치 상태와 디스크 사용량. 가중치를 삭제하여 공간을 확보할 수 있으며, 필요할 때 다시 다운로드됩니다."
+  },
+  "settings.section.queueTitle": {
+    "es": "⏳ Cola y trabajos pendientes",
+    "zh": "⏳ 队列与待处理任务",
+    "ja": "⏳ キューと保留中のジョブ",
+    "pt": "⏳ Fila e trabalhos pendentes",
+    "ko": "⏳ 대기열 및 대기 중인 작업"
+  },
+  "settings.section.queueDesc": {
+    "es": "Observa la cola de generación y vuelve a encolar las indicaciones que se interrumpieron o cancelaron.",
+    "zh": "查看生成队列，并将被中断或取消的提示词重新排队。",
+    "ja": "生成キューを確認し、中断・キャンセルされたプロンプトを再キューに追加します。",
+    "pt": "Acompanhe a fila de geração e recoloque na fila os prompts que foram interrompidos ou cancelados.",
+    "ko": "생성 대기열을 확인하고 중단되었거나 취소된 프롬프트를 다시 대기열에 추가합니다."
+  },
+  "settings.section.storageTitle": {
+    "es": "📦 Almacenamiento",
+    "zh": "📦 存储",
+    "ja": "📦 ストレージ",
+    "pt": "📦 Armazenamento",
+    "ko": "📦 저장 공간"
+  },
+  "settings.section.storageDesc": {
+    "es": "Qué hay en el disco y qué lo ocupa. Solo lectura: este panel nunca borra nada ni marca nada como recuperable.",
+    "zh": "磁盘上有哪些内容以及各占多少空间。只读：此面板不会删除任何内容，也不会将任何内容标记为可回收。",
+    "ja": "ディスク上にあるものと、その内訳。只読です。このパネルは何も削除せず、再利用可能としてマークすることもありません。",
+    "pt": "O que está no disco e o que ocupa cada item. Somente leitura: este painel nunca exclui nada nem marca nada como recuperável.",
+    "ko": "디스크에 있는 항목과 각각의 사용량입니다. 읽기 전용으로, 이 패널은 무엇도 삭제하지 않으며 재사용 가능으로 표시하지도 않습니다."
+  },
+  "settings.section.hfCacheTitle": {
+    "es": "💾 Caché de Hugging Face",
+    "zh": "💾 Hugging Face 缓存",
+    "ja": "💾 Hugging Face キャッシュ",
+    "pt": "💾 Cache do Hugging Face",
+    "ko": "💾 Hugging Face 캐시"
+  },
+  "settings.section.hfCacheDesc": {
+    "es": "Copia local de cada repositorio de modelos descargado. Borra entradas para recuperar espacio en disco.",
+    "zh": "每个已下载模型仓库的本地副本。清除条目可释放磁盘空间。",
+    "ja": "ダウンロード済みの各モデルリポジトリのローカルコピー。エントリを削除するとディスク容量を回収できます。",
+    "pt": "Cópia local de cada repositório de modelo baixado. Limpe entradas para recuperar espaço em disco.",
+    "ko": "다운로드된 각 모델 저장소의 로컬 복사본. 항목을 지우면 디스크 공간을 회수할 수 있습니다."
+  },
+  "settings.section.secretsTitle": {
+    "es": "🔐 Gestión de secretos",
+    "zh": "🔐 凭据管理",
+    "ja": "🔐 機密情報の管理",
+    "pt": "🔐 Gerenciamento de segredos",
+    "ko": "🔐 비밀 정보 관리"
+  },
+  "settings.section.secretsDescBefore": {
+    "es": "Las claves de API y los tokens los guarda el backend en archivos locales dentro de",
+    "zh": "API 密钥和令牌由后端保存到本地文件，位置为",
+    "ja": "API キーとトークンはバックエンドが以下のローカルファイルに保存します：",
+    "pt": "As chaves de API e os tokens são salvos pelo backend em arquivos locais em",
+    "ko": "API 키와 토큰은 백엔드가 다음 위치의 로컬 파일에 저장합니다:"
+  },
+  "settings.section.secretsDescAfter": {
+    "es": "por ejemplo",
+    "zh": "例如",
+    "ja": "例：",
+    "pt": "por exemplo",
+    "ko": "예:"
+  },
+  "settings.section.secretsDescTail": {
+    "es": "Nunca se envían a los clientes del navegador, nunca se registran en el registro y la API nunca las expone: solo se usan en el servidor para autenticar las peticiones salientes a Civitai / Hugging Face.",
+    "zh": "它们绝不会发送给浏览器客户端，绝不会写入日志，API 也绝不暴露它们 —— 仅在服务端用于向 Civitai / Hugging Face 发出请求时进行身份验证。",
+    "ja": "ブラウザのクライアントには一切送信されず、ログにも記録されず、APIからも公開されません。サーバー上で Civitai / Hugging Face への外向きリクエストを認証するためにのみ使用されます。",
+    "pt": "Nunca são enviadas aos clientes do navegador, nunca são registradas em log e nunca são expostas pela API — são usadas apenas no servidor para autenticar as requisições de saída para Civitai / Hugging Face.",
+    "ko": "브라우저 클라이언트로 전송되지 않고, 로그에 남지 않으며, API로 노출되지도 않습니다. 서버에서 Civitai / Hugging Face로 나가는 요청을 인증하는 데에만 사용됩니다."
+  },
+  "settings.queue.tokenFallback": {
+    "es": "Nota: los repositorios de Hugging Face con acceso restringido también recurren al token guardado en",
+    "zh": "注意：受限的 Hugging Face 仓库也会使用保存在以下位置的令牌：",
+    "ja": "注意：ゲート制限のある Hugging Face リポジトリも以下の保存済みトークンを使用します：",
+    "pt": "Observação: repositórios do Hugging Face com restrição também usam o token salvo em",
+    "ko": "참고: 접근이 제한된 Hugging Face 저장소도 다음 위치에 저장된 토큰을 사용합니다:"
+  },
+  "settings.defaults.artistCredit": {
+    "es": "🖋 Crédito de autor",
+    "zh": "🖋 作者署名",
+    "ja": "🖋 作者クレジット",
+    "pt": "🖋 Crédito do autor",
+    "ko": "🖋 作者 크레딧"
+  },
+  "settings.defaults.artistHint": {
+    "es": "Incrustado en los metadatos EXIF / Civitai de cada imagen generada. Si se deja vacío se usa «DiffusionBear».",
+    "zh": "嵌入到每张生成图像的 EXIF / Civitai 元数据中。留空则使用“DiffusionBear”。",
+    "ja": "生成されたすべての画像の EXIF / Civitai メタデータに埋め込まれます。空の場合は「DiffusionBear」が使われます。",
+    "pt": "Incrustado nos metadados EXIF / Civitai de cada imagem gerada. Se vazio, usa \"DiffusionBear\".",
+    "ko": "생성된 모든 이미지의 EXIF / Civitai 메타데이터에 포함됩니다. 비워 두면 \"DiffusionBear\"을 사용합니다."
+  },
+  "settings.defaults.saveArtist": {
+    "es": "Guardar autor",
+    "zh": "保存作者",
+    "ja": "作者を保存",
+    "pt": "Salvar autor",
+    "ko": "作者 저장"
+  },
+  "settings.defaults.outputFormat": {
+    "es": "Formato de salida predeterminado",
+    "zh": "默认输出格式",
+    "ja": "既定の出力形式",
+    "pt": "Formato de saída padrão",
+    "ko": "기본 출력 형식"
+  },
+  "settings.defaults.formatPng": {
+    "es": "PNG (sin pérdidas)",
+    "zh": "PNG（无损）",
+    "ja": "PNG（可逆圧縮）",
+    "pt": "PNG (sem perdas)",
+    "ko": "PNG(무손실)"
+  },
+  "settings.defaults.formatJpeg": {
+    "es": "JPEG (más ligero)",
+    "zh": "JPEG（体积更小）",
+    "ja": "JPEG（小さい）",
+    "pt": "JPEG (menor)",
+    "ko": "JPEG(더 작음)"
+  },
+  "settings.defaults.stealth": {
+    "es": "🥷 Stealth predeterminado (sin metadatos)",
+    "zh": "默认 🥷 隐匿（无元数据）",
+    "ja": "既定で 🥷 ステルス（メタデータなし）",
+    "pt": "🥷 Stealth padrão (sem metadados)",
+    "ko": "기본 🥷 스텔스(메타데이터 없음)"
+  },
+  "settings.defaults.saveOutput": {
+    "es": "Guardar preferencias de salida",
+    "zh": "保存输出偏好",
+    "ja": "出力設定を保存",
+    "pt": "Salvar preferências de saída",
+    "ko": "출력 환경설정 저장"
+  },
+  "settings.defaults.globalFallbacks": {
+    "es": "◇ Valores de respaldo globales",
+    "zh": "◇ 全局回退值",
+    "ja": "◇ グローバルな既定値",
+    "pt": "◇ Padrões globais",
+    "ko": "◇ 전역 기본값"
+  },
+  "settings.defaults.globalHint": {
+    "es": "Se aplican solo cuando un modelo no tiene un valor explícito propio. Fast-VAE (TAESD/TAEF) sacrifica algo de fidelidad a cambio de una decodificación VAE mucho más rápida.",
+    "zh": "仅当模型没有明确的单模型覆盖值时才使用。Fast-VAE（TAESD/TAEF）牺牲少量保真度，换取快得多的 VAE 解码。",
+    "ja": "モデルに明示的な個別設定がない場合のみ適用されます。Fast-VAE（TAESD/TAEF）はわずかに忠実度を犠牲にして、VAE デコードを大きく高速化します。",
+    "pt": "Aplicados apenas quando um modelo não tem uma substituição explícita própria. Fast-VAE (TAESD/TAEF) troca um pouco de fidelidade por uma decodificação de VAE muito mais rápida.",
+    "ko": "모델에 명시적인 개별 재정의가 없을 때만 적용됩니다. Fast-VAE(TAESD/TAEF)는 약간의 충실도를 양보하는 대신 VAE 디코딩을 훨씬 빠르게 만듭니다."
+  },
+  "settings.defaults.defaultSampler": {
+    "es": "Muestreador predeterminado",
+    "zh": "默认采样器",
+    "ja": "既定のサンプラー",
+    "pt": "Amostrador padrão",
+    "ko": "기본 샘플러"
+  },
+  "settings.defaults.modelDefaultOption": {
+    "es": "(predeterminado del modelo)",
+    "zh": "（模型默认值）",
+    "ja": "（モデルの既定値）",
+    "pt": "(padrão do modelo)",
+    "ko": "(모델 기본값)"
+  },
+  "settings.defaults.deepCacheInterval": {
+    "es": "Intervalo de DeepCache en SDXL",
+    "zh": "SDXL DeepCache 间隔",
+    "ja": "SDXL DeepCache の間隔",
+    "pt": "Intervalo do DeepCache no SDXL",
+    "ko": "SDXL DeepCache 간격"
+  },
+  "settings.defaults.fastVae": {
+    "es": "⚡ VAE rápida (todos los motores)",
+    "zh": "⚡ 快速 VAE（所有引擎）",
+    "ja": "⚡ 高速VAE（すべてのエンジン）",
+    "pt": "⚡ VAE rápida (todos os motores)",
+    "ko": "⚡ 빠른 VAE(모든 엔진)"
+  },
+  "settings.defaults.saveGlobal": {
+    "es": "Guardar los valores globales",
+    "zh": "保存全局默认值",
+    "ja": "グローバル既定値を保存",
+    "pt": "Salvar padrões globais",
+    "ko": "전역 기본값 저장"
+  },
+  "settings.defaults.perModelTitle": {
+    "es": "🎛 Valores predeterminados por modelo",
+    "zh": "🎛 按模型的默认值",
+    "ja": "🎛 モデルごとの既定値",
+    "pt": "🎛 Padrões por modelo",
+    "ko": "🎛 모델별 기본값"
+  },
+  "settings.defaults.perModelHint": {
+    "es": "Se cargan automáticamente al cambiar de modelo en el formulario Generar. Deja un campo en blanco o a 0 para conservar el valor integrado del modelo.",
+    "zh": "在“生成”表单中切换模型时会自动加载。留空或填 0 则保留模型自带值。",
+    "ja": "生成フォームでモデルを切り替えると自動的に読み込まれます。フィールドを空欄または 0 のままにすると、モデルに組み込まれた値を維持します。",
+    "pt": "Carregados automaticamente ao trocar de modelo no formulário Gerar. Deixe um campo em branco ou 0 para manter o valor embutido do modelo.",
+    "ko": "생성 양식에서 모델을 전환할 때 자동으로 로드됩니다. 필드를 비워 두거나 0으로 두면 모델에 내장된 값을 유지합니다."
+  },
+  "settings.defaults.customBadge": {
+    "es": "personalizado ⚙",
+    "zh": "自定义 ⚙",
+    "ja": "カスタム ⚙",
+    "pt": "personalizado ⚙",
+    "ko": "사용자 지정 ⚙"
+  },
+  "settings.defaults.steps": {
+    "es": "Pasos",
+    "zh": "步数",
+    "ja": "ステップ",
+    "pt": "Passos",
+    "ko": "스텝"
+  },
+  "settings.defaults.guidance": {
+    "es": "Guía",
+    "zh": "引导强度",
+    "ja": "ガイダンス",
+    "pt": "Orientação",
+    "ko": "가이던스"
+  },
+  "settings.defaults.sampler": {
+    "es": "Muestreador",
+    "zh": "采样器",
+    "ja": "サンプラー",
+    "pt": "Amostrador",
+    "ko": "샘플러"
+  },
+  "settings.defaults.defaultOption": {
+    "es": "(predeterminado)",
+    "zh": "（默认）",
+    "ja": "（既定）",
+    "pt": "(padrão)",
+    "ko": "(기본값)"
+  },
+  "settings.defaults.deepCacheSdxl": {
+    "es": "DeepCache (SDXL)",
+    "zh": "DeepCache（SDXL）",
+    "ja": "DeepCache（SDXL）",
+    "pt": "DeepCache (SDXL)",
+    "ko": "DeepCache(SDXL)"
+  },
+  "settings.defaults.fastVaeShort": {
+    "es": "Fast-VAE",
+    "zh": "Fast-VAE",
+    "ja": "Fast-VAE",
+    "pt": "Fast-VAE",
+    "ko": "Fast-VAE"
+  },
+  "settings.defaults.width": {
+    "es": "Ancho",
+    "zh": "宽度",
+    "ja": "幅",
+    "pt": "Largura",
+    "ko": "너비"
+  },
+  "settings.defaults.height": {
+    "es": "Altura",
+    "zh": "高度",
+    "ja": "高さ",
+    "pt": "Altura",
+    "ko": "높이"
+  },
+  "settings.defaults.defaultPlaceholder": {
+    "es": "predeterminado",
+    "zh": "默认",
+    "ja": "既定",
+    "pt": "padrão",
+    "ko": "기본값"
+  },
+  "settings.defaults.saveForModel": {
+    "es": "Guardar los valores de este modelo",
+    "zh": "保存此模型的默认值",
+    "ja": "このモデルの既定値を保存",
+    "pt": "Salvar os padrões deste modelo",
+    "ko": "이 모델의 기본값 저장"
+  },
+  "settings.defaults.resetFeedback": {
+    "es": "Valores del modelo restablecidos",
+    "zh": "已重置模型默认值",
+    "ja": "モデルの既定値をリセットしました",
+    "pt": "Padrões do modelo redefinidos",
+    "ko": "모델 기본값이 초기화되었습니다"
+  },
+  "settings.defaults.resetBuiltin": {
+    "es": "Restablecer a los valores integrados",
+    "zh": "恢复为内置值",
+    "ja": "組み込み値にリセット",
+    "pt": "Redefinir para os valores embutidos",
+    "ko": "내장 값으로 초기화"
+  },
+  "settings.defaults.savedFeedback": {
+    "es": "Preferencias guardadas",
+    "zh": "偏好已保存",
+    "ja": "設定を保存しました",
+    "pt": "Preferências salvas",
+    "ko": "환경설정이 저장되었습니다"
+  },
+  "settings.engine.tuningNumbersError": {
+    "es": "Todos los valores de ajuste deben ser números (0 desactiva).",
+    "zh": "所有调优值必须是数字（0 表示禁用）。",
+    "ja": "チューニング値はすべて数値である必要があります（0 は無効化）。",
+    "pt": "Todos os valores de ajuste devem ser números (0 desativa).",
+    "ko": "모든 조정 값은 숫자여야 합니다(0은 비활성화)."
+  },
+  "settings.engine.tuningRangeError": {
+    "es": "Los valores deben ser ≥ 0.",
+    "zh": "数值必须 ≥ 0。",
+    "ja": "値は 0 以上である必要があります。",
+    "pt": "Os valores devem ser ≥ 0.",
+    "ko": "값은 0 이상이어야 합니다."
+  },
+  "settings.engine.loading": {
+    "es": "Cargando el estado del motor…",
+    "zh": "正在加载引擎状态……",
+    "ja": "エンジンの状態を読み込み中…",
+    "pt": "Carregando o status do motor…",
+    "ko": "엔진 상태를 불러오는 중…"
+  },
+  "settings.engine.metalCard": {
+    "es": "🖥 Metal / GPU",
+    "zh": "🖥 Metal / GPU",
+    "ja": "🖥 Metal / GPU",
+    "pt": "🖥 Metal / GPU",
+    "ko": "🖥 Metal / GPU"
+  },
+  "settings.engine.gaugeGpu": {
+    "es": "GPU",
+    "zh": "GPU",
+    "ja": "GPU",
+    "pt": "GPU",
+    "ko": "GPU"
+  },
+  "settings.engine.gaugeMemory": {
+    "es": "Memoria",
+    "zh": "内存",
+    "ja": "メモリ",
+    "pt": "Memória",
+    "ko": "메모리"
+  },
+  "settings.engine.gaugeMaxWorkingSet": {
+    "es": "Conjunto de trabajo máx.",
+    "zh": "最大工作集",
+    "ja": "最大ワーキングセット",
+    "pt": "Conjunto de trabalho máx.",
+    "ko": "최대 작업 세트"
+  },
+  "settings.engine.gaugePeakMemory": {
+    "es": "Memoria máxima",
+    "zh": "峰值内存",
+    "ja": "ピークメモリ",
+    "pt": "Memória de pico",
+    "ko": "최대 메모리"
+  },
+  "settings.engine.peakMemoryTitle": {
+    "es": "Máxima memoria conectada alcanzada en esta sesión",
+    "zh": "本次会话达到的连线内存峰值",
+    "ja": "このセッションで到達したワイドメモリの最大値",
+    "pt": "Maior memória conectada atingida nesta sessão",
+    "ko": "이번 세션에서 도달한 최대 유선 메모리"
+  },
+  "settings.engine.gaugeCache": {
+    "es": "Caché",
+    "zh": "缓存",
+    "ja": "キャッシュ",
+    "pt": "Cache",
+    "ko": "캐시"
+  },
+  "settings.engine.cacheTitle": {
+    "es": "caché del asignador de mlx",
+    "zh": "mlx 分配器缓存",
+    "ja": "mlx アロケーターのキャッシュ",
+    "pt": "cache do alocador do mlx",
+    "ko": "mlx 할당기 캐시"
+  },
+  "settings.engine.gaugeWiredLimit": {
+    "es": "Límite conectado",
+    "zh": "连线内存上限",
+    "ja": "ワイドメモリ上限",
+    "pt": "Limite conectado",
+    "ko": "유선 메모리 한도"
+  },
+  "settings.engine.gaugeKreaWired": {
+    "es": "krea2 conectado",
+    "zh": "krea2 连线内存",
+    "ja": "krea2 ワイドメモリ",
+    "pt": "krea2 conectado",
+    "ko": "krea2 유선 메모리"
+  },
+  "settings.engine.unbounded": {
+    "es": "sin límite",
+    "zh": "无限制",
+    "ja": "無制限",
+    "pt": "sem limite",
+    "ko": "무제한"
+  },
+  "settings.engine.mfluxCard": {
+    "es": "⚡ Canalizaciones de mflux",
+    "zh": "⚡ mflux 管线",
+    "ja": "⚡ mflux パイプライン",
+    "pt": "⚡ Pipelines do mflux",
+    "ko": "⚡ mflux 파이프라인"
+  },
+  "settings.engine.modelFallback": {
+    "es": "modelo",
+    "zh": "模型",
+    "ja": "モデル",
+    "pt": "modelo",
+    "ko": "모델"
+  },
+  "settings.engine.residentInMemory": {
+    "es": "residente en la memoria unificada",
+    "zh": "常驻于统一内存",
+    "ja": "ユニファイドメモリに常駐",
+    "pt": "residente na memória unificada",
+    "ko": "통합 메모리에 상주"
+  },
+  "settings.engine.autoReleaseIn": {
+    "es": "liberación automática en {time}",
+    "zh": "{time} 后自动释放",
+    "ja": "{time} 後に自動解放",
+    "pt": "liberação automática em {time}",
+    "ko": "{time} 후 자동 해제"
+  },
+  "settings.engine.noPipelineResident": {
+    "es": "Ninguna canalización residente (recarga en frío en la próxima generación)",
+    "zh": "没有常驻管线（下次生成时冷加载）",
+    "ja": "常駐中のパイプラインなし（次回の生成でコールドロード）",
+    "pt": "Nenhum pipeline residente (recarregamento a frio na próxima geração)",
+    "ko": "상주 중인 파이프라인 없음(다음 생성 시 콜드 로드)"
+  },
+  "settings.engine.gaugeIdlePolicy": {
+    "es": "Política de inactividad",
+    "zh": "空闲策略",
+    "ja": "アイドル方針",
+    "pt": "Política de inatividade",
+    "ko": "유휴 정책"
+  },
+  "settings.engine.gaugePromptCache": {
+    "es": "Caché de indicaciones",
+    "zh": "提示词缓存",
+    "ja": "プロンプトキャッシュ",
+    "pt": "Cache de prompts",
+    "ko": "프롬프트 캐시"
+  },
+  "settings.engine.gaugeWatchdog": {
+    "es": "Vigilante",
+    "zh": "看门狗",
+    "ja": "ウォッチドッグ",
+    "pt": "Watchdog",
+    "ko": "워치독"
+  },
+  "settings.engine.armed": {
+    "es": "armado",
+    "zh": "已启用",
+    "ja": "復帰中",
+    "pt": "armado",
+    "ko": "준비됨"
+  },
+  "settings.engine.cold": {
+    "es": "en frío",
+    "zh": "冷态",
+    "ja": "コールド",
+    "pt": "a frio",
+    "ko": "콜드"
+  },
+  "settings.engine.sdxlCard": {
+    "es": "🧵 Demonio de SDXL",
+    "zh": "🧵 SDXL 守护进程",
+    "ja": "🧵 SDXL デーモン",
+    "pt": "🧵 Daemon do SDXL",
+    "ko": "🧵 SDXL 데몬"
+  },
+  "settings.engine.engineFallback": {
+    "es": "motor",
+    "zh": "引擎",
+    "ja": "エンジン",
+    "pt": "motor",
+    "ko": "엔진"
+  },
+  "settings.engine.alive": {
+    "es": "activo",
+    "zh": "运行中",
+    "ja": "稼働中",
+    "pt": "ativo",
+    "ko": "활성"
+  },
+  "settings.engine.daemonNotRunning": {
+    "es": "Demonio no en marcha (se inicia bajo demanda)",
+    "zh": "守护进程未运行（按需启动）",
+    "ja": "デーモン未稼働（必要時に起動します）",
+    "pt": "Daemon não em execução (iniciado sob demanda)",
+    "ko": "데몬이 실행 중이 아님(필요할 때 시작됨)"
+  },
+  "settings.engine.hideDaemonLog": {
+    "es": "Ocultar el registro del demonio",
+    "zh": "隐藏守护进程日志",
+    "ja": "デーモンログを隠す",
+    "pt": "Ocultar o log do daemon",
+    "ko": "데몬 로그 숨기기"
+  },
+  "settings.engine.showDaemonLog": {
+    "es": "Final del registro del demonio",
+    "zh": "守护进程日志末尾",
+    "ja": "デーモンログの末尾",
+    "pt": "Final do log do daemon",
+    "ko": "데몬 로그 끝부분"
+  },
+  "settings.engine.tuningCard": {
+    "es": "⚙️ Ajuste del tiempo de ejecución",
+    "zh": "⚙️ 运行时调优",
+    "ja": "⚙️ ランタイムチューニング",
+    "pt": "⚙️ Ajuste do runtime",
+    "ko": "⚙️ 런타임 조정"
+  },
+  "settings.engine.tuningNote": {
+    "es": "Los valores guardados se aplican en la siguiente generación (o en la siguiente rearmación por inactividad) sin reiniciar nada.",
+    "zh": "保存的值会在下次生成（或下次空闲重新启用）时生效，无需重启任何组件。",
+    "ja": "保存した値は、次回の生成時（または次回のアイドル復帰時）に適用され、再起動は不要です。",
+    "pt": "Os valores salvos entram em vigor na próxima geração (ou no próximo rearme por inatividade), sem reiniciar nada.",
+    "ko": "저장한 값은 다음 생성(또는 다음 유휴 재활성화) 시 적용되며, 재시작이 필요 없습니다."
+  },
+  "settings.engine.tuneWired": {
+    "es": "Límite conectado",
+    "zh": "连线内存上限",
+    "ja": "ワイドメモリ上限",
+    "pt": "Limite conectado",
+    "ko": "유선 메모리 한도"
+  },
+  "settings.engine.tuneWiredTitle": {
+    "es": "Límite de memoria conectada del asignador de Metal para FLUX.2 / SDXL (MLX_WIRED_LIMIT_GB). 0 = sin límite.",
+    "zh": "FLUX.2 / SDXL 的 Metal 分配器连线内存上限（MLX_WIRED_LIMIT_GB）。0 = 无限制。",
+    "ja": "FLUX.2 / SDXL の Metal アロケーターのワイドメモリ上限（MLX_WIRED_LIMIT_GB）。0 = 無制限。",
+    "pt": "Limite de memória conectada do alocador do Metal para FLUX.2 / SDXL (MLX_WIRED_LIMIT_GB). 0 = sem limite.",
+    "ko": "FLUX.2 / SDXL의 Metal 할당기 유선 메모리 한도(MLX_WIRED_LIMIT_GB). 0 = 무제한."
+  },
+  "settings.engine.tuneKrea": {
+    "es": "krea2 conectado",
+    "zh": "krea2 连线内存",
+    "ja": "krea2 ワイドメモリ",
+    "pt": "krea2 conectado",
+    "ko": "krea2 유선 메모리"
+  },
+  "settings.engine.tuneKreaTitle": {
+    "es": "Presupuesto de memoria conectada de krea2 (13B q4) (MLX_KREA_WIRED_LIMIT_GB). 0 = sin límite.",
+    "zh": "krea2（13B q4）的连线内存预算（MLX_KREA_WIRED_LIMIT_GB）。0 = 无限制。",
+    "ja": "krea2（13B q4）のワイドメモリ予算（MLX_KREA_WIRED_LIMIT_GB）。0 = 無制限。",
+    "pt": "Orçamento de memória conectada do krea2 (13B q4) (MLX_KREA_WIRED_LIMIT_GB). 0 = sem limite.",
+    "ko": "krea2(13B q4) 유선 메모리 예산(MLX_KREA_WIRED_LIMIT_GB). 0 = 무제한."
+  },
+  "settings.engine.tuneMfluxIdle": {
+    "es": "inactividad de mflux",
+    "zh": "mflux 空闲",
+    "ja": "mflux アイドル",
+    "pt": "inatividade do mflux",
+    "ko": "mflux 유휴"
+  },
+  "settings.engine.tuneMfluxIdleTitle": {
+    "es": "Segundos de inactividad antes de liberar automáticamente la canalización de mflux. 0 = mantenerla residente.",
+    "zh": "自动释放 mflux 管线前的空闲秒数。0 = 保持常驻。",
+    "ja": "mflux パイプラインを自動解放するまでのアイドル秒数。0 = 常駐を維持。",
+    "pt": "Segundos de inatividade antes de liberar o pipeline do mflux. 0 = manter residente.",
+    "ko": "mflux 파이프라인을 자동 해제하기 전 유휴 시간(초). 0 = 상주 유지."
+  },
+  "settings.engine.tuneSdxlIdle": {
+    "es": "inactividad de sdxl",
+    "zh": "sdxl 空闲",
+    "ja": "sdxl アイドル",
+    "pt": "inatividade do sdxl",
+    "ko": "sdxl 유휴"
+  },
+  "settings.engine.tuneSdxlIdleTitle": {
+    "es": "Segundos de inactividad antes de cerrar el demonio de SDXL. 0 = mantenerlo activo.",
+    "zh": "关闭 SDXL 守护进程前的空闲秒数。0 = 保持运行。",
+    "ja": "SDXL デーモンを終了するまでのアイドル秒数。0 = 稼働を維持。",
+    "pt": "Segundos de inatividade antes de encerrar o daemon do SDXL. 0 = manter ativo.",
+    "ko": "SDXL 데몬을 종료하기 전 유휴 시간(초). 0 = 활성 유지."
+  },
+  "settings.engine.tuneQwenIdle": {
+    "es": "inactividad de qwen",
+    "zh": "qwen 空闲",
+    "ja": "qwen アイドル",
+    "pt": "inatividade do qwen",
+    "ko": "qwen 유휴"
+  },
+  "settings.engine.tuneQwenIdleTitle": {
+    "es": "Segundos de inactividad antes de cerrar el demonio de Qwen. 0 = mantenerlo activo.",
+    "zh": "关闭 Qwen 守护进程前的空闲秒数。0 = 保持运行。",
+    "ja": "Qwen デーモンを終了するまでのアイドル秒数。0 = 稼働を維持。",
+    "pt": "Segundos de inatividade antes de encerrar o daemon do Qwen. 0 = manter ativo.",
+    "ko": "Qwen 데몬을 종료하기 전 유휴 시간(초). 0 = 활성 유지."
+  },
+  "settings.engine.saving": {
+    "es": "Guardando…",
+    "zh": "保存中……",
+    "ja": "保存中…",
+    "pt": "Salvando…",
+    "ko": "저장 중…"
+  },
+  "settings.engine.save": {
+    "es": "Guardar",
+    "zh": "保存",
+    "ja": "保存",
+    "pt": "Salvar",
+    "ko": "저장"
+  },
+  "settings.engine.saved": {
+    "es": "Guardado ✓",
+    "zh": "已保存 ✓",
+    "ja": "保存しました ✓",
+    "pt": "Salvo ✓",
+    "ko": "저장됨 ✓"
+  },
+  "settings.engine.zeroHint": {
+    "es": "0 = desactivado / nunca se libera automáticamente",
+    "zh": "0 = 禁用 / 永不自动释放",
+    "ja": "0 = 無効 / 自動解放しない",
+    "pt": "0 = desativado / nunca liberar automaticamente",
+    "ko": "0 = 비활성화 / 자동 해제 안 함"
+  },
+  "settings.engine.storageCard": {
+    "es": "💾 Almacenamiento",
+    "zh": "💾 存储",
+    "ja": "💾 ストレージ",
+    "pt": "💾 Armazenamento",
+    "ko": "💾 저장 공간"
+  },
+  "settings.engine.gaugeGenerated": {
+    "es": "Generadas",
+    "zh": "已生成",
+    "ja": "生成済み",
+    "pt": "Geradas",
+    "ko": "생성됨"
+  },
+  "settings.engine.imagesCount": {
+    "es": "{count} imágenes",
+    "zh": "{count} 张图像",
+    "ja": "{count} 枚",
+    "pt": "{count} imagens",
+    "ko": "이미지 {count}장"
+  },
+  "settings.engine.gaugeSize": {
+    "es": "Tamaño",
+    "zh": "大小",
+    "ja": "サイズ",
+    "pt": "Tamanho",
+    "ko": "크기"
+  },
+  "settings.engine.gaugeTaef": {
+    "es": "TAEF",
+    "zh": "TAEF",
+    "ja": "TAEF",
+    "pt": "TAEF",
+    "ko": "TAEF"
+  },
+  "settings.engine.noneLoaded": {
+    "es": "ninguno cargado",
+    "zh": "未加载",
+    "ja": "未読み込み",
+    "pt": "nenhum carregado",
+    "ko": "로드되지 않음"
+  },
+  "settings.engine.gaugeSettingsFile": {
+    "es": "Archivo de configuración",
+    "zh": "设置文件",
+    "ja": "設定ファイル",
+    "pt": "Arquivo de configurações",
+    "ko": "설정 파일"
+  },
+  "settings.engine.present": {
+    "es": "presente",
+    "zh": "存在",
+    "ja": "あり",
+    "pt": "presente",
+    "ko": "있음"
+  },
+  "settings.engine.absent": {
+    "es": "ausente",
+    "zh": "不存在",
+    "ja": "なし",
+    "pt": "ausente",
+    "ko": "없음"
+  },
+  "settings.engine.now": {
+    "es": "ahora",
+    "zh": "当前",
+    "ja": "現在",
+    "pt": "agora",
+    "ko": "지금"
+  },
+  "settings.models.loading": {
+    "es": "Cargando el registro de modelos…",
+    "zh": "正在加载模型注册表……",
+    "ja": "モデルレジストリを読み込み中…",
+    "pt": "Carregando o registro de modelos…",
+    "ko": "모델 레지스트리 불러오는 중…"
+  },
+  "settings.models.colModel": {
+    "es": "Modelo",
+    "zh": "模型",
+    "ja": "モデル",
+    "pt": "Modelo",
+    "ko": "모델"
+  },
+  "settings.models.colState": {
+    "es": "Estado",
+    "zh": "状态",
+    "ja": "状態",
+    "pt": "Estado",
+    "ko": "상태"
+  },
+  "settings.models.colOnDisk": {
+    "es": "En disco",
+    "zh": "磁盘占用",
+    "ja": "ディスク上",
+    "pt": "Em disco",
+    "ko": "디스크 사용"
+  },
+  "settings.models.colActions": {
+    "es": "Acciones",
+    "zh": "操作",
+    "ja": "操作",
+    "pt": "Ações",
+    "ko": "작업"
+  },
+  "settings.models.installed": {
+    "es": "✓ instalado",
+    "zh": "✓ 已安装",
+    "ja": "✓ インストール済み",
+    "pt": "✓ instalado",
+    "ko": "✓ 설치됨"
+  },
+  "settings.models.notInstalled": {
+    "es": "no instalado",
+    "zh": "未安装",
+    "ja": "未インストール",
+    "pt": "não instalado",
+    "ko": "설치되지 않음"
+  },
+  "settings.models.customDefaults": {
+    "es": "valores personalizados",
+    "zh": "自定义默认值",
+    "ja": "カスタム既定値",
+    "pt": "padrões personalizados",
+    "ko": "사용자 지정 기본값"
+  },
+  "settings.models.removeTitle": {
+    "es": "Eliminar los pesos del disco (protección: se niega durante la generación o la descarga)",
+    "zh": "从磁盘删除权重（有保护：生成或下载期间拒绝执行）",
+    "ja": "ディスクから重みを削除（保護：生成・ダウンロード中は拒否されます）",
+    "pt": "Remover os pesos do disco (proteção: recusa durante a geração ou o download)",
+    "ko": "디스크에서 가중치 삭제(보호: 생성 또는 다운로드 중에는 거부됨)"
+  },
+  "settings.models.deleting": {
+    "es": "Eliminando…",
+    "zh": "正在删除……",
+    "ja": "削除中…",
+    "pt": "Removendo…",
+    "ko": "삭제 중…"
+  },
+  "settings.models.unlinkPath": {
+    "es": "🔗 Desvincular la ruta",
+    "zh": "🔗 取消路径关联",
+    "ja": "🔗 パスのリンクを解除",
+    "pt": "🔗 Desvincular o caminho",
+    "ko": "🔗 경로 연결 해제"
+  },
+  "settings.models.remove": {
+    "es": "🗑 Eliminar",
+    "zh": "🗑 删除",
+    "ja": "🗑 削除",
+    "pt": "🗑 Remover",
+    "ko": "🗑 제거"
+  },
+  "settings.models.confirmUnlink": {
+    "es": "¿desvincular la ruta local configurada para «{model}» (los archivos permanecen en el disco)?\n\nPuedes volver a descargarlo más tarde desde la pestaña Generar.",
+    "zh": "要取消“{model}”已配置的本地路径关联吗（文件仍保留在磁盘上）？\n\n你可以稍后在“生成”标签页重新下载。",
+    "ja": "「{model}」に設定されたローカルパスのリンクを解除しますか（ファイルはディスクに残ります）？\n\n後で「生成」タブから再ダウンロードできます。",
+    "pt": "Desvincular o caminho local configurado para \"{model}\" (os arquivos permanecem no disco)?\n\nVocê pode baixá-lo novamente depois na aba Gerar.",
+    "ko": "\"{model}\"에 설정된 로컬 경로의 연결을 해제할까요?(파일은 디스크에 남습니다)\n\n나중에 생성 탭에서 다시 다운로드할 수 있습니다."
+  },
+  "settings.models.confirmRemove": {
+    "es": "¿eliminar del disco los pesos gestionados de «{model}»?\n\nPuedes volver a descargarlo más tarde desde la pestaña Generar.",
+    "zh": "要从磁盘删除“{model}”的托管权重吗？\n\n你可以稍后在“生成”标签页重新下载。",
+    "ja": "「{model}」の管理されている重みをディスクから削除しますか？\n\n後で「生成」タブから再ダウンロードできます。",
+    "pt": "Remover do disco os pesos gerenciados de \"{model}\"?\n\nVocê pode baixá-lo novamente depois na aba Gerar.",
+    "ko": "\"{model}\"의 관리되는 가중치를 디스크에서 삭제할까요?\n\n나중에 생성 탭에서 다시 다운로드할 수 있습니다."
+  },
+  "settings.engine.autoDerived": {
+    "es": "Automático ({gb} GB derivado)",
+    "zh": "自动（派生 {gb} GB）",
+    "ja": "自動（推定 {gb} GB）",
+    "pt": "Automático ({gb} GB derivado)",
+    "ko": "자동（{gb} GB 근낼）"
+  }
+}

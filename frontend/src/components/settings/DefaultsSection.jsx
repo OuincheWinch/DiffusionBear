@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "../../i18n/I18nContext";
 
 const SAMPLER_NAMES = [
   "euler_trailing",
@@ -10,6 +11,7 @@ const SAMPLER_NAMES = [
 ];
 
 export default function DefaultsSection({ settings, models, update, onFeedback }) {
+  const { t } = useI18n();
   const [artistName, setArtistName] = useState("");
   const [outputFormat, setOutputFormat] = useState("png");
   const [stealth, setStealth] = useState(false);
@@ -63,7 +65,7 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
     setSaving(true);
     try {
       await update(updates);
-      onFeedback?.({ type: "success", text: "Preferences saved" });
+      onFeedback?.({ type: "success", text: t("settings.defaults.savedFeedback") });
     } catch (e) {
       onFeedback?.({ type: "error", text: e.message || String(e) });
     } finally {
@@ -80,17 +82,14 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
     <>
       <div className="settings-row">
         <label className="settings-label">
-          <span className="settings-field-title">🖋 Artist credit</span>
-          <span className="settings-hint">
-            Embedded in EXIF / Civitai metadata of every generated image. Empty
-            uses &quot;MLX-DIFFUSION&quot;.
-          </span>
+          <span className="settings-field-title">{t("settings.defaults.artistCredit")}</span>
+          <span className="settings-hint">{t("settings.defaults.artistHint")}</span>
           <div className="settings-inline">
             <input
               type="text"
               value={artistName}
               onChange={(e) => setArtistName(e.target.value)}
-              placeholder="MLX-DIFFUSION"
+              placeholder="DiffusionBear"
               maxLength={200}
             />
             <button
@@ -99,29 +98,36 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
               disabled={saving}
               onClick={() => save({ artist_name: artistName.trim() })}
             >
-              Save artist
+              {t("settings.defaults.saveArtist")}
             </button>
           </div>
         </label>
 
-        <div className="settings-grid">
+        <div className="settings-inline settings-inline--split">
           <label className="settings-field">
-            <span>Default output format</span>
+            <span className="settings-label">{t("settings.defaults.outputFormat")}</span>
             <select
               value={outputFormat}
               onChange={(e) => setOutputFormat(e.target.value)}
             >
-              <option value="png">PNG (lossless)</option>
-              <option value="jpeg">JPEG (smaller)</option>
+              <option value="png">{t("settings.defaults.formatPng")}</option>
+              <option value="jpeg">{t("settings.defaults.formatJpeg")}</option>
             </select>
           </label>
-          <label className="settings-field settings-check">
+          {/* role="switch" rather than a bare checkbox: stealth metadata is an
+              on/off engine behaviour and should be announced as one. The label
+              wraps both, so the whole row is the pointer target rather than a
+              1rem box. */}
+          <label className="settings-check">
             <input
               type="checkbox"
+              className="settings-checkbox"
+              role="switch"
+              className="settings-checkbox"
               checked={stealth}
               onChange={(e) => setStealth(e.target.checked)}
             />
-            <span>Default 🥷 Stealth (no metadata)</span>
+            <span>{t("settings.defaults.stealth")}</span>
           </label>
         </div>
         <div className="settings-actions">
@@ -136,22 +142,19 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
               })
             }
           >
-            Save output preferences
+            {t("settings.defaults.saveOutput")}
           </button>
         </div>
       </div>
 
       <div className="settings-row">
-        <span className="settings-field-title">◇ Global fallbacks</span>
-        <span className="settings-hint">
-          Applied only when a model has no explicit per-model override. Fast-VAE
-          (TAESD/TAEF) trades a little fidelity for much faster VAE decoding.
-        </span>
+        <span className="settings-field-title">{t("settings.defaults.globalFallbacks")}</span>
+        <span className="settings-hint">{t("settings.defaults.globalHint")}</span>
         <div className="settings-grid">
           <label className="settings-field">
-            <span>Default sampler</span>
+            <span>{t("settings.defaults.defaultSampler")}</span>
             <select value={sampler} onChange={(e) => setSampler(e.target.value)}>
-              <option value="">(model default)</option>
+              <option value="">{t("settings.defaults.modelDefaultOption")}</option>
               {SAMPLER_NAMES.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -160,7 +163,7 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
             </select>
           </label>
           <label className="settings-field">
-            <span>SDXL DeepCache interval</span>
+            <span>{t("settings.defaults.deepCacheInterval")}</span>
             <input
               type="number"
               min={1}
@@ -169,13 +172,14 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
               onChange={(e) => setCacheInterval(Number(e.target.value))}
             />
           </label>
-          <label className="settings-field settings-check">
+          <label className="settings-check">
             <input
               type="checkbox"
+              className="settings-checkbox"
               checked={fastVae}
               onChange={(e) => setFastVae(e.target.checked)}
             />
-            <span>⚡ Fast VAE (all engines)</span>
+            <span>{t("settings.defaults.fastVae")}</span>
           </label>
         </div>
         <div className="settings-actions">
@@ -191,17 +195,14 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
               })
             }
           >
-            Save global defaults
+            {t("settings.defaults.saveGlobal")}
           </button>
         </div>
       </div>
 
       <div className="settings-row">
-        <span className="settings-field-title">🎛 Per-model defaults</span>
-        <span className="settings-hint">
-          Overrides loaded automatically when you switch models in the Generate
-          form. Leave a field blank / 0 to keep the model&apos;s built-in value.
-        </span>
+        <span className="settings-field-title">{t("settings.defaults.perModelTitle")}</span>
+        <span className="settings-hint">{t("settings.defaults.perModelHint")}</span>
         <div className="settings-inline">
           <select value={selModel} onChange={(e) => setSelModel(e.target.value)}>
             {availableModels.map((m) => (
@@ -211,14 +212,14 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
             ))}
           </select>
           {currentDefaults && Object.keys(currentDefaults).length > 0 && (
-            <span className="settings-badge">custom ⚙</span>
+            <span className="settings-badge">{t("settings.defaults.customBadge")}</span>
           )}
         </div>
         {selModelMeta && (
           <>
             <div className="settings-grid settings-grid-3">
               <label className="settings-field">
-                <span>Steps</span>
+                <span>{t("settings.defaults.steps")}</span>
                 <input
                   type="number"
                   min={1}
@@ -229,7 +230,7 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
                 />
               </label>
               <label className="settings-field">
-                <span>Guidance</span>
+                <span>{t("settings.defaults.guidance")}</span>
                 <input
                   type="number"
                   step={0.5}
@@ -241,12 +242,12 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
                 />
               </label>
               <label className="settings-field">
-                <span>Sampler</span>
+                <span>{t("settings.defaults.sampler")}</span>
                 <select
                   value={draft.sampler || ""}
                   onChange={(e) => setDraft({ ...draft, sampler: e.target.value })}
                 >
-                  <option value="">(default)</option>
+                  <option value="">{t("settings.defaults.defaultOption")}</option>
                   {(selModelMeta.samplers || SAMPLER_NAMES).map((s) => (
                     <option key={s} value={s}>
                       {s}
@@ -255,7 +256,7 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
                 </select>
               </label>
               <label className="settings-field">
-                <span>DeepCache (SDXL)</span>
+                <span>{t("settings.defaults.deepCacheSdxl")}</span>
                 <input
                   type="number"
                   min={1}
@@ -267,35 +268,43 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
                   }
                 />
               </label>
-              <label className="settings-field settings-check">
-                <input
-                  type="checkbox"
-                  checked={!!draft.fast_vae}
-                  onChange={(e) => setDraft({ ...draft, fast_vae: e.target.checked })}
-                />
-                <span>Fast-VAE</span>
+              <label className="settings-field settings-field--check">
+                {/* An empty label slot. The other cells in this row carry a label
+                    above their control; without one this checkbox sat a full line
+                    higher than its neighbours and read as a stray box. The slot is
+                    aria-hidden because the real label is the text beside the box. */}
+                <span className="settings-label" aria-hidden="true" />
+                <span className="settings-check">
+                  <input
+                    type="checkbox"
+                    className="settings-checkbox"
+                    checked={!!draft.fast_vae}
+                    onChange={(e) => setDraft({ ...draft, fast_vae: e.target.checked })}
+                  />
+                  <span>{t("settings.defaults.fastVaeShort")}</span>
+                </span>
               </label>
               <label className="settings-field">
-                <span>Width</span>
+                <span>{t("settings.defaults.width")}</span>
                 <input
                   type="number"
                   min={128}
                   max={4096}
                   step={64}
                   value={draft.width || ""}
-                  placeholder="default"
+                  placeholder={t("settings.defaults.defaultPlaceholder")}
                   onChange={(e) => setDraft({ ...draft, width: Number(e.target.value) })}
                 />
               </label>
               <label className="settings-field">
-                <span>Height</span>
+                <span>{t("settings.defaults.height")}</span>
                 <input
                   type="number"
                   min={128}
                   max={4096}
                   step={64}
                   value={draft.height || ""}
-                  placeholder="default"
+                  placeholder={t("settings.defaults.defaultPlaceholder")}
                   onChange={(e) => setDraft({ ...draft, height: Number(e.target.value) })}
                 />
               </label>
@@ -317,7 +326,7 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
                   save({ model_defaults: { [selModel]: overrides } });
                 }}
               >
-                Save defaults for this model
+                {t("settings.defaults.saveForModel")}
               </button>
               {currentDefaults && Object.keys(currentDefaults).length > 0 && (
                 <button
@@ -327,13 +336,13 @@ export default function DefaultsSection({ settings, models, update, onFeedback }
                   onClick={async () => {
                     try {
                       await update({ model_defaults: { [selModel]: {} } });
-                      onFeedback?.({ type: "success", text: "Model defaults reset" });
+                      onFeedback?.({ type: "success", text: t("settings.defaults.resetFeedback") });
                     } catch (e) {
                       onFeedback?.({ type: "error", text: e.message || String(e) });
                     }
                   }}
                 >
-                  Reset to built-in
+                  {t("settings.defaults.resetBuiltin")}
                 </button>
               )}
             </div>

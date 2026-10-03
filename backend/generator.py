@@ -10,6 +10,7 @@ import select
 import signal
 import subprocess
 import sys
+import traceback
 import threading
 import time
 import uuid
@@ -53,6 +54,50 @@ try:
     _mflux_img_util.ImageUtil._to_numpy = _safe_mflux_to_numpy
 except Exception as _patch_err:
     print(f"[generator] WARN failed to patch ImageUtil._to_numpy: {_patch_err}", flush=True)
+
+# Second layer, added after the 2026-10-02 abort.
+#
+# The patch above only protects ImageUtil._to_numpy, and the backend still died with
+# SIGABRT. The crash report is unambiguous about the mechanism:
+#
+#   mlx::core::eval_impl -> mlx::core::array::eval -> _PyManagedBuffer_FromObject
+#     -> numpy PyArray_FromAny -> numpy array_array
+#
+# i.e. numpy pulled the buffer protocol off an MLX array. pybind11's exception
+# translator only wraps Python->C calls, so a Metal error raised inside a C callback
+# that numpy invokes escapes it entirely and hits std::terminate() -> abort(). Asking
+# for 40GB directly demonstrates both halves of this, in a subprocess:
+#
+#   mx.eval(x) in Python scope -> RuntimeError (catchable)
+#   np.array(x) un-evaluated    -> SIGABRT (process gone)
+#
+# so the fix is to make sure eval happens in Python scope first. Measured independently,
+# and the distinction is the whole point: it is not a heuristic.
+#
+# This wrapper applies that rule to EVERY np.array() call in the process rather than one
+# known call site, because the 2026-10-02 crash proves the offending call site is not
+# ImageUtil._to_numpy and we have not identified it yet. It also prints the caller's
+# stack when it fires, so the first real occurrence names the culprit instead of
+# leaving us guessing again.
+try:
+    import mlx.core as _mx_for_np_guard
+
+    _orig_np_array = np.array
+
+    def _np_array_eval_guard(obj, *args, **kwargs):
+        if type(obj).__module__.split(".")[0] == "mlx":
+            # Force evaluation in Python scope while we can still catch the error.
+            _mx_for_np_guard.eval(obj)
+            print(
+                "[generator] mlx->numpy conversion outside ImageUtil._to_numpy:\n"
+                + "".join(traceback.format_stack()[-8:]),
+                flush=True,
+            )
+        return _orig_np_array(obj, *args, **kwargs)
+
+    np.array = _np_array_eval_guard
+except Exception as _guard_err:
+    print(f"[generator] WARN np.array eval guard not installed: {_guard_err}", flush=True)
 
 try:
     from mflux.models.krea2 import Krea2
@@ -124,7 +169,10 @@ MODELS = {
         "civitai_version_name": "4-bit",
         "sha256": "D9055F16B1",
         "ecosystem": "FLUX.2",
+        "is_distilled": True,
         "default_steps": 4,
+        "default_width": 512,
+        "default_height": 768,
         "default_guidance": 1.0,
         "supports_guidance": True,
         "supports_negative": False,
@@ -135,9 +183,9 @@ MODELS = {
         "supports_fast_vae": True,
         "lora_format": "FLUX.2",
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft (512×768)", "width": 512, "height": 768, "steps": 4},
-            {"id": "fast", "label": "⚡ Fast (~90s)", "width": 768, "height": 768, "steps": 4},
-            {"id": "quality", "label": "✦ Quality (~2.5min)", "width": 1024, "height": 1024, "steps": 4},
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 (~56s)", "width": 512, "height": 768, "steps": 4},
+            {"id": "fast", "label": "⚡ Fast 768×768 (~90s)", "width": 768, "height": 768, "steps": 4},
+            {"id": "quality", "label": "✦ Quality 1024×1024 (~2min)", "width": 1024, "height": 1024, "steps": 4},
         ],
     },
     "flux2-klein-9b": {
@@ -150,6 +198,9 @@ MODELS = {
         "civitai_version_name": "4-bit",
         "ecosystem": "FLUX.2",
         "default_steps": 4,
+        "default_width": 512,
+        "default_height": 768,
+        "is_distilled": True,
         "default_guidance": 1.0,
         "supports_guidance": True,
         "supports_negative": False,
@@ -160,9 +211,9 @@ MODELS = {
         "supports_fast_vae": True,
         "lora_format": "FLUX.2",
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft (512×768)", "width": 512, "height": 768, "steps": 4},
-            {"id": "fast", "label": "⚡ Fast (~110s)", "width": 768, "height": 768, "steps": 4},
-            {"id": "quality", "label": "✦ Quality (~3.5min)", "width": 1024, "height": 1024, "steps": 4},
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 (~110s)", "width": 512, "height": 768, "steps": 4},
+            {"id": "fast", "label": "⚡ Fast 768×768", "width": 768, "height": 768, "steps": 4},
+            {"id": "quality", "label": "✦ Quality 1024×1024", "width": 1024, "height": 1024, "steps": 4},
         ],
     },
     "juggernaut-xl-lightning": {
@@ -178,6 +229,8 @@ MODELS = {
         "sha256": "357609",
         "ecosystem": "SDXL",
         "default_steps": 4,
+        "default_width": 512,
+        "default_height": 768,
         "default_guidance": 1.0,
         "supports_guidance": True,
         "supports_negative": True,
@@ -189,11 +242,11 @@ MODELS = {
         "lora_format": "SDXL",
         "is_distilled": True,
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft 512×768 (~5s)", "width": 512, "height": 768, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 2},
-            {"id": "photo", "label": "✦ Carré 1024×1024 (~15s)", "width": 1024, "height": 1024, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
-            {"id": "portrait", "label": "✦ Portrait 832×1216 (~20s)", "width": 832, "height": 1216, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
-            {"id": "cinematic", "label": "✦ Cinématique 1216×832 (~20s)", "width": 1216, "height": 832, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
-            {"id": "fast", "label": "⚡ Fast 4-step DeepCache (~10s)", "width": 1024, "height": 1024, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 2},
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 (~10s)", "width": 512, "height": 768, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 2},
+            {"id": "photo", "label": "✦ Carré 1024×1024 (~70s)", "width": 1024, "height": 1024, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
+            {"id": "portrait", "label": "✦ Portrait 832×1216 (~60s)", "width": 832, "height": 1216, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
+            {"id": "cinematic", "label": "✦ Cinématique 1216×832 (~45s)", "width": 1216, "height": 832, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
+            {"id": "fast", "label": "⚡ Fast 4-step DeepCache 1024×1024", "width": 1024, "height": 1024, "steps": 4, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 2},
         ],
     },
     "realvis-xl-v5-lightning": {
@@ -209,7 +262,9 @@ MODELS = {
         "sha256": "B620C6B8D3",
         "ecosystem": "SDXL",
         "default_steps": 6,
-        "default_guidance": 1.5,
+        "default_width": 512,
+        "default_height": 768,
+        "default_guidance": 1.0,
         "supports_guidance": True,
         "supports_negative": True,
         "supports_loras": True,
@@ -220,9 +275,9 @@ MODELS = {
         "lora_format": "SDXL",
         "is_distilled": True,
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft 512×768 (~7s)", "width": 512, "height": 768, "steps": 6, "sampler": "euler_trailing", "guidance": 1.5, "cache_interval": 1},
-            {"id": "photo", "label": "✦ Carré 1024×1024 (~22s)", "width": 1024, "height": 1024, "steps": 6, "sampler": "euler_trailing", "guidance": 1.5, "cache_interval": 1},
-            {"id": "portrait", "label": "✦ Portrait 832×1216 (~28s)", "width": 832, "height": 1216, "steps": 6, "sampler": "euler_trailing", "guidance": 1.5, "cache_interval": 1},
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 (~16s)", "width": 512, "height": 768, "steps": 6, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
+            {"id": "photo", "label": "✦ Carré 1024×1024 (~56s)", "width": 1024, "height": 1024, "steps": 6, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
+            {"id": "portrait", "label": "✦ Portrait 832×1216 (~1.8min)", "width": 832, "height": 1216, "steps": 6, "sampler": "euler_trailing", "guidance": 1.0, "cache_interval": 1},
         ],
     },
     "realvis-xl-v5": {
@@ -238,6 +293,8 @@ MODELS = {
         "sha256": "D7E84FE269",
         "ecosystem": "SDXL",
         "default_steps": 25,
+        "default_width": 512,
+        "default_height": 768,
         "default_guidance": 4.5,
         "supports_guidance": True,
         "supports_negative": True,
@@ -249,7 +306,7 @@ MODELS = {
         "lora_format": "SDXL",
         "is_distilled": False,
         "presets": [
-            {"id": "draft", "label": "⚡ Hyper-SD 8-step Draft (512×768)", "width": 512, "height": 768, "steps": 8, "sampler": "euler_trailing", "guidance": 2.0, "cache_interval": 1},
+            {"id": "draft", "label": "⚡ Hyper-SD 8-step Draft 512×768 (~45s)", "width": 512, "height": 768, "steps": 8, "sampler": "euler_trailing", "guidance": 2.0, "cache_interval": 1},
             {"id": "photo", "label": "✦ Carré 1024×1024 (25 steps)", "width": 1024, "height": 1024, "steps": 25, "sampler": "dpmpp_2m_karras", "guidance": 4.5, "cache_interval": 1},
             {"id": "portrait", "label": "✦ Portrait 832×1216 (25 steps)", "width": 832, "height": 1216, "steps": 25, "sampler": "dpmpp_2m_karras", "guidance": 4.5, "cache_interval": 1},
         ],
@@ -267,6 +324,8 @@ MODELS = {
         "sha256": "782002",
         "ecosystem": "SDXL",
         "default_steps": 25,
+        "default_width": 512,
+        "default_height": 768,
         "default_guidance": 4.0,
         "supports_guidance": True,
         "supports_negative": True,
@@ -274,11 +333,11 @@ MODELS = {
         "supports_ref": False,
         "max_reference_images": 0,
         "supports_fast_vae": True,
-        "samplers": ["euler_trailing", "dpmpp_2m_karras", "euler_a_substep", "euler_a", "euler", "ddim"],
+        "samplers": ["dpmpp_2m_karras", "euler_a_substep", "euler_a", "euler", "euler_trailing", "ddim"],
         "lora_format": "SDXL",
         "is_distilled": False,
         "presets": [
-            {"id": "draft", "label": "⚡ Hyper-SD 8-step Draft (512×768)", "width": 512, "height": 768, "steps": 8, "sampler": "euler_trailing", "guidance": 2.0, "cache_interval": 1},
+            {"id": "draft", "label": "⚡ Hyper-SD 8-step Draft 512×768 (~49s)", "width": 512, "height": 768, "steps": 8, "sampler": "euler_trailing", "guidance": 2.0, "cache_interval": 1},
             {"id": "photo", "label": "✦ Carré 1024×1024 (25 steps)", "width": 1024, "height": 1024, "steps": 25, "sampler": "dpmpp_2m_karras", "guidance": 4.0, "cache_interval": 1},
             {"id": "portrait", "label": "✦ Portrait 832×1216 (25 steps)", "width": 832, "height": 1216, "steps": 25, "sampler": "dpmpp_2m_karras", "guidance": 4.0, "cache_interval": 1},
         ],
@@ -293,7 +352,16 @@ MODELS = {
         "civitai_version_name": "Turbo",
         "sha256": "2407613050",
         "ecosystem": "ZImageTurbo",
-        "default_steps": 8,
+        "is_distilled": True,
+                # 8 -> 6 steps, measured 2026-09-29 on this M1 16GB. 6/8 steps is a
+        # 1.30-1.32x saving. Six steps was ALREADY shipped as the "draft" preset
+        # at 512x768, so this is not a new quality level there; at 1024x1024 and
+        # 1280x720 the side-by-side sheets are near-identical. At 512x768 six
+        # steps is mildly smoother on fine texture (PSNR 26.9/27.1 dB, i.e. a
+        # different image rather than a degraded one). Revert is this one number.
+"default_steps": 6,
+        "default_width": 512,
+        "default_height": 768,
         "default_guidance": None,
         "supports_guidance": False,
         "supports_negative": False,
@@ -303,9 +371,9 @@ MODELS = {
         "supports_fast_vae": True,
         "lora_format": "Z-Image",
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft (512×768, 6s)", "width": 512, "height": 768, "steps": 6},
-            {"id": "turbo", "label": "⚡ Turbo (~35s)", "width": 1024, "height": 1024, "steps": 8},
-            {"id": "wide", "label": "✦ Wide HD", "width": 1280, "height": 720, "steps": 8},
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 (~1.5min)", "width": 512, "height": 768, "steps": 6},
+            {"id": "turbo", "label": "✦ Turbo 1024×1024 (~4.9min)", "width": 1024, "height": 1024, "steps": 6},
+            {"id": "wide", "label": "✦ Wide HD 1280×720 (~4.9min)", "width": 1280, "height": 720, "steps": 6},
         ],
     },
     "krea2-turbo": {
@@ -318,7 +386,10 @@ MODELS = {
         "civitai_version_name": "krea2_turbo_bf16",
         "sha256": "78BBF8F416",
         "ecosystem": "Krea 2",
+        "is_distilled": True,
         "default_steps": 8,
+        "default_width": 512,
+        "default_height": 768,
         "default_guidance": 1.0,
         "supports_guidance": False,
         "supports_negative": False,
@@ -330,10 +401,10 @@ MODELS = {
         # Size caps removed 2026-09-22 (user decision). 16GB M1 note: the 3D
         # causal VAE decode has high activation memory; very large sizes may OOM.
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft 4-step (512×768)", "width": 512, "height": 768, "steps": 4},
-            {"id": "turbo", "label": "✦ 8-step Quality (~3min)", "width": 512, "height": 512, "steps": 8},
-            {"id": "portrait", "label": "✦ Portrait (512×768)", "width": 512, "height": 768, "steps": 8},
-            {"id": "fast", "label": "⚡ Fast 4-step (~1.5min)", "width": 512, "height": 512, "steps": 4},
+            {"id": "draft", "label": "⚡ Fast Draft 4-step 512×768 (~3min)", "width": 512, "height": 768, "steps": 4},
+            {"id": "turbo", "label": "✦ 8-step Quality 512×512 (~3.5min)", "width": 512, "height": 512, "steps": 8},
+            {"id": "portrait", "label": "✦ Portrait 512×768 8-step (~5.5min)", "width": 512, "height": 768, "steps": 8},
+            {"id": "fast", "label": "⚡ Fast 4-step 512×512 (~2.5min)", "width": 512, "height": 512, "steps": 4},
         ],
     },
     "qwen-image-2.1": {
@@ -345,6 +416,8 @@ MODELS = {
         # Upstream hard-codes the TE at bf16 (~17.5GB resident) which can't fit 16GB.
         "ecosystem": "Qwen-Image 2.1",
         "default_steps": 25,
+        "default_width": 512,
+        "default_height": 768,
         "default_guidance": 1.0,
         "supports_guidance": True,
         "supports_negative": True,
@@ -363,9 +436,13 @@ MODELS = {
         # Size caps removed 2026-09-22 (user decision). 16GB M1 note: the q4
         # pipeline is ~10.5GB resident; 1024² can OOM in the bf16 VAE decode.
         "presets": [
-            {"id": "draft", "label": "⚡ Fast Draft (512×768, 25s)", "width": 512, "height": 768, "steps": 25},
-            {"id": "quality", "label": "✦ Quality (768×512, 40s)", "width": 768, "height": 512, "steps": 40},
-            {"id": "portrait", "label": "▮ Portrait (512×768, 40s)", "width": 512, "height": 768, "steps": 40},
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 25 steps (~12min)", "width": 512, "height": 768, "steps": 25},
+            # No time claims on these two: the measured medians only exist for
+            # 512x768, and a test refuses a claim without one. Bench pending a
+            # quiet machine - a 25-step run is ~13min, so it is not something to
+            # guess at on a loaded one.
+            {"id": "wide", "label": "✦ Wide 768×768 25 steps (~12min)", "width": 768, "height": 768, "steps": 25},
+            {"id": "landscape", "label": "✦ Landscape 768×512 25 steps (~9min)", "width": 768, "height": 512, "steps": 25},
         ],
     },
 }
@@ -381,102 +458,168 @@ def get_model_info(model_id: str) -> dict | None:
             return m
     return None
 
-# Wired memory hint (bytes) used during generation to keep Metal from
-# swapping on 16GB machines. Set MLX_WIRED_LIMIT_GB=0 to disable.
-# Capped at 45% of the GPU's recommended max working set — a too-high
-# wired limit starves the VAE decode allocation and hangs the command.
-# krea2 (13B q4) has its own larger budget: see _krea_wired_limit_bytes.
-# Metal wired limit: Allow up to 70% of working memory (~11.2GB on 16GB)
-# to give FLUX.2 and SDXL adequate room while preventing macOS swap thrashing.
-try:
-    _WIRED_LIMIT_GB = int(os.environ.get("MLX_WIRED_LIMIT_GB", "7"))
-except ValueError:
-    print("[generator] invalid MLX_WIRED_LIMIT_GB, using default 7", flush=True)
-    _WIRED_LIMIT_GB = 7
-_WIRED_LIMIT_GB *= (1 << 30)
+# Fraction of unified memory a wired budget may claim, shared by the generic and
+# krea2 paths so the two cannot drift apart again. 0.68 of 16GB is ~10.9GB, which
+# leaves room for macOS itself; the effective budget is still the lower of this
+# fraction, the configured GB value, and Apple's recommended working set.
+_WIRED_MEMORY_FRACTION = 0.68
 
-# krea2 (13B q4) runs unbounded today; its transformer + TAEF2 decode need a
-# larger wired allowance than the generic 45% cap, but still bounded so Metal
-# does not page macOS to death. MLX_KREA_WIRED_LIMIT_GB=0 restores the legacy
-# unbounded behavior.
-try:
-    _KREA_WIRED_LIMIT_GB = int(os.environ.get("MLX_KREA_WIRED_LIMIT_GB", "9"))
-except ValueError:
-    print("[generator] invalid MLX_KREA_WIRED_LIMIT_GB, using default 9", flush=True)
-    _KREA_WIRED_LIMIT_GB = 9
-_KREA_WIRED_LIMIT_GB *= (1 << 30)
+# Wired memory hint used during generation to keep Metal from swapping.
+#
+# THE DEFAULT IS NOW DERIVED FROM THE MACHINE, NOT A CONSTANT.
+#
+# This used to be a hardcoded 9 GB (generic) and 0 (krea2). Those were numbers tuned
+# by hand on ONE 16GB M1, stored in settings.json, and carried to every other Mac the
+# app ran on. A 9 GB ceiling is far too tight on a 64GB machine and, worse, was actively
+# harmful here: krea2 persists a 9 GB pin that predates the 2026-09-29 revert, and the
+# Krea 2 text-encoder quantisation pass -- which transiently holds a 7.5GB bf16 copy
+# AND its ~1.9GB q4 result -- no longer fits under it, and dies with a Metal
+# CommandBuffer OOM during the loading_model phase.
+#
+# `None` means "auto": derive the budget from the device. Explicit GB values are still
+# honoured as deliberate overrides, and 0 still means unbounded.
+def _parse_wired_env(name: str) -> float | None:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "" or raw.strip().lower() == "auto":
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        print(f"[generator] invalid {name}={raw!r}, deriving from device instead", flush=True)
+        return None
 
 
-def _env_wired_gb() -> float:
-    return _WIRED_LIMIT_GB / (1 << 30) if _WIRED_LIMIT_GB > 0 else 0
+# Generic budget: FLUX.2-klein, Z-Image, SDXL and qwen-image-2.1. qwen is in this
+# group because its q4 pipeline is ~10.5GB resident and needs the larger allowance; it
+# is NOT here because of any measured speedup.
+_WIRED_LIMIT_GB = _parse_wired_env("MLX_WIRED_LIMIT_GB")
+
+# krea2 (13B q4). It used to carry a 9 GB pin, justified by an AGENTS.md note claiming
+# ~18% faster for identical output. Measured on 2026-09-29 (test/wired_budget/, 6 runs
+# per arm, interleaved): the arms are statistically indistinguishable (exact permutation
+# p=1.00, 150-239s bounded vs 139-198s unbounded) while all 12 renders are
+# pixel-identical. So the pin bought nothing and was reverted -- but the REVERT ONLY
+# CHANGED THE ENV DEFAULT, leaving a stale 9 GB in settings.json, which is why the cap
+# was still in force long after the note said it was gone.
+_KREA_WIRED_LIMIT_GB = _parse_wired_env("MLX_KREA_WIRED_LIMIT_GB")
+
+
+def _env_wired_gb() -> float | None:
+    return _WIRED_LIMIT_GB
 
 
 def _env_krea_gb() -> float:
     return _KREA_WIRED_LIMIT_GB / (1 << 30) if _KREA_WIRED_LIMIT_GB > 0 else 0
 
 
-def _wired_limit_gb() -> float:
-    """Effective generic wired limit (GB): persisted setting > env var default."""
+def _wired_limit_gb() -> float | None:
+    """Configured generic wired limit in GB. None means auto (derive from the device)."""
     v = app_settings.get_setting("memory_wired_limit_gb")
     return float(v) if v is not None else _env_wired_gb()
 
 
-def _krea_wired_limit_gb() -> float:
-    """Effective krea2 wired limit (GB): persisted setting > env var default."""
+def _krea_wired_limit_gb() -> float | None:
+    """Configured krea2 wired limit in GB. None means auto (derive from the device)."""
     v = app_settings.get_setting("memory_krea_wired_limit_gb")
-    return float(v) if v is not None else _env_krea_gb()
+    return float(v) if v is not None else _env_wired_gb()
+
+
+_device_budget_cache: dict = {}
+
+
+def _derived_wired_budget_bytes() -> int:
+    """Wired budget derived from this Mac, in bytes.
+
+    The lower of a fixed fraction of unified memory and Apple's own recommended working
+    set for the device. On a 16GB M1 that is min(16GB x 0.68, 11.84GB) = 10.88GB; the
+    same code yields ~43GB on a 64GB Mac, which is the point -- the old 9 GB was a
+    hand-tuned constant for one machine and meaningless on any other.
+
+    Cached: the device does not change under us, and this is read on the status path.
+    """
+    if "bytes" in _device_budget_cache:
+        return _device_budget_cache["bytes"]
+    value = 0
+    try:
+        import mlx.core as mx
+
+        dev_info = getattr(mx, "device_info", None) or getattr(mx, "metal", "device_info", None)
+        if dev_info:
+            d = dev_info() or {}
+            cap = d.get("max_recommended_working_set_size") or d.get(
+                "recommended_max_working_set_size"
+            )
+            mem = d.get("memory_size") or 0
+            if mem > 0:
+                value = int(mem * _WIRED_MEMORY_FRACTION)
+                if cap:
+                    value = min(value, int(cap))
+            elif cap:
+                value = int(cap * _WIRED_MEMORY_FRACTION)
+    except Exception:
+        value = 0
+    if value <= 0:
+        # No device info: fall back to the historical constant rather than to unbounded.
+        value = 9 * (1 << 30)
+    _device_budget_cache["bytes"] = value
+    return value
+
+
+def _derived_wired_budget_gb() -> float:
+    return round(_derived_wired_budget_bytes() / (1 << 30), 2)
+
+
+def _resolve_wired_budget(setting_gb: float | None, fallback_gb: int) -> int:
+    """Effective wired budget in bytes.
+
+    `setting_gb` is None for auto (derive from the device), 0 for an explicit
+    unbounded request, and a positive number for a deliberate pin.
+    """
+    if setting_gb is None:
+        return _derived_wired_budget_bytes()
+    if setting_gb <= 0:
+        return 0
+    return _wired_budget_bytes(int(setting_gb * (1 << 30)), fallback_gb)
+
+
+def _wired_budget_bytes(limit_gb: float, fallback_gb: int) -> int:
+    """Effective wired budget: the lowest of the configured GB, the shared memory
+    fraction, and Apple's recommended working set."""
+    limit = int(limit_gb)
+    if limit <= 0:
+        return 0
+    try:
+        import mlx.core as mx
+
+        dev_info = getattr(mx, "device_info", None) or getattr(mx.metal, "device_info", None)
+        if dev_info:
+            d = dev_info()
+            cap = d.get("max_recommended_working_set_size") or d.get("recommended_max_working_set_size") or 0
+            mem = d.get("memory_size", 0)
+            if mem > 0:
+                budget = int(mem * _WIRED_MEMORY_FRACTION)
+                if cap > 0:
+                    budget = min(budget, cap)
+                return min(limit, budget)
+            if cap > 0:
+                return min(limit, int(cap * _WIRED_MEMORY_FRACTION))
+    except Exception:
+        pass
+    return min(limit, fallback_gb * (1 << 30))
 
 
 def _wired_limit_bytes() -> int:
-    limit = _wired_limit_gb()
-    if limit <= 0:
-        return 0
-    try:
-        import mlx.core as mx
-
-        dev_info = getattr(mx, "device_info", None) or getattr(mx.metal, "device_info", None)
-        if dev_info:
-            d = dev_info()
-            cap = d.get("max_recommended_working_set_size") or d.get("recommended_max_working_set_size") or 0
-            mem = d.get("memory_size", 0)
-            if mem > 0:
-                # 45% of total unified memory on 16GB (~7.2GB), clamped to recommended working set
-                budget = int(mem * 0.45)
-                if cap > 0:
-                    budget = min(budget, cap)
-                return min(int(limit * (1 << 30)), budget)
-            if cap > 0:
-                return min(int(limit * (1 << 30)), int(cap * 0.45))
-    except Exception:
-        pass
-    return min(int(limit * (1 << 30)), 7 * (1 << 30))
+    return _resolve_wired_budget(_wired_limit_gb(), 9)
 
 
 def _krea_wired_limit_bytes() -> int:
-    """Wired budget for krea2 (13B q4): 68% of unified memory (vs 45% generic)
-    so the transformer + TAEF decode allocations fit without the historical
-    starved-decode hang, while still bounded to reduce macOS swap thrash."""
-    limit = _krea_wired_limit_gb()
-    if limit <= 0:
-        return 0
-    try:
-        import mlx.core as mx
-
-        dev_info = getattr(mx, "device_info", None) or getattr(mx.metal, "device_info", None)
-        if dev_info:
-            d = dev_info()
-            cap = d.get("max_recommended_working_set_size") or d.get("recommended_max_working_set_size") or 0
-            mem = d.get("memory_size", 0)
-            if mem > 0:
-                budget = int(mem * 0.68)
-                if cap > 0:
-                    budget = min(budget, cap)
-                return min(int(limit * (1 << 30)), budget)
-            if cap > 0:
-                return min(int(limit * (1 << 30)), int(cap * 0.68))
-    except Exception:
-        pass
-    return min(int(limit * (1 << 30)), 9 * (1 << 30))
+    """Wired budget for krea2 (13B q4) only. Defaults to 0 = unbounded, which is
+    what the 2026-09-29 A/B measured: no speed difference (p=1.00) and a
+    pixel-identical result, so there is nothing to buy with a pin. qwen does NOT
+    use this helper -- it uses the generic 9 GB budget, because its pipeline is
+    ~10.5GB resident and a too-low cap starves the load.
+    """
+    return _resolve_wired_budget(_krea_wired_limit_gb(), 9)
 
 _lock = threading.Lock()
 _model_maintenance_lock = threading.RLock()
@@ -490,6 +633,12 @@ _PROMPT_CACHE_MAX_SIZE = 32
 _PROMPT_CACHE_MAX_BYTES = 256 * (1 << 20)
 
 _taef_models: dict = {}
+
+# Quantized Krea 2 text encoder, reused across pipeline rebuilds. See
+# _krea_quantized_text_encoder. Held outside the pipeline cache on purpose: the
+# pipeline is dropped and rebuilt on every LoRA/step change, the encoder is not.
+_krea_te_cache: dict = {}
+_krea_te_lock = threading.Lock()
 
 
 def _value_bytes(value) -> int:
@@ -527,6 +676,8 @@ _qwen_reader_done = None
 _qwen_reader_thread = None
 _qwen_stderr_thread = None
 _qwen_stderr_done = None
+_qwen_watchdog = None
+_qwen_idle_since = None
 
 
 def _engine_timeout(name: str) -> float:
@@ -750,9 +901,11 @@ def _read_engine_message(proc, messages, done, cancel_events, timeout_s, label, 
 
 def _kill_qwen_process():
     global _qwen_process, _qwen_reader_messages, _qwen_reader_done, _qwen_reader_thread, _qwen_stderr_thread, _qwen_stderr_done
+    _cancel_qwen_watchdog()
     proc = _qwen_process
     if proc is not None:
         _terminate_process(proc)
+        _remove_qwen_pid(proc.pid)
     _join_reader(_qwen_stderr_thread)
     _join_reader(_qwen_reader_thread)
     if _qwen_process is proc:
@@ -821,14 +974,19 @@ def model_download_repo(model_id: str, minfo: dict) -> str | None:
 
 
 def _model_path_has_incomplete(path: Path) -> bool:
-    try:
-        return any(
+    ok, value = _probe_fs(
+        lambda: any(
             candidate.name.endswith((".incomplete", ".part"))
             for candidate in path.rglob("*")
             if candidate.is_file() and ".cache" not in candidate.relative_to(path).parts
         )
-    except (OSError, ValueError):
-        return True
+    )
+    if ok:
+        return value
+    # Could not tell. Claiming "incomplete" on an unreadable directory is the
+    # dangerous direction: it makes the model look un-downloaded and invites a
+    # re-fetch of the whole checkpoint.
+    return False
 
 
 def _model_path_has_weights(path: Path) -> bool:
@@ -848,7 +1006,24 @@ def _model_path_has_weights(path: Path) -> bool:
         return False
 
 
+_MODEL_CACHED_TTL_S = 5.0
+_model_cached_cache: tuple[float, str, bool] | None = None
+
+
 def is_model_cached(model_id: str) -> bool:
+    # Short TTL so a directory walk that fails outright cannot flip the
+    # answer for every caller that follows within a few seconds.
+    global _model_cached_cache
+    cached = _model_cached_cache
+    now = time.monotonic()
+    if cached is not None and cached[1] == model_id and now - cached[0] < _MODEL_CACHED_TTL_S:
+        return cached[2]
+    result = _is_model_cached_uncached(model_id)
+    _model_cached_cache = (now, model_id, result)
+    return result
+
+
+def _is_model_cached_uncached(model_id: str) -> bool:
     minfo = get_model_info(model_id)
     if not minfo:
         return False
@@ -1146,6 +1321,8 @@ def _uninstall_model(model_id: str) -> tuple[bool, str | None]:
             _drop_mflux_pipeline()
         if minfo.get("engine") == "sdxl" and _sdxl_daemon is not None and _sdxl_daemon.poll() is None:
             _kill_sdxl_daemon()
+        if minfo.get("engine") == "qwen" and _qwen_process is not None and _qwen_process.poll() is None:
+            _kill_qwen_process()
 
     if unlinked:
         return True, "local path unlinked; files left on disk"
@@ -1176,6 +1353,38 @@ def _delete_hf_repo_cache(repo_id: str) -> bool:
     except OSError:
         pass
     return removed_any or not stale.exists()
+
+
+_STORAGE_STATS_TTL_S = 60.0
+_storage_stats_cache: tuple[float, dict] | None = None
+
+
+def _storage_stats() -> dict:
+    """Disk counters for the engine panel, cached for a minute.
+
+    Walking GENERATED_DIR costs ~32ms with ~4400 entries, and the frontend polls
+    /api/engine/status every 5s from a component that is mounted on every tab, so
+    the scan was burning ~0.6s of CPU per minute away from the generation thread.
+    The numbers only move when an image is written or deleted, which the panel
+    already reflects within one poll anyway.
+    """
+    global _storage_stats_cache
+    now = time.monotonic()
+    cached = _storage_stats_cache
+    if cached is not None and now - cached[0] < _STORAGE_STATS_TTL_S:
+        return dict(cached[1])
+    stats: dict = {}
+    try:
+        images = [f for f in GENERATED_DIR.iterdir() if f.is_file() and f.suffix.lower() in (".png", ".jpeg", ".jpg", ".webp", ".heic")]
+        stats["generated_dir"] = str(GENERATED_DIR)
+        stats["image_count"] = len(images)
+        stats["image_bytes"] = sum(f.stat().st_size for f in images)
+        stats["settings_file"] = str(app_settings.SETTINGS_FILE)
+        stats["settings_exists"] = app_settings.SETTINGS_FILE.exists()
+    except Exception as e:
+        stats["error"] = str(e)
+    _storage_stats_cache = (now, stats)
+    return dict(stats)
 
 
 def get_engine_status() -> dict:
@@ -1227,10 +1436,18 @@ def get_engine_status() -> dict:
     except Exception:
         pass
 
+    # auto/derived are reported separately from the configured number so the UI can say
+    # "Auto (10.88 GB)" instead of showing a derived figure as though the user had typed
+    # it -- which would then be persisted on the next save and freeze a machine-specific
+    # constant into the settings again, the exact bug this change exists to remove.
     status["wired"] = {
         "generic_limit_gb": _wired_limit_gb(),
+        "generic_auto": _wired_limit_gb() is None,
+        "generic_derived_gb": _derived_wired_budget_gb(),
         "generic_budget_bytes": _wired_limit_bytes(),
         "krea_limit_gb": _krea_wired_limit_gb(),
+        "krea_auto": _krea_wired_limit_gb() is None,
+        "krea_derived_gb": _derived_wired_budget_gb(),
         "krea_budget_bytes": _krea_wired_limit_bytes(),
     }
 
@@ -1260,21 +1477,20 @@ def get_engine_status() -> dict:
         ),
         "stderr_tail": "".join(_sdxl_stderr_tail)[-1200:],
     }
+    qwen_idle = _qwen_idle_kill_s()
     status["qwen"] = {
         "resident": _pipeline is None and _sdxl_daemon is None and _qwen_process is not None and _qwen_process.poll() is None,
         "pid": _qwen_process.pid if _qwen_process is not None else None,
+        "idle_kill_s": qwen_idle,
+        "watchdog_armed": _qwen_watchdog is not None and _qwen_watchdog.is_alive(),
+        "idle_since": _qwen_idle_since,
+        "seconds_until_release": (
+            max(0, qwen_idle - (now - _qwen_idle_since)) if _qwen_idle_since else None
+        ),
     }
     status["taef"] = sorted(_taef_models.keys())
 
-    try:
-        images = [f for f in GENERATED_DIR.iterdir() if f.is_file() and f.suffix.lower() in (".png", ".jpeg", ".jpg", ".webp", ".heic")]
-        status["storage"]["generated_dir"] = str(GENERATED_DIR)
-        status["storage"]["image_count"] = len(images)
-        status["storage"]["image_bytes"] = sum(f.stat().st_size for f in images)
-        status["storage"]["settings_file"] = str(app_settings.SETTINGS_FILE)
-        status["storage"]["settings_exists"] = app_settings.SETTINGS_FILE.exists()
-    except Exception as e:
-        status["storage"]["error"] = str(e)
+    status["storage"].update(_storage_stats())
     return status
 
 
@@ -1319,13 +1535,54 @@ def _normalize_loras(loras: list[dict] | None) -> list[dict]:
     return normalized
 
 
+_STAT_RETRY_ATTEMPTS = 3
+_STAT_RETRY_DELAY_S = 0.05
+
+
+def _probe_fs(fn):
+    """Run a filesystem probe, retrying transient OSError. Returns (ok, value).
+
+    The model store lives on the external volume /Volumes/Externe, which was
+    observed returning a transient ENOENT from stat() in the middle of a
+    benchmark. Every consumer used to read a single failed probe as a fact
+    about the filesystem, and each of those readings was expensive:
+
+      _lora_signature  -> a different pipeline key -> full 20-40s reload of an
+                          otherwise warm pipeline
+      _model_path_has_incomplete -> "the download is incomplete" -> the Engine
+                          panel offers to re-download 13GB of weights
+      _model_is_fully_cached -> installed=False in /api/models
+
+    A retry costs at most 100ms and only on an actual failure.
+    """
+    last = None
+    for attempt in range(_STAT_RETRY_ATTEMPTS):
+        try:
+            return True, fn()
+        except (OSError, ValueError) as e:
+            last = e
+            if attempt + 1 < _STAT_RETRY_ATTEMPTS:
+                time.sleep(_STAT_RETRY_DELAY_S)
+    return False, last
+
+
+_lora_sig_cache: dict = {}
+
+
 def _lora_signature(path: str) -> tuple:
     normalized = _normalize_lora_path(path)
-    try:
-        stat = Path(normalized).stat()
-        return (normalized, stat.st_size, stat.st_mtime_ns)
-    except OSError:
-        return (normalized, None, None)
+    ok, stat = _probe_fs(lambda: Path(normalized).stat())
+    if ok:
+        signature = (normalized, stat.st_size, stat.st_mtime_ns)
+        _lora_sig_cache[normalized] = signature
+        return signature
+    # Never let a failed probe invalidate a warm pipeline: fall back to the last
+    # signature actually observed for this path. Only a path we have never seen
+    # reports None, which is what a genuinely missing file should look like.
+    previous = _lora_sig_cache.get(normalized)
+    if previous is not None:
+        return previous
+    return (normalized, None, None)
 
 
 def _make_pipeline_key(model_id: str, quantization: int, loras: list[dict], variant: str = "standard") -> tuple:
@@ -1650,21 +1907,61 @@ def _get_pipeline(model_id: str, quantization: int, loras: list[dict], variant: 
 
         _install_krea_sampler_scalar_cache()
         local = ASSET_DIR / "models" / "krea2-turbo-q4"
-        _pipeline = Krea2(
-            quantize=4,
-            model_path=local_arg or str(local),
-            lora_paths=[l["path"] for l in loras] or None,
-            lora_scales=scales or None,
-            bake_lora=False,
-        )
-        # Explicitly quantize the Qwen3-VL text encoder (7.5GB bf16 -> ~1.9GB q4).
-        # mflux skips it by default (skip_quantization=True), leaving 7.5GB of raw bf16 weights
-        # which causes resident memory to exceed 15GB and trigger Metal CommandBuffer OOM on 16GB Macs.
-        if hasattr(_pipeline, "text_encoder") and _pipeline.text_encoder is not None:
-            nn.quantize(_pipeline.text_encoder, bits=4, group_size=64)
-            mx.eval(_pipeline.text_encoder)
-            mx.clear_cache()
-            gc.collect()
+        krea_source = local_arg or str(local)
+
+        # Load the quantised encoder from disk instead of letting mflux materialise
+        # 7.5GB of bf16 first. The flag has to be set BEFORE Krea2() is constructed,
+        # because by the time it returns the bf16 weights are already resident.
+        disk_te = None
+        if os.environ.get("MLX_DISABLE_KREA_TE_CACHE") != "1":
+            _install_krea_te_bf16_skip()
+            disk_te = _krea_te_from_disk(krea_source, bits=4, group_size=64)
+            _krea_te_skip_bf16["on"] = disk_te is not None
+        try:
+            _pipeline = Krea2(
+                quantize=4,
+                model_path=krea_source,
+                lora_paths=[l["path"] for l in loras] or None,
+                lora_scales=scales or None,
+                bake_lora=False,
+            )
+        finally:
+            _krea_te_skip_bf16["on"] = False
+
+        if disk_te is not None:
+            # The encoder module mflux built is now weightless (we skipped its load),
+            # so drop it before adopting the on-disk copy.
+            stale = getattr(_pipeline, "text_encoder", None)
+            if stale is not None:
+                _pipeline.text_encoder = None
+                del stale
+                gc.collect()
+                mx.clear_cache()
+            _pipeline.text_encoder = disk_te
+        # Tiled VAE decode.
+        #
+        # mflux 0.20.0 made --vae-tiling actually work on Krea 2, where the flag was
+        # previously accepted and ignored; the changelog puts the peak decode at ~7GB for
+        # a 1024px output, cut to ~3GB tiled. That matters here because the decode is the
+        # second place this pipeline can run out of room, right after the weights load.
+        #
+        # Krea2 is a correct target: FLUX.2 Klein, Klein edit, Lens and Ideogram 4 all set
+        # supports_implicit_tiling=False, because their decoder takes normalisation
+        # statistics per tile and shifts colour between tiles. Krea2 opts in.
+        #
+        # Krea2.__init__ does not accept tiling_config, but self.tiling_config is read at
+        # decode time (krea2.py:186) and at encode time (:167) and defaults to None, so
+        # assigning it after construction is enough -- no patch to mflux is needed.
+        _apply_krea_vae_tiling(_pipeline)
+
+# Explicitly quantize the Qwen3-VL text encoder (7.5GB bf16 -> ~1.9GB q4).
+        # mflux skips it by default (skip_quantization=True), leaving 7.5GB of raw bf16 weight
+        # which causes resident memory to exceed 15GB and trigger Metal CommandBuffer OOM on 1
+        # The pass costs 65-69s, so it is cached in-process AND on disk: the first build
+        # pays it once and writes the result out, and every later process reads the q4
+        # weights directly instead of loading bf16 at all.
+        if disk_te is None and hasattr(_pipeline, "text_encoder") and _pipeline.text_encoder is not None:
+            _krea_quantized_text_encoder(_pipeline, krea_source, bits=4, group_size=64)
     elif model_id == "qwen-image-2.1":
         from mflux.models.qwen21.variants.txt2img.qwen_image_21 import QwenImage21
 
@@ -1766,7 +2063,19 @@ def _validate_sampler(sampler, minfo):
         return "Euler"
     value = sampler or (minfo.get("default_sampler") or allowed[0])
     if value not in allowed:
-        raise ValueError(f"unsupported sampler for {minfo['label']}: {value}")
+        # A sampler picked on one model and carried over to another whose list differs is
+        # a stale UI value, not a hostile one: the picker only ever offers samplers from
+        # `allowed`, so by the time it arrives here it is known to be a value this app
+        # itself produced. Refusing the whole generation over it cost the user their
+        # prompt for a reason they could neither see nor fix, so fall back to the model's
+        # default instead. Unknown values from anywhere else are still rejected upstream.
+        fallback = minfo.get("default_sampler") or allowed[0]
+        print(
+            f"[generator] sampler {value!r} not offered by {minfo.get('id')}; "
+            f"falling back to {fallback!r}",
+            flush=True,
+        )
+        return fallback
     return value
 
 
@@ -1783,6 +2092,35 @@ def _effective_guidance(minfo, guidance, negative_prompt=""):
     if minfo.get("id") == "qwen-image-2.1" and negative_prompt and value <= 1.0:
         return 3.0
     return value
+
+
+def _effective_steps(minfo, steps, overrides=None):
+    """Clamp the step count for guidance-distilled models.
+
+    A distilled checkpoint (SDXL-Lightning, FLUX.2-klein, Z-Image Turbo) is
+    trained for a handful of steps. The request schema and the settings UI both
+    allow up to 50, and app_settings permits a persisted model_defaults.steps of
+    50, so a stray override silently turned a 4-step run into a 12x slower one
+    with no quality gain - the extra steps land on a distribution the model was
+    never distilled for. Non-distilled models are left alone.
+    """
+    value = int(minfo.get("default_steps", 1) if steps is None else steps)
+    if not minfo.get("is_distilled"):
+        return value
+    cap = _DISTILLED_MAX_STEPS
+    override = (overrides or {}).get("steps")
+    if override is not None:
+        try:
+            cap = min(cap, max(1, int(override)))
+        except (TypeError, ValueError):
+            pass
+    if value > cap:
+        print(
+            f"[generator] {minfo.get('label')}: {value} steps clamped to {cap} "
+            "(guidance-distilled model)",
+            flush=True,
+        )
+    return min(value, cap)
 
 
 def _effective_quantization(model_id, quantization):
@@ -1859,7 +2197,7 @@ def generate(
     prompt: str,
     width: int = 1024,
     height: int = 1024,
-    steps: int = 4,
+    steps: int | None = None,
     guidance: float | None = 1.0,
     seed: int | None = None,
     quantization: int = 4,
@@ -1902,11 +2240,12 @@ def generate(
     if len(prompt.encode("utf-8")) > _MAX_PROMPT_BYTES:
         raise ValueError("prompt exceeds the 128 KiB limit")
     try:
-        steps = int(steps)
+        steps = int(minfo.get("default_steps", 4) if steps is None else steps)
     except (TypeError, ValueError) as e:
         raise ValueError("steps must be an integer") from e
     if steps < 1 or steps > 50:
         raise ValueError("steps must be between 1 and 50")
+    steps = _effective_steps(minfo, steps, {})
     width, height = _validate_dimensions(width, height, minfo)
     quantization = _effective_quantization(minfo["id"], quantization)
     if loras and not minfo.get("supports_loras"):
@@ -1919,6 +2258,13 @@ def generate(
         raise ValueError("negative prompt exceeds the 128 KiB limit")
     chosen_sampler = _validate_sampler(sampler, minfo)
     effective_guidance = _effective_guidance(minfo, guidance, negative_prompt)
+    if minfo["id"] == "qwen-image-2.1" and steps > _QWEN_MAX_STEPS:
+        raise ValueError(
+            f"{minfo['label']}: {steps} steps exceeds the {_QWEN_MAX_STEPS}-step ceiling for this "
+            f"machine. Measured median at 25 steps is 790.8s vs 910s at 40 steps, so the extra "
+            f"steps are not worth the time. Use ≤ {_QWEN_MAX_STEPS} steps, or change the "
+            f"per-model default in Parameters > Defaults."
+        )
     if minfo["id"] == "qwen-image-2.1" and width * height > 589824:
         raise ValueError(
             f"{minfo['label']}: resolutions above 768×768 (589k px) OOM the bf16 VAE "
@@ -2072,11 +2418,14 @@ def generate(
         prev_wired = None
         restore_callbacks = []
         try:
-            if model == "krea2-turbo" or model == "qwen-image-2.1":
-                # qwen21 shares krea2's bigger 68% wired budget: its q4 pipeline is
-                # ~10.5GB resident and the generic 45% cap starves the load.
+            if model == "krea2-turbo":
+                # krea2 only. Unbounded by default: its 9 GB pin showed no speed
+                # benefit and a pixel-identical result (see the A/B note above).
                 limit = _krea_wired_limit_bytes()
             else:
+                # FLUX.2-klein, Z-Image, SDXL and qwen-image-2.1. qwen is on the
+                # generic budget rather than krea2's because its q4 pipeline is
+                # ~10.5GB resident and a too-low cap starves the load.
                 limit = _wired_limit_bytes()
             if limit > 0:
                 try:
@@ -2220,8 +2569,8 @@ def generate(
             "generation_time": elapsed,
             "load_time": load_time,
             "created_at": time.time(),
-            "software": "MLX-DIFFUSION",
-            "generator": "MLX-DIFFUSION",
+            "software": "DiffusionBear",
+            "generator": "DiffusionBear",
             "artist": app_settings.metadata_artist(),
             "tags": [],
             "file": image_path.name,
@@ -2266,6 +2615,16 @@ _sdxl_reader_done = None
 _sdxl_reader_thread = None
 _sdxl_stderr_thread = None
 _sdxl_stderr_done = None
+# Ceiling applied to guidance-distilled models by _effective_steps. The slowest
+# distilled model in the registry runs 6 steps, so this is generous.
+_DISTILLED_MAX_STEPS = 12
+
+# Hard ceiling for qwen-image-2.1, by owner decision (2026-09-28): 40 steps is
+# never worth running on a 16GB M1. Its own measured medians are 790.8s at
+# 512x768 / 25 steps and 910s at 512x768 / 40 steps, so the extra 15 steps buy
+# almost nothing for ~15% more time. Refused loudly rather than silently
+# clamped, so a saved model_defaults of 40 cannot quietly keep costing that.
+_QWEN_MAX_STEPS = 25
 SDXL_IDLE_KILL_S = 300
 
 
@@ -2317,6 +2676,10 @@ _mflux_watchdog = None
 _mflux_idle_since = None
 MFLUX_IDLE_KILL_S = 300
 
+# The Qwen daemon holds ~10.5GB resident, so it follows the same 5-minute idle
+# release policy as the SDXL daemon. 0 = keep it warm indefinitely.
+QWEN_IDLE_KILL_S = 300
+
 
 def _mflux_idle_kill_s() -> int:
     """Effective mflux idle-kill seconds: persisted setting > built-in 300. 0 = never release."""
@@ -2324,6 +2687,65 @@ def _mflux_idle_kill_s() -> int:
     if v is None:
         return MFLUX_IDLE_KILL_S
     return max(0, int(v))
+
+
+def _qwen_idle_kill_s() -> int:
+    """Effective Qwen idle-kill seconds: persisted setting > built-in 300. 0 = never release."""
+    v = app_settings.get_setting("idle_kill_s_qwen")
+    if v is None:
+        return QWEN_IDLE_KILL_S
+    return max(0, int(v))
+
+
+def _qwen_process_is_healthy() -> bool:
+    """A live daemon is reusable only if it is still running and its readers are up."""
+    proc = _qwen_process
+    if proc is None or proc.stdin is None:
+        return False
+    try:
+        if proc.poll() is not None:
+            return False
+    except Exception:
+        return False
+    return _qwen_reader_messages is not None and not _qwen_reader_done.is_set()
+
+
+def _arm_qwen_watchdog():
+    global _qwen_watchdog, _qwen_idle_since
+    idle_s = _qwen_idle_kill_s()
+    proc = _qwen_process
+    if idle_s <= 0 or proc is None or proc.poll() is not None:
+        _cancel_qwen_watchdog()
+        return
+    if _qwen_watchdog is not None:
+        _qwen_watchdog.cancel()
+    _qwen_idle_since = time.time()
+    timer_ref = [None]
+
+    def _kill():
+        global _qwen_watchdog, _qwen_idle_since
+        with _lock:
+            if _qwen_watchdog is not timer_ref[0] or _qwen_process is not proc:
+                return
+            _kill_qwen_process()
+            print("[qwen] watchdog: idle daemon terminated", flush=True)
+            if _qwen_watchdog is timer_ref[0]:
+                _qwen_watchdog = None
+                _qwen_idle_since = None
+
+    timer = threading.Timer(idle_s, _kill)
+    timer.daemon = True
+    timer_ref[0] = timer
+    _qwen_watchdog = timer
+    timer.start()
+
+
+def _cancel_qwen_watchdog():
+    global _qwen_watchdog, _qwen_idle_since
+    if _qwen_watchdog is not None:
+        _qwen_watchdog.cancel()
+        _qwen_watchdog = None
+    _qwen_idle_since = None
 
 
 def _sdxl_idle_kill_s() -> int:
@@ -2378,17 +2800,215 @@ def rearm_engine_watchdogs():
     try:
         _cancel_mflux_watchdog()
         _cancel_sdxl_watchdog()
+        _cancel_qwen_watchdog()
         if _pipeline is not None and _mflux_idle_kill_s() > 0:
             _arm_mflux_watchdog()
         if _sdxl_daemon is not None and _sdxl_daemon.poll() is None and _sdxl_idle_kill_s() > 0:
             _arm_sdxl_watchdog()
+        if _qwen_process is not None and _qwen_process.poll() is None and _qwen_idle_kill_s() > 0:
+            _arm_qwen_watchdog()
     finally:
         _lock.release()
 
 
+def _clear_krea_te_cache():
+    """Release the cached quantized Krea 2 text encoder (~1.9GB q4).
+
+    Kept alive across mflux pipeline rebuilds (see _krea_quantized_text_encoder)
+    but dropped whenever we hand the machine to another engine, so the pinned
+    memory never competes with SDXL's ~11GB daemon or Qwen's ~10.5GB pipeline.
+    """
+    global _krea_te_cache
+    with _krea_te_lock:
+        if not _krea_te_cache:
+            return
+        _krea_te_cache = {}
+    gc.collect()
+    try:
+        import mlx.core as mx
+        mx.clear_cache()
+    except Exception:
+        pass
+
+
+def _krea_vae_tile_size() -> int:
+    """VAE decode tile size in px; 0 disables tiled decoding."""
+    v = app_settings.get_setting("krea_vae_tile_size")
+    if v is None:
+        v = os.environ.get("MLX_KREA_VAE_TILE_SIZE", "256")
+    try:
+        return max(0, int(v))
+    except (TypeError, ValueError):
+        return 256
+
+
+def _apply_krea_vae_tiling(pipe) -> None:
+    """Give the Krea 2 pipeline a TilingConfig so the final VAE decode tiles.
+
+    mflux only tiles when tiles_per_dim > 1, and the tile size is a cap on each tile's
+    working set. 256 is the value the changelog suggests for cutting peak decode memory
+    further; the default 512 is the library's own. A value of 0 restores untiled decoding.
+    """
+    size = _krea_vae_tile_size()
+    if size <= 0:
+        return
+    try:
+        from mflux.models.common.vae.tiling_config import TilingConfig
+
+        pipe.tiling_config = TilingConfig(
+            vae_decode_tile_size=size,
+            vae_decode_tiles_per_dim=8,
+            vae_decode_overlap=8,
+        )
+    except Exception as exc:  # pragma: no cover - depends on the mflux build
+        print(f"[generator] krea2 VAE tiling unavailable: {exc}", flush=True)
+
+
+_krea_te_skip_bf16: dict = {"on": False}
+_krea_te_skip_installed = False
+
+
+def _krea_te_disk_path(model_path, bits, group_size):
+    """Where the quantised Krea 2 text encoder is persisted between processes.
+
+    The in-memory cache below dies with the process, so every app restart used to pay
+    the full bf16 load again. Hashing the model path keeps this tied to the checkpoint
+    it was built from, so swapping the model re-derives instead of loading stale weights.
+    """
+    import hashlib
+
+    digest = hashlib.sha256(str(model_path).encode()).hexdigest()[:10]
+    name = Path(str(model_path)).name or "krea2"
+    return ASSET_DIR / "models" / f"{name}-te-q{bits}-g{group_size}-{digest}.safetensors"
+
+
+def _install_krea_te_bf16_skip() -> None:
+    """Stop mflux loading the 7.5GB bf16 encoder when we already have a q4 copy on disk.
+
+    mflux builds Krea2TextEncoder as a plain bf16 module and WeightApplier._set_weights
+    then loads the bf16 tensors into it (krea2's weight definition sets
+    skip_quantization=True on that component). Those two steps are the spike: the encoder
+    is resident before we ever get a chance to quantise it.
+
+    _set_weights simply iterates `models` and calls model.update(...), so dropping the
+    entry from the dict is enough to skip the load entirely. The patch is deliberately
+    narrow twice over: it only fires while the flag is set, and only for a models dict
+    that actually contains a Krea2TextEncoder, so no other engine can be affected.
+    """
+    global _krea_te_skip_installed
+    if _krea_te_skip_installed:
+        return
+    from mflux.models.common.weights.loading.weight_applier import WeightApplier
+
+    original = WeightApplier._set_weights
+
+    def _patched(weights, models, components=None):
+        if _krea_te_skip_bf16["on"] and any(
+            type(m).__name__ == "Krea2TextEncoder" for m in models.values()
+        ):
+            models = {k: v for k, v in models.items() if k != "text_encoder"}
+        return original(weights, models, components)
+
+    WeightApplier._set_weights = staticmethod(_patched)
+    _krea_te_skip_installed = True
+
+
+def _krea_te_from_disk(model_path, bits, group_size):
+    """Rebuild the quantised encoder straight from disk, or None if there is no cache."""
+    import mlx.core as mx
+    import mlx.nn as nn
+    from mlx.utils import tree_flatten
+    from mflux.models.krea2.model.krea2_text_encoder.text_encoder import Krea2TextEncoder
+
+    path = _krea_te_disk_path(model_path, bits, group_size)
+    if not path.exists():
+        return None
+    try:
+        module = Krea2TextEncoder()
+        # Build the quantised *structure* first, then drop the saved q4 tensors in --
+        # the same order mflux uses when a checkpoint declares a quantization level.
+        nn.quantize(module, bits=bits, group_size=group_size)
+        module.load_weights(str(path))
+        mx.eval(module)
+        return module
+    except Exception as exc:  # a corrupt or truncated cache must never be fatal
+        print(f"[generator] WARN Krea 2 q4 text-encoder cache unusable ({exc}); falling back", flush=True)
+        # Self-heal: a truncated or mismatched cache would otherwise be re-read (and
+        # re-rejected) on every single start, forever.
+        try:
+            path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return None
+
+
+def _krea_te_save_disk(module, model_path, bits, group_size) -> None:
+    """Persist the quantised encoder so later processes never load bf16 at all."""
+    import mlx.core as mx
+    from mlx.utils import tree_flatten
+
+    path = _krea_te_disk_path(model_path, bits, group_size)
+    # mx.save_safetensors APPENDS .safetensors to any path that does not already end in
+    # it, so a plain ".partial" temp name silently lands on ".partial.safetensors" and
+    # the rename below then fails with ENOENT. The temp must keep the real suffix.
+    tmp = path.with_name(path.stem + ".partial.safetensors")
+    try:
+        mx.save_safetensors(str(tmp), dict(tree_flatten(module.parameters())))
+        os.replace(tmp, path)  # atomic: a crash mid-write can never poison the cache
+    except Exception as exc:
+        print(f"[generator] WARN could not persist Krea 2 q4 text encoder ({exc})", flush=True)
+        try:
+            tmp.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
+def _krea_quantized_text_encoder(pipe, model_path, bits, group_size):
+    """Return a 4-bit Krea 2 Qwen3-VL text encoder, reusing the last one if we can.
+
+    mflux ships this encoder at bf16 (7.5GB) and leaves it unquantized, so the
+    app quantizes it after construction. That nn.quantize() pass measured
+    65.7s and 68.9s on two consecutive pipeline loads (test/manifest.json), and
+    it was being repeated on EVERY krea2 rebuild - any LoRA change, any 4-step
+    vs 8-step switch, any engine switch back to krea2.
+
+    The encoder is a pure function of (model_path, bits, group_size): Krea2's LoRA
+    path only ever touches the transformer, never the text encoder. So the
+    quantized module is cacheable and safe to hand to a freshly built pipeline.
+    """
+    import mlx.core as mx
+    import mlx.nn as nn
+
+    key = (str(model_path), bits, group_size)
+    disabled = os.environ.get("MLX_DISABLE_KREA_TE_CACHE") == "1"
+    with _krea_te_lock:
+        cached = None if disabled else (_krea_te_cache.get("module") if _krea_te_cache.get("key") == key else None)
+        fresh = getattr(pipe, "text_encoder", None)
+        if cached is not None:
+            # Drop the bf16 encoder we just paid to load before adopting the cache.
+            if fresh is not None and fresh is not cached:
+                pipe.text_encoder = None
+                del fresh
+                gc.collect()
+                mx.clear_cache()
+            pipe.text_encoder = cached
+            return cached
+
+        if fresh is None:
+            return None
+        nn.quantize(fresh, bits=bits, group_size=group_size)
+        mx.eval(fresh)
+        mx.clear_cache()
+        gc.collect()
+        if not disabled:
+            _krea_te_cache["key"] = key
+            _krea_te_cache["module"] = fresh
+            _krea_te_save_disk(fresh, model_path, bits, group_size)
+        return fresh
+
+
 def _drop_mflux_pipeline():
     global _pipeline, _current_pipeline_key, _current_pipeline_model, _prompt_cache
-    _kill_qwen_process()
     _cancel_mflux_watchdog()
     _pipeline = None
     _current_pipeline_key = None
@@ -2435,6 +3055,88 @@ def _kill_sdxl_daemon():
         except Exception:
             pass
         gc.collect()
+
+
+_QWEN_PID_FILE = DATA_DIR / ".tmp" / "qwen_daemon.pid"
+
+
+def _read_qwen_pid() -> int | None:
+    try:
+        value = int(_QWEN_PID_FILE.read_text("utf-8").strip())
+        return value if value > 1 else None
+    except (OSError, UnicodeError, ValueError):
+        return None
+
+
+def _write_qwen_pid(pid: int):
+    _QWEN_PID_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    tmp = _QWEN_PID_FILE.with_name(f".{_QWEN_PID_FILE.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(str(pid), encoding="utf-8")
+        os.replace(tmp, _QWEN_PID_FILE)
+    except OSError:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+
+
+def _remove_qwen_pid(pid: int | None = None):
+    current = _read_qwen_pid()
+    if current is not None and (pid is None or current == pid):
+        try:
+            _QWEN_PID_FILE.unlink()
+        except OSError:
+            pass
+
+
+def _cleanup_stale_qwen_daemon() -> bool:
+    """Reap a Qwen daemon left behind by a crashed parent.
+
+    The daemon is resident for ~10.5GB, so unlike the old one-shot subprocess it
+    cannot simply be allowed to outlive its parent. Mirrors
+    _cleanup_stale_sdxl_daemon: only ever signals a pid whose command line still
+    looks like our own `--serve` engine.
+    """
+    pid = _read_qwen_pid()
+    if pid is None or pid == os.getpid():
+        return True
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        _remove_qwen_pid(pid)
+        return True
+    except PermissionError:
+        return False
+    try:
+        result = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, timeout=2)
+        command = result.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if not command:
+        return False
+    if "qwen_engine.py" not in command or "--serve" not in command:
+        _remove_qwen_pid(pid)
+        return True
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        _remove_qwen_pid(pid)
+        return True
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            _remove_qwen_pid(pid)
+            return True
+        time.sleep(0.05)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    _remove_qwen_pid(pid)
+    return True
 
 
 _SDXL_PID_FILE = DATA_DIR / ".tmp" / "sdxl_daemon.pid"
@@ -2565,6 +3267,7 @@ def _generate_sdxl(prompt, width, height, steps, guidance, seed, loras,
         _cancel_sdxl_watchdog()
         try:
             _drop_mflux_pipeline()
+            _clear_krea_te_cache()
             minfo = get_model_info(model) or {}
             sampler = sampler or (minfo.get("samplers")[0] if minfo.get("samplers") else "euler_trailing")
             seed = seed if seed is not None else int(time.time())
@@ -2671,8 +3374,20 @@ def _generate_sdxl(prompt, width, height, steps, guidance, seed, loras,
             if result is None:
                 raise RuntimeError("SDXL engine returned no result")
             if result.get("error"):
+                # The daemon returns a bare error STRING and prints the traceback to
+                # stderr. The stderr reader has been capturing it all along, but only the
+                # EOF path used the tail -- so a normal error surfaced as
+                # "TypeError: expected str, bytes or os.PathLike object, not NoneType"
+                # with nothing to act on. The real cause (a CLIP tokenizer missing
+                # vocab.json) only ever appeared because the tail was read by hand out of
+                # the engine's own process. Attach it here, and log it either way.
+                tail = "".join(_sdxl_stderr_tail).strip()
+                message = str(result["error"])
+                if tail:
+                    print(f"[generator] SDXL engine traceback:\n{tail[-2000:]}", flush=True)
+                    message = f"{message}\n--- engine traceback ---\n{tail[-2000:]}"
                 _kill_sdxl_daemon()
-                raise RuntimeError(str(result["error"]))
+                raise RuntimeError(message)
             if phase_cb is not None:
                 phase_cb("saving", "Finalizing image and metadata...")
             actual_w = int(result.get("width", width))
@@ -2704,8 +3419,8 @@ def _generate_sdxl(prompt, width, height, steps, guidance, seed, loras,
                 "generation_time": result["generation_time"],
                 "load_time": result.get("load_time", 0.0),
                 "created_at": time.time(),
-                "software": "MLX-DIFFUSION",
-                "generator": "MLX-DIFFUSION",
+                "software": "DiffusionBear",
+                "generator": "DiffusionBear",
                 "artist": app_settings.metadata_artist(),
                 "tags": [],
                 "file": final_image_path.name,
@@ -2771,6 +3486,7 @@ def _generate_qwen_subprocess(prompt, width, height, steps, guidance, seed,
         _cancel_mflux_watchdog()
         try:
             _drop_mflux_pipeline()
+            _clear_krea_te_cache()
             minfo = get_model_info(model) or {}
             seed = seed if seed is not None else int(time.time())
             try:
@@ -2810,19 +3526,31 @@ def _generate_qwen_subprocess(prompt, width, height, steps, guidance, seed,
             _qwen_stderr_tail.clear()
             repo_python = Path(__file__).resolve().parent.parent / "venv" / "bin" / "python"
             python_exe = str(repo_python) if repo_python.exists() else sys.executable
-            proc = subprocess.Popen(
-                [python_exe, str(engine), json.dumps(req, separators=(",", ":"))],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=False,
-                bufsize=0,
-                start_new_session=True,
-                cwd=str(Path(__file__).resolve().parent),
+            proc = _qwen_process
+            if proc is None or proc.poll() is not None:
+                if not _cleanup_stale_qwen_daemon():
+                    raise RuntimeError("could not verify the previous Qwen daemon")
+                proc = subprocess.Popen(
+                    [python_exe, str(engine), "--serve"],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=False,
+                    bufsize=0,
+                    start_new_session=True,
+                    cwd=str(Path(__file__).resolve().parent),
+                )
+                proc._mlx_process_group = True
+                _qwen_process = proc
+                _write_qwen_pid(proc.pid)
+                _qwen_reader_messages, _qwen_reader_done, _qwen_reader_thread = _start_json_reader(proc)
+                _qwen_stderr_done, _qwen_stderr_thread = _start_stderr_reader(proc, _qwen_stderr_tail)
+            _write_process_request(
+                proc,
+                (json.dumps(req, separators=(",", ":")) + "\n").encode("utf-8"),
+                (cancel_event, _cancel_event),
+                _engine_timeout("QWEN_ENGINE_TIMEOUT_S"),
             )
-            proc._mlx_process_group = True
-            _qwen_process = proc
-            _qwen_reader_messages, _qwen_reader_done, _qwen_reader_thread = _start_json_reader(proc)
-            _qwen_stderr_done, _qwen_stderr_thread = _start_stderr_reader(proc, _qwen_stderr_tail)
             result = None
             while True:
                 line = _read_engine_message(
@@ -2889,8 +3617,8 @@ def _generate_qwen_subprocess(prompt, width, height, steps, guidance, seed,
                 "generation_time": result["generation_time"],
                 "load_time": result.get("load_time", 0.0),
                 "created_at": time.time(),
-                "software": "MLX-DIFFUSION",
-                "generator": "MLX-DIFFUSION",
+                "software": "DiffusionBear",
+                "generator": "DiffusionBear",
                 "artist": app_settings.metadata_artist(),
                 "tags": [],
                 "file": final_image_path.name,
@@ -2923,10 +3651,16 @@ def _generate_qwen_subprocess(prompt, width, height, steps, guidance, seed,
             gc.collect()
             return meta
         except Exception:
+            # A failed request leaves the daemon in an unknown state (it may be
+            # mid-graph or holding a bad tiling config), so drop it and let the
+            # next generation pay a cold load rather than inherit the damage.
             _kill_qwen_process()
             raise
         finally:
-            _kill_qwen_process()
+            if not _qwen_process_is_healthy():
+                _kill_qwen_process()
+            else:
+                _arm_qwen_watchdog()
             if raw_image_path is not None:
                 try:
                     raw_image_path.unlink()
@@ -2946,6 +3680,7 @@ def _shutdown_engines():
         pass
     try:
         _drop_mflux_pipeline()
+        _clear_krea_te_cache()
     except Exception:
         pass
 

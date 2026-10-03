@@ -17,7 +17,7 @@ import requests
 
 
 CIVITAI_API_BASE = "https://civitai.com/api/v1"
-DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 MLX-Diffusion/0.1.2"
+DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 DiffusionBear/0.1.2"
 MAX_LORA_DOWNLOAD_BYTES = 8 * (1 << 30)
 MAX_API_RESPONSE_BYTES = 4 * 1024 * 1024
 MAX_DOWNLOAD_REDIRECTS = 5
@@ -38,7 +38,10 @@ class DownloadCancelled(RuntimeError):
 
 
 def download_deadline_seconds() -> int:
-    raw = os.environ.get("MLX_DIFFUSION_DOWNLOAD_TIMEOUT_S", str(DEFAULT_DOWNLOAD_DEADLINE_SECONDS))
+    raw = os.environ.get(
+        "DIFFUSIONBEAR_DOWNLOAD_TIMEOUT_S",
+        os.environ.get("DIFFUSIONBEAR_DOWNLOAD_TIMEOUT_S", str(DEFAULT_DOWNLOAD_DEADLINE_SECONDS)),
+    )
     try:
         return min(86400, max(60, int(raw)))
     except (TypeError, ValueError):
@@ -247,7 +250,18 @@ def get_civitai_api_key(api_key: str | None = None) -> str | None:
     resolved = _valid_token(env_key)
     if resolved:
         return resolved
-    token_file = Path(__file__).resolve().parent / "data" / "civitai_token.txt"
+    # Read the token from DATA_DIR, which is where routers/tokens.py WRITES it (the
+    # Parameters -> Secrets UI). Reading it from __file__/data only worked in a source
+    # checkout, where the two happen to be the same directory. In the standalone app they
+    # are not -- the bundle's data/ is excluded by build_app.sh -- so the token the user
+    # saved through the UI was never found here, and every gated Civitai download would
+    # have failed with 401. Verified: auth=False from the installed app before this change.
+    try:
+        import app_settings
+
+        token_file = app_settings.DATA_DIR / "civitai_token.txt"
+    except Exception:
+        token_file = Path(__file__).resolve().parent / "data" / "civitai_token.txt"
     if token_file.is_file():
         try:
             return _valid_token(token_file.read_text("utf-8"))
@@ -384,7 +398,7 @@ def normalize_base_model(civitai_base: str | None) -> str:
     b = str(civitai_base).lower().strip()
     if any(k in b for k in ("sd 1.5", "sd 1.4", "sd 2.0", "sd 2.1", "sd15", "sd14", "sd21")):
         raise ValueError(
-            f"Civitai model architecture '{civitai_base}' is SD 1.5/2.x, which is not supported by MLX-DIFFUSION. "
+            f"Civitai model architecture '{civitai_base}' is SD 1.5/2.x, which is not supported by DiffusionBear. "
             f"Supported architectures: SDXL (Lightning/Pony/Illustrious), FLUX.2-klein, Krea 2, Z-Image Turbo."
         )
     if any(k in b for k in ("flux.1", "flux1", "flux dev", "flux schnell")):
@@ -392,7 +406,7 @@ def normalize_base_model(civitai_base: str | None) -> str:
             f"Civitai model architecture '{civitai_base}' is FLUX.1 (12B), which is incompatible with FLUX.2-klein (4B)."
         )
     if any(k in b for k in ("cascade", "pixart", "auraflow", "hunyuan")):
-        raise ValueError(f"Civitai model architecture '{civitai_base}' is not supported by MLX-DIFFUSION.")
+        raise ValueError(f"Civitai model architecture '{civitai_base}' is not supported by DiffusionBear.")
     if any(k in b for k in ("sdxl", "pony", "illustrious", "sd xl")):
         return "sdxl"
     if any(k in b for k in ("flux.2", "flux2", "klein")):

@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { STANDARD_SIZES } from "../constants/sizes";
+import { useI18n } from "../i18n/I18nContext";
 
 function clampRefStrength(v) {
   const n = Math.round((Number(v) + Number.EPSILON) * 100) / 100;
@@ -39,17 +39,13 @@ function GenerationParams({
   maxPixels,
   setMaxPixels,
 }) {
-   const maxRefImages = Math.max(1, Number(maxReferenceImages) || 1);
+   const { t } = useI18n();
+   // De-duplicated and sorted so the dropdown order is stable regardless of how the
+  // registry listed them, and so a registry repeating a name cannot fake a choice.
+  const samplerChoices = [...new Set(modelInfo.samplers || [])].sort();
 
-   const haveHardCap = Boolean(maxPixels && modelInfo.max_pixels);
-   // Filter the size dropdown to resolutions that fit the editable hard cap (win/win:
-   // protects the VAE decode budget while still letting users loosen the cap).
-   const cappedSizes = haveHardCap
-     ? STANDARD_SIZES.filter((s) => {
-         const [w, h] = s.value.split("x").map(Number);
-         return w * h <= Number(maxPixels);
-       })
-     : STANDARD_SIZES;
+  const maxRefImages = Math.max(1, Number(maxReferenceImages) || 1);
+
 
   function randomizeSeed() {
     setSeed("");
@@ -64,54 +60,107 @@ function GenerationParams({
 
   return (
     <div className="generation-params-container">
-      <div className="param-grid">
+      {/* Steps, seed and batch sit outside the disclosure on purpose.
+
+          These are not "advanced". A generation is tuned by changing the step count, and
+          a seed is how you get a different image or come back to one you liked; hiding
+          either behind a collapsed panel made the primary path feel lighter only by
+          making the primary path worse. They are the three controls people actually
+          reach for, so they are visible without a click.
+
+          What stays behind the disclosure is advanced BY NATURE: the negative prompt
+          (unsupported on FLUX.2), the sampler (only where there is a real choice), the
+          pixel cap and DeepCache. */}
+      <div className="param-grid param-grid-primary">
+
         <label>
-          Size
-          <div className="size-row">
-            <select
-              value={`${width}x${height}`}
-              onChange={(e) => {
-                const [w, h] = e.target.value.split("x").map(Number);
-                setWidth(w);
-                setHeight(h);
-              }}
-            >
-              {!cappedSizes.some((s) => s.value === `${width}x${height}`) && (
-                <option value={`${width}x${height}`}>
-                  ✦ {width} × {height} (Preset)
-                </option>
-              )}
-              {cappedSizes.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <span className="shape-preview" title={`${width} × ${height}`}>
-              <span
-                className="shape"
-                style={(() => {
-                  const max = 22;
-                  const r = width / height;
-                  return r >= 1
-                    ? { width: `${max}px`, height: `${Math.max(4, Math.round(max / r))}px` }
-                    : { width: `${Math.max(4, Math.round(max * r))}px`, height: `${max}px` };
-                })()}
-              />
-            </span>
-          </div>
+          <span className="step-label-header">
+            {t("params.steps.label", { steps })}
+            {modelInfo?.id === "krea2-turbo" && steps <= 4 && (
+              <span className="distill-subtle-tag" title={t("params.steps.distillTitle")}>
+                {t("params.steps.distillTag")}
+              </span>
+            )}
+          </span>
+          <input
+            type="range"
+            min="1"
+            max="50"
+            value={steps}
+            onChange={(e) => setSteps(Number(e.target.value))}
+          />
         </label>
 
-        {modelInfo.max_pixels ? (
+        <label>
+          <div className="seed-label-row">
+            <span>{t("params.seed.label")}</span>
+            <div className="seed-quick-actions">
+              <button
+                type="button"
+                className="btn-tiny"
+                onClick={randomizeSeed}
+                title={t("params.seed.randomTitle")}
+              >
+                🎲
+              </button>
+              <button
+                type="button"
+                className="btn-tiny"
+                onClick={() => incrementSeed(1)}
+                title={t("params.seed.nextTitle")}
+              >
+                +1
+              </button>
+              <button
+                type="button"
+                className="btn-tiny"
+                onClick={() => incrementSeed(1024)}
+                title={t("params.seed.nextBatchTitle")}
+              >
+                +1024
+              </button>
+            </div>
+          </div>
+          <input
+            type="number"
+            placeholder={t("params.seed.placeholder")}
+            value={seed}
+            onChange={(e) => setSeed(e.target.value)}
+          />
+        </label>
+        <label>
+          {t("params.batch.label")}
+          <select
+            value={batch}
+            onChange={(e) => setBatch(Number(e.target.value))}
+          >
+            {Array.from({ length: 16 }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>
+                {t(n > 1 ? "params.batch.optionMany" : "params.batch.optionOne", { n })}
+                {n > 1 ? t("params.batch.optionSeedSuffix") : null}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <details className="advanced-settings">
+        <summary className="advanced-settings-summary">
+          <span className="advanced-settings-chevron" aria-hidden="true" />
+          {t("params.advanced.label")}
+        </summary>
+      <div className="advanced-settings-body">
+        <div className="param-grid">
+          {modelInfo.max_pixels ? (
           <label>
             <span className="step-label-header">
-              Max pixels (hard cap)
+              {t("params.maxPixels.label")}
               <span
                 className="distill-subtle-tag"
-                 title="Hard ceiling enforced by the backend for this model."
+                 title={t("params.maxPixels.oomGuardTitle")}
 
               >
-                ⚙ OOM guard
+                {t("params.maxPixels.oomGuardTag")}
               </span>
             </span>
             <input
@@ -133,29 +182,11 @@ function GenerationParams({
               }}
             />
           </label>
-        ) : null}
-
-        <label>
-          <span className="step-label-header">
-            Steps ({steps})
-            {modelInfo?.id === "krea2-turbo" && steps <= 4 && (
-              <span className="distill-subtle-tag" title="4-step distillation LoRA auto-activated in parameters">
-                ⚡ 4-step distill
-              </span>
-            )}
-          </span>
-          <input
-            type="range"
-            min="1"
-            max="50"
-            value={steps}
-            onChange={(e) => setSteps(Number(e.target.value))}
-          />
-        </label>
+          ) : null}
 
         {modelInfo.supports_guidance && (
           <label>
-            Guidance
+            {t("params.guidance.label")}
             <input
               type="number"
               min="0"
@@ -166,78 +197,33 @@ function GenerationParams({
             />
           </label>
         )}
-
-        <label>
-          <div className="seed-label-row">
-            <span>Seed</span>
-            <div className="seed-quick-actions">
-              <button
-                type="button"
-                className="btn-tiny"
-                onClick={randomizeSeed}
-                title="Randomize (empty seed)"
-              >
-                🎲
-              </button>
-              <button
-                type="button"
-                className="btn-tiny"
-                onClick={() => incrementSeed(1)}
-                title="Next Seed (+1)"
-              >
-                +1
-              </button>
-              <button
-                type="button"
-                className="btn-tiny"
-                onClick={() => incrementSeed(1024)}
-                title="Next Batch Seed (+1024)"
-              >
-                +1024
-              </button>
-            </div>
-          </div>
-          <input
-            type="number"
-            placeholder="random"
-            value={seed}
-            onChange={(e) => setSeed(e.target.value)}
-          />
-        </label>
-
-        <label>
-          Batch
-          <select
-            value={batch}
-            onChange={(e) => setBatch(Number(e.target.value))}
-          >
-            {Array.from({ length: 16 }, (_, i) => i + 1).map((n) => (
-              <option key={n} value={n}>
-                {n} image{n > 1 ? "s" : ""}
-                {n > 1 ? ` (+1024 seed)` : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+        </div>
 
       {modelInfo.supports_negative && (
         <label>
-          Negative prompt
+          {t("params.negative.label")}
           <textarea
             value={negativePrompt}
             onChange={(e) => setNegativePrompt(e.target.value)}
-            placeholder="What to avoid: blurry, low quality..."
+            placeholder={t("params.negative.placeholder")}
             rows={2}
           />
         </label>
       )}
 
-      {modelInfo.samplers && (
+      {/* Only shown when there is a real choice.
+
+          A select with one option is not a control, it is a readout -- and it invites the
+          question "what should I pick here?" for a question the engine has already
+          answered. Most models expose no sampler list at all (FLUX.2, Krea 2, Z-Image are
+          guidance-distilled and always use their native schedule), so the old truthy check
+          hid those correctly. A single-sampler model would have slipped through and shown
+          a one-item dropdown, which is why the test is a count and not a presence. */}
+      {samplerChoices.length > 1 && (
         <label>
-          Sampler
+          {t("params.sampler.label")}
           <select value={sampler} onChange={(e) => setSampler(e.target.value)}>
-            {modelInfo.samplers.map((sm) => (
+            {samplerChoices.map((sm) => (
               <option key={sm} value={sm}>
                 {sm}
               </option>
@@ -248,40 +234,44 @@ function GenerationParams({
 
       {modelInfo.engine === "sdxl" && (
         <label>
-          DeepCache
+          {t("params.deepCache.label")}
           <select value={cacheInterval} onChange={(e) => setCacheInterval(Number(e.target.value))}>
-            <option value={1}>Off (Exact UNet)</option>
-            <option value={2}>⚡ DeepCache 2 (~1.6x faster)</option>
-            <option value={3}>⚡⚡ DeepCache 3 (~2x faster)</option>
+            <option value={1}>{t("params.deepCache.off")}</option>
+            <option value={2}>{t("params.deepCache.level2")}</option>
+            <option value={3}>{t("params.deepCache.level3")}</option>
           </select>
         </label>
       )}
+      </div>
+      </details>
 
       {supportsRef && (
-        <fieldset className="ref-section">
-          <legend>
-            Reference images ({refImages.length}/{maxRefImages})
-            {supportsMultiRef && <span className="ref-badge-pill">FLUX.2 In-Context</span>}
-          </legend>
+        <fieldset className={`ref-section${refImages.length ? "" : " is-empty"}`}>
+          {refImages.length > 0 && (
+            <legend>
+              {t("params.ref.legend", { count: refImages.length, max: maxRefImages })}
+              {supportsMultiRef && <span className="ref-badge-pill">{t("params.ref.inContextBadge")}</span>}
+            </legend>
+          )}
 
-          <div className="ref-gallery-row">
+          <div className={`ref-gallery-row${refImages.length ? "" : " is-empty"}`}>
             {refImages.map((img, idx) => (
               <div className="ref-card" key={img.id || img.path}>
                 <div className="ref-thumb-wrapper">
                    {img.preview ? (
-                     <img src={img.preview} alt={`Reference ${idx + 1}`} />
+                     <img src={img.preview} alt={t("params.ref.thumbAlt", { n: idx + 1 })} />
                    ) : (
-                     <span className="ref-preview-missing" aria-label={`Reference ${idx + 1} preview unavailable`}>
+                     <span className="ref-preview-missing" aria-label={t("params.ref.previewUnavailable", { n: idx + 1 })}>
                        {idx + 1}
                      </span>
                    )}
 
-                  <span className="ref-index-badge">Image {idx + 1}</span>
+                  <span className="ref-index-badge">{t("params.ref.indexBadge", { n: idx + 1 })}</span>
                   <button
                     type="button"
                     className="ref-remove-btn"
                     onClick={() => removeRefImage(idx)}
-                    title="Remove reference image"
+                    title={t("params.ref.removeTitle")}
                   >
                     ✕
                   </button>
@@ -290,15 +280,18 @@ function GenerationParams({
                   type="button"
                   className="ref-insert-chip"
                   onClick={() => insertIntoPrompt(`Image ${idx + 1}`)}
-                  title={`Insert "Image ${idx + 1}" into prompt`}
+                  title={t("params.ref.insertTitle", { n: idx + 1 })}
                 >
-                  + Prompt tag
+                  {t("params.ref.promptTagBtn")}
                 </button>
               </div>
             ))}
 
             {refImages.length < maxRefImages && (
-              <label className="ref-add-card" title="Add reference image (up to 10 for FLUX.2)">
+              <label
+                className={`ref-add-card${refImages.length ? "" : " is-slim"}`}
+                title={t("params.ref.addCardTitle")}
+              >
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,.heic,.HEIC,image/heic,image/heif"
@@ -308,7 +301,9 @@ function GenerationParams({
                 />
                 <span className="ref-add-plus">＋</span>
                 <span className="ref-add-text">
-                  {refImages.length === 0 ? "Add Image" : `Add (${refImages.length + 1})`}
+                  {refImages.length === 0
+                    ? t("params.ref.addTextFirst")
+                    : t("params.ref.addTextNext", { n: refImages.length + 1 })}
                 </span>
               </label>
             )}
@@ -317,7 +312,7 @@ function GenerationParams({
           {refImages.length > 0 && !supportsMultiRef && (
             <div className="ref-strength">
               <div className="ref-strength-head">
-                <span className="ref-strength-label">KREA image ref strength</span>
+                <span className="ref-strength-label">{t("params.ref.strengthLabel")}</span>
                 <input
                   className="ref-strength-input"
                   type="number"
@@ -343,7 +338,7 @@ function GenerationParams({
                 <button
                   type="button"
                   className="btn-mini"
-                  title="Decrease by 0.1"
+                  title={t("params.ref.decrease01Title")}
                   onClick={() => setRefStrength((v) => clampRefStrength(Number(v) - 0.1))}
                 >
                   −0.1
@@ -351,7 +346,7 @@ function GenerationParams({
                 <button
                   type="button"
                   className="btn-mini"
-                  title="Decrease by 0.01"
+                  title={t("params.ref.decrease001Title")}
                   onClick={() => setRefStrength((v) => clampRefStrength(Number(v) - 0.01))}
                 >
                   −0.01
@@ -360,7 +355,7 @@ function GenerationParams({
                 <button
                   type="button"
                   className="btn-mini"
-                  title="Increase by 0.01"
+                  title={t("params.ref.increase001Title")}
                   onClick={() => setRefStrength((v) => clampRefStrength(Number(v) + 0.01))}
                 >
                   +0.01
@@ -368,7 +363,7 @@ function GenerationParams({
                 <button
                   type="button"
                   className="btn-mini"
-                  title="Increase by 0.1"
+                  title={t("params.ref.increase01Title")}
                   onClick={() => setRefStrength((v) => clampRefStrength(Number(v) + 0.1))}
                 >
                   +0.1
@@ -376,9 +371,9 @@ function GenerationParams({
               </div>
             </div>
           )}
-          {supportsMultiRef && (
+          {supportsMultiRef && refImages.length > 0 && (
             <p className="hint">
-              💡 <strong>FLUX.2 In-Context Conditioning:</strong> Up to 10 reference images. The transformer injects image tokens directly into cross-attention. Refer to them naturally in your prompt as <code>Image 1</code>, <code>Image 2</code>, etc. (e.g. <em>&quot;A portrait of the character from Image 1 in the artistic style of Image 2&quot;</em>).
+              💡 <strong>{t("params.ref.multiRefHintLead")}</strong> {t("params.ref.multiRefHintBody")}
             </p>
           )}
         </fieldset>

@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 import json
 import re
 
@@ -99,7 +100,26 @@ def _complete_hf_snapshot(repo: str) -> bool:
     return False
 
 
+_fully_cached_ttl_s = 5.0
+_fully_cached_cache: dict = {}
+
+
 def _model_is_fully_cached(model_id: str, minfo: dict | None = None, local_path: Path | None = None) -> bool:
+    # /api/models calls this 9 times per request and the frontend calls that 3-6
+    # times per page load, so a single failed directory walk was enough to make
+    # the UI report an installed model as missing and offer a full re-download.
+    # Short TTL keeps the answer stable across that burst.
+    key = (model_id, str(local_path) if local_path else None)
+    now = time.monotonic()
+    cached = _fully_cached_cache.get(key)
+    if cached is not None and now - cached[0] < _fully_cached_ttl_s:
+        return cached[1]
+    result = _model_is_fully_cached_uncached(model_id, minfo, local_path)
+    _fully_cached_cache[key] = (now, result)
+    return result
+
+
+def _model_is_fully_cached_uncached(model_id: str, minfo: dict | None = None, local_path: Path | None = None) -> bool:
     minfo = minfo or generator.get_model_info(model_id)
     if not minfo:
         return False

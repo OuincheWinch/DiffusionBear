@@ -2,7 +2,7 @@
 
 ## Privacy posture
 
-MLX-Diffusion is a **local-first** application:
+DiffusionBear is a **local-first** application:
 
 - Generation, prompt enhancement, and LoRA management run entirely on-device. No telemetry, no analytics, no network calls during generation.
 - Network is only touched when **you** explicitly trigger it: downloading model weights/LoRAs (Hugging Face, Civitai), or uploading/exporting an image.
@@ -13,8 +13,8 @@ MLX-Diffusion is a **local-first** application:
 
 Please **do not open a public GitHub issue** for security problems. Report privately instead:
 
-- Open a [private vulnerability report](https://github.com/OuincheWinch/MLX-Diffusion/security/advisories/new) (GitHub's "Report a vulnerability" flow), or
-- Email the repo author with the subject `[MLX-Diffusion security]`.
+- Open a [private vulnerability report](https://github.com/OuincheWinch/DiffusionBear/security/advisories/new) (GitHub's "Report a vulnerability" flow), or
+- Email the repo author with the subject `[DiffusionBear security]`.
 
 You should get an acknowledgement within 3 working days. Treat PoCs as embargoed until the issue is fixed or declined.
 

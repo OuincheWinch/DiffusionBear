@@ -1,4 +1,4 @@
-"""Persistent user-configurable settings for MLX-DIFFUSION.
+"""Persistent user-configurable settings for DiffusionBear.
 
 Settings are stored as plain JSON in ``data/settings.json`` next to the other
 runtime state (LoRA registry, downloads, …). Loads lazily, writes atomically,
@@ -13,17 +13,38 @@ import tempfile
 import threading
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+def _abs_from_env(name: str) -> Path | None:
+    configured = os.environ.get(name, "").strip()
+    if not configured:
+        return None
+    path = Path(configured).expanduser()
+    if not path.is_absolute():
+        raise ValueError(f"{name} must be an absolute path")
+    return path.resolve()
+
+
+# Where the app's own mutable state lives: settings.json, the gallery, the LoRA
+# registry, uploads, queue files and the engine pid files.
+#
+# Defaults to backend/data, which is what a source checkout wants. The asset dir is
+# deliberately NOT reused for this: the dev workflow points it at a shared model
+# store while the working copy keeps its own gallery, and collapsing the two would
+# change that. But in the standalone .app the checkout *is* the bundle, so writing
+# here would drop the gallery and settings inside the signed app -- growing without
+# bound and invalidating the bundle's own code signature on the next launch. The
+# shell therefore sets the data-dir variable alongside the asset-dir one.
+#
+DATA_DIR = (
+        _abs_from_env("DIFFUSIONBEAR_DATA_DIR")
+        or (Path(__file__).resolve().parent / "data")
+    )
 
 
 def _resolve_asset_dir() -> Path:
-    configured = os.environ.get("MLX_DIFFUSION_ASSET_DIR", "").strip()
-    if not configured:
-        return DATA_DIR
-    path = Path(configured).expanduser()
-    if not path.is_absolute():
-        raise ValueError("MLX_DIFFUSION_ASSET_DIR must be an absolute path")
-    return path.resolve()
+    return (
+        _abs_from_env("DIFFUSIONBEAR_ASSET_DIR")
+        or DATA_DIR
+    )
 
 
 ASSET_DIR = _resolve_asset_dir()
@@ -44,7 +65,7 @@ _SAMPLERS = {
 }
 
 DEFAULTS = {
-    # Personalization: credit embedded in Civitai/EXIF metadata. Empty -> "MLX-DIFFUSION".
+    # Personalization: credit embedded in Civitai/EXIF metadata. Empty -> "DiffusionBear".
     "artist_name": "",
     # Default output format for new generations ("png" | "jpeg").
     "default_output_format": "png",
@@ -56,6 +77,9 @@ DEFAULTS = {
     "default_sampler": "",
     # Default DeepCache interval for SDXL (1 = disabled).
     "default_cache_interval": 1,
+    # Interface language. "auto" follows the OS; the picker in Settings overrides it
+    # with a concrete code, which is then what gets persisted.
+    "language": "auto",
     # Per-model overrides: model_id -> {steps, guidance, sampler, cache_interval, fast_vae, width, height}.
     "model_defaults": {},
     # Per-model local install overrides: model_id -> directory that already holds
@@ -86,14 +110,21 @@ DEFAULTS = {
     # 0 = never auto-release. Applied lazily (next generation / idle rearm).
     "memory_wired_limit_gb": None,
     "memory_krea_wired_limit_gb": None,
+    "krea_vae_tile_size": None,
     "idle_kill_s_mflux": None,
     "idle_kill_s_sdxl": None,
+    "idle_kill_s_qwen": None,
 }
 
 # Engine keys used by prompt_enhancer.ENGINE_PROFILES.
 PROMPT_ENHANCER_KEYS = {"flux2", "sdxl", "krea2", "z-image-turbo", "qwen"}
 _PROMPT_ENHANCER_MAX = 8000
 _MAX_SETTINGS_BYTES = 8 * 1024 * 1024
+# Accepted interface languages, mirroring frontend/src/i18n/languages.js. A code
+# added there and not here is silently rejected on save, and the picker's choice
+# appears to do nothing -- so the two lists are asserted equal by test_i18n.py.
+LANGUAGE_CODES = frozenset({"auto", "en", "fr", "de", "it", "es", "zh", "ja", "pt", "ko"})
+
 _MAX_MODEL_SETTINGS = 64
 _MODEL_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,119}$")
 
@@ -136,14 +167,18 @@ _VALIDATORS = {
     "default_fast_vae": lambda v: isinstance(v, bool),
     "default_sampler": lambda v: isinstance(v, str) and (not v or v in _SAMPLERS),
     "default_cache_interval": lambda v: _is_int(v) and 1 <= v <= 10,
+    "language": lambda v: v in LANGUAGE_CODES,
     "model_defaults": lambda v: isinstance(v, dict) and len(v) <= _MAX_MODEL_SETTINGS,
     "model_paths": lambda v: isinstance(v, dict) and len(v) <= _MAX_MODEL_SETTINGS,
     "prompt_enhancer": lambda v: isinstance(v, dict) and len(v) <= len(PROMPT_ENHANCER_KEYS),
     "prompt_enhancer_json": lambda v: isinstance(v, dict) and len(v) <= len(PROMPT_ENHANCER_KEYS),
     "memory_wired_limit_gb": lambda v: v is None or (_is_number(v) and 0 <= v <= 128),
     "memory_krea_wired_limit_gb": lambda v: v is None or (_is_number(v) and 0 <= v <= 128),
+    # 0 disables tiled VAE decoding. Bounded so a typo cannot ask for a 100k tile.
+    "krea_vae_tile_size": lambda v: v is None or (_is_number(v) and 0 <= v <= 4096),
     "idle_kill_s_mflux": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),
     "idle_kill_s_sdxl": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),
+    "idle_kill_s_qwen": lambda v: v is None or (_is_int(v) and 0 <= v <= 86400),
 }
 
 
@@ -157,14 +192,42 @@ def _deep_merge(base: dict, updates: dict) -> dict:
     return out
 
 
+def _settings_signature():
+    """Identity of the on-disk settings file: (mtime_ns, size, resolved path).
+
+    The resolved path is part of the signature so that swapping settings.json
+    for a symlink pointing outside DATA_DIR still busts the cache and gets the
+    containment check re-run.
+    """
+    try:
+        st = SETTINGS_FILE.stat()
+    except OSError:
+        return None
+    try:
+        resolved = str(SETTINGS_FILE.resolve())
+    except OSError:
+        resolved = ""
+    return (st.st_mtime_ns, st.st_size, resolved)
+
+
+# (signature, validated settings) for the last successful _load(). Every _load()
+# caller already holds _lock, so no extra locking is needed here.
+_load_cache: dict = {}
+
+
 def _load() -> dict:
+    signature = _settings_signature()
+    cached = _load_cache.get("settings")
+    if cached is not None and _load_cache.get("signature") == signature:
+        return json.loads(json.dumps(cached))
+
     settings = json.loads(json.dumps(DEFAULTS))
     try:
         raw = (
             json.loads(SETTINGS_FILE.read_text("utf-8"))
-            if SETTINGS_FILE.exists()
+            if signature is not None
             and SETTINGS_FILE.resolve().is_relative_to(DATA_DIR.resolve())
-            and SETTINGS_FILE.stat().st_size <= _MAX_SETTINGS_BYTES
+            and signature[1] <= _MAX_SETTINGS_BYTES
             else {}
         )
     except (OSError, UnicodeError, json.JSONDecodeError) as e:
@@ -197,7 +260,9 @@ def _load() -> dict:
             settings[key] = clean_prompts
         else:
             settings[key] = value
-    return settings
+    _load_cache["signature"] = signature
+    _load_cache["settings"] = settings
+    return json.loads(json.dumps(settings))
 
 
 def _save(settings: dict):
@@ -219,6 +284,7 @@ def _save(settings: dict):
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp, SETTINGS_FILE)
+        _load_cache.clear()
         try:
             dir_fd = os.open(str(SETTINGS_FILE.parent), os.O_RDONLY)
             try:
@@ -259,7 +325,7 @@ def artist_name() -> str:
 def metadata_artist() -> str:
     """Artist credit embedded in image metadata/EXIF. Falls back to a neutral
     product name when the user has not personalized it."""
-    return artist_name() or "MLX-DIFFUSION"
+    return artist_name() or "DiffusionBear"
 
 
 def update_settings(updates: dict) -> dict:

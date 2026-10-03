@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import TokenManager from "./TokenManager";
+import { useI18n } from "../i18n/I18nContext";
 
 export default function UniversalDownloader({
   engineBase,
   onLoraDownloaded,
   onSwitchModel,
 }) {
+  const { t } = useI18n();
   const [downloadInput, setDownloadInput] = useState("");
   const [downloadName, setDownloadName] = useState("");
   const [downloadTriggers, setDownloadTriggers] = useState("");
@@ -117,7 +119,10 @@ export default function UniversalDownloader({
       setDownloadTriggers("");
       setDownloadFeedback({
         type: "info",
-        text: `Starting download of "${res.model_name}" (${res.base_model?.toUpperCase() || "LoRA"})…`,
+        text: t("downloader.starting", {
+          model: res.model_name,
+          base: res.base_model?.toUpperCase() || "LoRA",
+        }),
       });
       const list = await api("/api/loras/downloads");
       setActiveDownloads(list);
@@ -132,7 +137,7 @@ export default function UniversalDownloader({
         onLoraDownloaded?.();
       }
     } catch (e) {
-      setDownloadFeedback({ type: "error", text: `Download failed: ${e.message}` });
+      setDownloadFeedback({ type: "error", text: t("downloader.failed", { error: e.message }) });
       const msg = String(e.message || "");
       if (
         msg.includes("authentication") ||
@@ -158,7 +163,7 @@ export default function UniversalDownloader({
       const updated = await api("/api/loras/downloads");
       setActiveDownloads(updated);
     } catch (e) {
-      setDownloadFeedback({ type: "error", text: `Failed to cancel: ${e.message}` });
+      setDownloadFeedback({ type: "error", text: t("downloader.cancelFailed", { error: e.message }) });
     }
   }
 
@@ -174,28 +179,26 @@ export default function UniversalDownloader({
               HUGGING FACE
             </span>
             <span className={`direct-tag ${detectedSource === "direct" ? "active-source" : detectedSource ? "dimmed" : ""}`}>
-              DIRECT URL
+              {t("downloader.tagDirectUrl")}
             </span>
           </div>
-          <span className="universal-card-title">Universal LoRA Downloader</span>
+          <span className="universal-card-title">{t("downloader.title")}</span>
           {detectedSource === "hf" && (
-            <span className="hub-detected-badge hf-detected">🤗 Hugging Face detected</span>
+            <span className="hub-detected-badge hf-detected">{t("downloader.detectedHf")}</span>
           )}
           {detectedSource === "civitai" && (
-            <span className="hub-detected-badge civitai-detected">⚡ Civitai detected</span>
+            <span className="hub-detected-badge civitai-detected">{t("downloader.detectedCivitai")}</span>
           )}
           {detectedSource === "direct" && (
-            <span className="hub-detected-badge direct-detected">🔗 Direct Link detected</span>
+            <span className="hub-detected-badge direct-detected">{t("downloader.detectedDirect")}</span>
           )}
         </div>
 
-        <p className="universal-download-hint">
-          Paste a Civitai model URL or ID, a Hugging Face repo ID or URL, or any direct link to a <code>.safetensors</code> file.
-        </p>
+        <p className="universal-download-hint">{t("downloader.hint")}</p>
 
         <div className="universal-input-row">
           <input
-            placeholder="Civitai URL or ID, Hugging Face repo or URL, or direct .safetensors link..."
+            placeholder={t("downloader.urlPlaceholder")}
             value={downloadInput}
             onChange={(e) => setDownloadInput(e.target.value)}
             disabled={downloading}
@@ -212,19 +215,19 @@ export default function UniversalDownloader({
             onClick={handleDownload}
             disabled={downloading || !downloadInput.trim()}
           >
-            {downloading ? "Starting…" : "⚡ Download & Register"}
+            {downloading ? t("downloader.startingBtn") : t("downloader.downloadBtn")}
           </button>
         </div>
 
         <div className="universal-options-row">
           <input
-            placeholder="Custom name (optional)"
+            placeholder={t("downloader.namePlaceholder")}
             value={downloadName}
             onChange={(e) => setDownloadName(e.target.value)}
             disabled={downloading}
           />
           <input
-            placeholder="Trigger words: comma, separated (optional)"
+            placeholder={t("downloader.triggersPlaceholder")}
             value={downloadTriggers}
             onChange={(e) => setDownloadTriggers(e.target.value)}
             disabled={downloading}
@@ -234,7 +237,7 @@ export default function UniversalDownloader({
             onChange={(e) => setDownloadBaseModel(e.target.value)}
             disabled={downloading}
           >
-            <option value="">Auto-Detect Architecture</option>
+            <option value="">{t("downloader.autoDetect")}</option>
             <option value="sdxl">SDXL</option>
             <option value="flux2">FLUX.2</option>
             <option value="krea2">Krea-2</option>
@@ -259,7 +262,7 @@ export default function UniversalDownloader({
               <div className="civitai-download-header">
                 <span className="civitai-download-name">
                   {(dl.source === "hf" || dl.source === "huggingface") && <span className="hf-tag" style={{ marginRight: 6 }}>HF</span>}
-                  {dl.source === "direct_url" && <span className="direct-tag" style={{ marginRight: 6 }}>DIRECT</span>}
+                  {dl.source === "direct_url" && <span className="direct-tag" style={{ marginRight: 6 }}>{t("downloader.tagDirect")}</span>}
                   {(!dl.source || dl.source === "civitai") && <span className="civitai-tag" style={{ marginRight: 6 }}>CIVITAI</span>}
                   <strong>{dl.model_name}</strong>
                   <span className={`lora-badge lora-badge-${dl.base_model}`}>{dl.base_model?.toUpperCase()}</span>
@@ -270,20 +273,21 @@ export default function UniversalDownloader({
                       type="button"
                       className="btn-cancel-download"
                       onClick={() => handleCancelDownload(dl.id)}
-                      title="Cancel download"
+                      title={t("downloader.cancelTitle")}
                     >
-                      ✕ Cancel
+                      {t("downloader.cancelBtn")}
                     </button>
                   )}
-                  {dl.status === "done" && <span className="dl-tag done">✓ Ready</span>}
-                  {dl.status === "error" && <span className="dl-tag error">✖ Error</span>}
-                  {dl.status === "cancelled" && <span className="dl-tag cancelled">Cancelled</span>}
+                  {dl.status === "done" && <span className="dl-tag done">{t("downloader.ready")}</span>}
+                  {dl.status === "error" && <span className="dl-tag error">{t("downloader.error")}</span>}
+                  {dl.status === "cancelled" && <span className="dl-tag cancelled">{t("downloader.cancelled")}</span>}
                 </div>
               </div>
               <div className="civitai-progress-track">
                 <div
                   className={`civitai-progress-fill ${dl.status}`}
-                  style={{ width: `${Math.round((dl.progress || 0) * 100)}%` }}
+                  // scaleX rather than width: animating width re-runs layout every tick.
+                  style={{ transform: `scaleX(${Math.round((dl.progress || 0) * 100) / 100})` }}
                 />
               </div>
               <div className="civitai-download-footer">
@@ -294,37 +298,37 @@ export default function UniversalDownloader({
               </div>
               {dl.status === "error" && dl.error && dl.error.includes("AUTH_REQUIRED") && ["civitai", "huggingface"].includes(dl.source) && (
                 <div className="civitai-auth-prompt">
-                  <span>{dl.source === "huggingface" ? "This model requires authentication on Hugging Face." : "This model requires authentication on Civitai."}</span>
+                  <span>{dl.source === "huggingface" ? t("downloader.authRequiredHf") : t("downloader.authRequiredCivitai")}</span>
                   <button
                     type="button"
                     className="btn-open-token"
                     onClick={() => setTokenAutofocus(dl.source === "huggingface" ? "hf" : "civitai")}
                   >
-                    {dl.source === "huggingface" ? "🔑 Configure HF Token" : "🔑 Configure API Key"}
+                    {dl.source === "huggingface" ? t("downloader.configureHfToken") : t("downloader.configureApiKey")}
                   </button>
                 </div>
               )}
               {dl.status === "error" && dl.error && dl.error.includes("HF_TOKEN_REQUIRED") && (
                 <div className="civitai-auth-prompt">
-                  <span>This model requires authentication on Hugging Face.</span>
+                  <span>{t("downloader.authRequiredHf")}</span>
                   <button
                     type="button"
                     className="btn-open-token"
                     onClick={() => setTokenAutofocus("hf")}
                   >
-                    🔑 Configure HF Token
+                    {t("downloader.configureHfToken")}
                   </button>
                 </div>
               )}
               {dl.status === "done" && engineBase && dl.base_model !== engineBase && (
                 <div className="civitai-switch-prompt">
-                  <span>Installed for {dl.base_model?.toUpperCase()}.</span>
+                  <span>{t("downloader.installedFor", { model: dl.base_model?.toUpperCase() })}</span>
                   <button
                     type="button"
                     className="btn-switch-prompt"
                     onClick={() => onSwitchModel?.(dl.base_model)}
                   >
-                    ⚡ Switch to {dl.base_model?.toUpperCase()}
+                    {t("downloader.switchTo", { model: dl.base_model?.toUpperCase() })}
                   </button>
                 </div>
               )}

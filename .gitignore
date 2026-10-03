@@ -76,3 +76,9 @@ coding.md
 # ---- Logs ----
 *.log
 nohup.out
+# standalone app build outputs: staging runtimes and the assembled .app (multi-GB)
+packaging/build/
+packaging/dist/
+packaging/vendor/*/build/
+packaging/vendor/*/*.egg-info/
+packaging/dist/.metadata_never_index

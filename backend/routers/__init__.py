@@ -1,1 +1,1 @@
-# MLX-DIFFUSION Routers Package
+# DiffusionBear Routers Package

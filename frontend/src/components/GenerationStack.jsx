@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState, memo } from "react";
 import { api } from "../api";
 import QueueRecoveryDrawer from "./QueueRecoveryDrawer";
+import { useI18n } from "../i18n/I18nContext";
 
-const STATUS_LABELS = {
-  queued: "⏳ Queued",
-  generating: "⚙ Generating",
-  done: "✓ Done",
-  error: "✗ Error",
-  cancelled: "Cancelled",
+// Maps the backend's status codes to i18n keys rather than to literal text: this
+// table lives at module level, outside the component, so it cannot call useI18n().
+const STATUS_KEYS = {
+  queued: "stack.status.queued",
+  generating: "stack.status.generating",
+  done: "stack.status.done",
+  error: "stack.status.error",
+  cancelled: "stack.status.cancelled",
 };
 
 function GenerationStack() {
+  const { t } = useI18n();
   const [jobs, setJobs] = useState([]);
   const [recoverableItems, setRecoverableItems] = useState([]);
   const [showRecovery, setShowRecovery] = useState(false);
@@ -121,7 +125,7 @@ function GenerationStack() {
     <>
       <div className="gen-stack">
         <h3>
-          Generation stack ({activeImageCount})
+          {t("stack.heading", { count: activeImageCount })}
           <span className="gen-stack-actions">
             {active.some((j) => j.status === "generating") && (
               <button
@@ -132,12 +136,12 @@ function GenerationStack() {
                   if (run) cancelJob(run.id);
                 }}
               >
-                ✕ Kill current
+                {t("stack.killCurrentBtn")}
               </button>
             )}
             {active.length > 1 && (
               <button type="button" className="btn-mini" onClick={emptyQueue}>
-                ⌫ Empty queue
+                {t("stack.emptyQueueBtn")}
               </button>
             )}
             {recoverableItems.length > 0 && (
@@ -145,9 +149,12 @@ function GenerationStack() {
                 type="button"
                 className="btn-mini btn-recovery-trigger"
                 onClick={() => setShowRecovery(true)}
-                title="Consulter et réinsérer les prompts annulés ou interrompus"
+                title={t("stack.recoveryTriggerTitle")}
               >
-                ↺ {recoverableItems.length} récupérable{recoverableItems.length > 1 ? "s" : ""}
+                {t(
+                  recoverableItems.length > 1 ? "stack.recoveryTriggerMany" : "stack.recoveryTriggerOne",
+                  { count: recoverableItems.length }
+                )}
               </button>
             )}
           </span>
@@ -156,14 +163,17 @@ function GenerationStack() {
         {interruptedCount > 0 && (
           <div className="queue-crash-alert">
             <span>
-              ⚡ {interruptedCount} génération{interruptedCount > 1 ? "s" : ""} interrompue{interruptedCount > 1 ? "s" : ""} lors de la dernière session
+              {t(
+                interruptedCount > 1 ? "stack.crashAlertMany" : "stack.crashAlertOne",
+                { count: interruptedCount }
+              )}
             </span>
             <button
               type="button"
               className="btn-mini btn-crash-restore"
               onClick={() => setShowRecovery(true)}
             >
-              Voir & Restaurer
+              {t("stack.crashAlertBtn")}
             </button>
           </div>
         )}
@@ -181,14 +191,14 @@ function GenerationStack() {
               <div className="gen-stack-head">
                 <span className={`gen-stack-status ${j.phase ? `phase-${j.phase}` : ""}`}>
                   {j.status === "generating" && j.phase === "downloading"
-                    ? "📥 Downloading"
+                    ? t("stack.phase.downloading")
                     : j.status === "generating" && j.phase === "loading_model"
-                      ? "🧠 Loading Memory"
+                      ? t("stack.phase.loadingMemory")
                       : j.status === "generating" && j.phase === "compiling"
-                        ? "⚡ Compiling"
+                        ? t("stack.phase.compiling")
                         : j.status === "generating" && j.phase === "saving"
-                          ? "🎨 Finalizing"
-                          : STATUS_LABELS[j.status] || j.status}
+                          ? t("stack.phase.finalizing")
+                          : STATUS_KEYS[j.status] ? t(STATUS_KEYS[j.status]) : j.status}
                 </span>
                 <span className="gen-stack-model">{j.model}</span>
               </div>
@@ -196,7 +206,7 @@ function GenerationStack() {
                 <button
                   type="button"
                   className="btn-mini gen-stack-kill"
-                  title="Cancel this job"
+                  title={t("stack.job.cancelTitle")}
                   onClick={() => cancelJob(j.id)}
                 >
                   ✕
@@ -205,41 +215,72 @@ function GenerationStack() {
               <div className="gen-stack-prompt" title={j.prompt}>
                 {j.prompt}
               </div>
+              {/* The reason, when there is one.
+
+                  This row used to say only "X Error" with no explanation, while the banner
+                  at the top of the form carried the real Metal message. Two surfaces
+                  describing the same failure differently read as two separate errors -- and
+                  the stack is what you look at after dismissing the banner, so it was the
+                  worse of the two: no reason at all. */}
+              {j.status === "error" && j.error && (
+                <div className="gen-stack-error" title={j.error}>
+                  {j.error}
+                </div>
+              )}
               {pct != null && (
                 <div className="progress-bar-hairline">
-                  <div className="progress-fill" style={{ width: `${pct}%` }} />
+                  <div
+                    className="progress-fill"
+                    // scaleX rather than width: animating width re-runs layout every tick.
+                    style={{ transform: `scaleX(${pct / 100})` }}
+                  />
                 </div>
               )}
               {p ? (
                 <div className="hint">
                   {j.status === "done" ? (
                     <>
-                      Completed in {j.result?.generation_time ?? Math.round(p.elapsed)}s ({p.steps} steps
-                      {(p.batch > 1 || j.batch > 1) ? ` · ${p.batch || j.batch} images` : ""})
+                      {t("stack.job.completedIn", {
+                        time: j.result?.generation_time ?? Math.round(p.elapsed),
+                        steps: p.steps,
+                      })}
+                      {(p.batch > 1 || j.batch > 1)
+                        ? t("stack.job.completedBatch", { batch: p.batch || j.batch })
+                        : null}
                     </>
                   ) : (
                     <>
                       {p.step >= p.steps ? (
-                        <>Decoding image (VAE) · elapsed {Math.round(p.elapsed)}s</>
+                        t("stack.job.decoding", { elapsed: Math.round(p.elapsed) })
                       ) : (
-                        <>Step {p.step}/{p.steps} · elapsed {Math.round(p.elapsed)}s</>
+                        t("stack.job.stepElapsed", {
+                          step: p.step,
+                          steps: p.steps,
+                          elapsed: Math.round(p.elapsed),
+                        })
                       )}
                       {p.eta_seconds != null && p.eta_seconds >= 0 && (
-                        <> · ETA ~{Math.round(p.eta_seconds)}s</>
+                        t("stack.job.eta", { eta: Math.round(p.eta_seconds) })
                       )}
                       {(p.batch > 1 || j.batch > 1) && (
-                        <> · image {(p.image_index ?? 0) + 1}/{p.batch || j.batch}</>
+                        t("stack.job.imageProgress", {
+                          index: (p.image_index ?? 0) + 1,
+                          batch: p.batch || j.batch,
+                        })
                       )}
                     </>
                   )}
                 </div>
               ) : j.status === "queued" ? (
                 <div className="hint">
-                  Waiting in queue{(j.batch > 1) ? ` · batch of ${j.batch} images` : ""}
+                  {t("stack.job.waitingInQueue")}
+                  {(j.batch > 1) ? t("stack.job.waitingBatch", { batch: j.batch }) : null}
                 </div>
               ) : j.status === "generating" && !p ? (
                 <div className="hint">
-                  {j.phase_detail || (j.phase === "downloading" ? "Downloading weights…" : "Loading model weights into unified memory…")}
+                  {j.phase_detail || (j.phase === "downloading"
+                    ? t("stack.job.phaseDownloading")
+                    : t("stack.job.phaseLoadingWeights"))}
                 </div>
               ) : null}
             </div>

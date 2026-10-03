@@ -1,5 +1,5 @@
 ==========================================================================
-MLX-DIFFUSION — User Guide (English)
+DiffusionBear — User Guide (English)
 ==========================================================================
 Local image-generation studio optimized for Apple Silicon (MLX & Metal GPU).
 Backend: FastAPI (Python)   ·   Frontend: React 19 / Vite   ·   Engines: FAAS / mflux
@@ -32,8 +32,8 @@ backend/ and frontend/):
 
 Step 0 - get the repo ( download it fron github )
 
-    git clone https://github.com/OuincheWinch/MLX-Diffusion.git
-    cd MLX-Diffusion
+    git clone https://github.com/OuincheWinch/DiffusionBear.git
+    cd DiffusionBear
 
 Step 1 — create the two Python virtual environments (both are required:
 the main engine venv `venv/` and the isolated SDXL engine `venv-sdxl/`):
@@ -121,7 +121,7 @@ immediately:  pkill -f sdxl_engine.py
 Ensure your terminal is open inside the project folder you wish to remove:
 
     cd /path/to/your/project-folder
-    cd .. && rm -rf MLX-Diffusion
+    cd .. && rm -rf DiffusionBear
 
 Purge the leftover caches so nothing lingers on the machine:
 
@@ -221,7 +221,7 @@ Model install from an already-downloaded copy (no re-download):
   🖼️ "Use as Reference" re-injects any image into the multi-reference tray.
 - Civitai-compliant metadata: every PNG embeds prompt / negative / steps /
   sampler / seed / CFG / checkpoint + AutoV2 hashes / LoRAs with version IDs
-  in tEXt + EXIF, generator "MLX-DIFFUSION" / artist "www.ouinche.com".
+  in tEXt + EXIF, generator "DiffusionBear" / artist "www.ouinche.com".
   Fully readable by Civitai's upload parser.
 
 
@@ -241,7 +241,7 @@ Model install from an already-downloaded copy (no re-download):
 ==========================================================================
 LICENSE
 ==========================================================================
-MLX-DIFFUSION is released under the MIT License (see LICENSE file in the repo
+DiffusionBear is released under the MIT License (see LICENSE file in the repo
 root). This license covers the source code only — it does NOT cover the model
 weights (FLUX.2-klein is Black Forest Labs Non-Commercial; other checkpoints
 carry their own terms) or third-party vendored content.

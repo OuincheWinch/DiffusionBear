@@ -1,4 +1,4 @@
-export const GITHUB_REPO_URL = "https://github.com/OuincheWinch/MLX-Diffusion";
+export const GITHUB_REPO_URL = "https://github.com/OuincheWinch/DiffusionBear";
 export const GITHUB_LICENSE_URL = `${GITHUB_REPO_URL}/blob/main/LICENSE`;
 export const AUTHOR_WEBSITE = "https://www.ouinche.com";
 export const AI_CREDITS = ["Gemini", "0xAlpha", "Big Pickle"];
@@ -6,8 +6,8 @@ export const AI_CREDITS = ["Gemini", "0xAlpha", "Big Pickle"];
 export const LICENCE_SECTIONS = [
   {
     id: "backend",
-    title: "Backend — MLX / mflux runtime (Python)",
-    note: "Core generation stack for FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo and the Qwen-Image 2.1 experimental engine.",
+    titleKey: "licences.sectionBackend",
+    noteKey: "licences.noteBackend",
     packages: [
       { name: "FastAPI", license: "MIT", url: "https://github.com/fastapi/fastapi" },
       { name: "Uvicorn", license: "BSD-3-Clause", url: "https://github.com/encode/uvicorn" },
@@ -27,8 +27,8 @@ export const LICENCE_SECTIONS = [
   },
   {
     id: "sdxl",
-    title: "SDXL engine — Juggernaut XL Lightning (Python, torch-free runtime)",
-    note: "Conversion tools ship in venv-sdxl only; the deployed engine runtime is torch-free.",
+    titleKey: "licences.sectionSdxl",
+    noteKey: "licences.noteSdxl",
     packages: [
       { name: "mlx_diffuser", license: "CC0-1.0", url: "https://github.com/AmirHossein-razlighi/mlx_diffuser" },
       { name: "torch (conversion only)", license: "BSD-3-Clause", url: "https://github.com/pytorch/pytorch" },
@@ -39,8 +39,8 @@ export const LICENCE_SECTIONS = [
   },
   {
     id: "frontend",
-    title: "Frontend — React / Vite SPA",
-    note: "Browser UI. Same packages as any modern Vite app.",
+    titleKey: "licences.sectionFrontend",
+    noteKey: "licences.noteFrontend",
     packages: [
       { name: "React + react-dom", license: "MIT", url: "https://github.com/facebook/react" },
       { name: "Vite", license: "MIT", url: "https://github.com/vitejs/vite" },
@@ -50,8 +50,8 @@ export const LICENCE_SECTIONS = [
   },
   {
     id: "models",
-    title: "AI model weights",
-    note: "Weight files are downloaded on first use from Hugging Face / model cards — they are NOT bundled with, nor redistributed by, MLX-Diffusion. Each carries its own terms.",
+    titleKey: "licences.sectionModels",
+    noteKey: "licences.noteWeights",
     packages: [
       {
         name: "FLUX.2-klein 4B (mlx-community quant)",

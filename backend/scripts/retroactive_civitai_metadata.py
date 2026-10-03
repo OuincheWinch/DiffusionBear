@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Retroactively re-embeds Civitai-compliant metadata into images in backend/data/generated.
-- Ensures Generator Software is "MLX Diffusion"
-- Ensures Artist is the configured artist (data/settings.json "artist_name") or "MLX-DIFFUSION"
+- Ensures Generator Software is "DiffusionBear"
+- Ensures Artist is the configured artist (data/settings.json "artist_name") or "DiffusionBear"
 - Ensures Model and Model hash are in the parameters text chunk
 - Ensures Civitai resources and Hashes are embedded
 """
@@ -64,8 +64,8 @@ def process_images(hours: float = 48.0, process_all: bool = False):
                 continue
 
         # Ensure enriched fields
-        meta["software"] = "MLX-DIFFUSION"
-        meta["generator"] = "MLX-DIFFUSION"
+        meta["software"] = "DiffusionBear"
+        meta["generator"] = "DiffusionBear"
         # Preserve a previously personalized artist; only purge the legacy domain / gaps.
         cur_artist = str(meta.get("artist") or "")
         if not cur_artist or cur_artist == "www.ouinche.com":

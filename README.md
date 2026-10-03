@@ -1,77 +1,202 @@
-# MLX-Diffusion
+<p align="center">
+  <img src="frontend/src/assets/DiffusionBear.png" width="120" alt="DiffusionBear">
+</p>
 
-**Beta — v0.1.2**
+<h1 align="center">DiffusionBear</h1>
 
-![MLX-DIFFUSION on MacBook Pro](frontend/src/assets/MLX-DIFFUSION_ON_MBP.png)
-
-**A private, on-device image generation studio for Apple Silicon.**
-Benchmarked and tuned on a **2021 MacBook Pro M1 with 16 GB of Unified Memory** — no cloud account, no upload, no GPU farm. Your prompts and your images never leave the machine.
-
-> **Public beta notice** — this codebase is in active development. Engines marked *experimental* (e.g. Qwen-Image 2.1) are unsupported previews and can be slow, inconsistent, or crash above 768×768 on 16 GB machines. GitHub Issues are welcome.
-
-Crafted by **[Ouinche](https://www.ouinche.com)** — heavily coded by AI (Gemini, 0xAlpha, Big Pickle)—released under [MIT](LICENSE).
+<p align="center"><strong>Beta — v0.3.1</strong> &nbsp;·&nbsp; a local-first image generation studio for Apple Silicon</p>
 
 ---
 
-## Screenshot tour
+**DiffusionBear** runs open-weight diffusion models on your own Mac. Generation,
+prompt enhancement, LoRA management and the gallery all happen on the machine in
+front of you: the API listens on `127.0.0.1:8001`, model weights are fetched once
+into a local store, and nothing is uploaded anywhere. No account, no cloud, no
+per-image billing.
 
-| Generation page | Prompt enhancement |
-|---|---|
-| ![Generation page](frontend/src/assets/MLX-Diffusion_generation_page.png) | ![Prompt enhancement](frontend/src/assets/MLX-Diffusion_prompt_enhancement_page.png) |
+It is built on Apple's [MLX](https://github.com/ml-explore/mlx) framework, so it is
+**Apple Silicon only**. There is no CUDA or CPU path, and there is not going to be
+one — MLX is macOS/Metal exclusive.
 
-| Parameters | Browsing (gallery) |
-|---|---|
-| ![Parameters page](frontend/src/assets/MLX-Diffusion_parameters_page.png) | ![Browsing page](frontend/src/assets/MLX-Diffusion_browsing_page.png) |
+*Formerly called **MLX-Diffusion**; renamed in October 2026. The old repository URL
+still redirects, and old search traffic still lands here.*
+
+> **Beta, honestly.** 0.3.1 is the public beta of a one-person project. The core
+> path — FLUX.2-klein and the SDXL engines — is the most used and the most tested.
+> Engines marked *experimental* in the app (Qwen-Image 2.1) are unsupported
+> previews: they can be slow, and Qwen needs roughly 5 GB of free memory before it
+> starts, so it fails on a busy 16 GB machine. Bug reports and issues are welcome.
+
+Made by **[Ouinche](https://www.ouinche.com)** — heavily coded by AI (Gemini,
+0xAlpha, Big Pickle) — released under the [MIT licence](LICENSE).
 
 ---
 
-## Local by design — your privacy on your silicon
+## Get the app
+
+The compiled macOS app is the main thing this project produces. `DiffusionBear.app`
+is self-contained: it bundles the FastAPI backend, two relocatable Python runtimes
+and the compiled single-page UI, and serves both the API and the interface from
+`127.0.0.1:8001`. **There is nothing to install** — no Python, no Node, no virtual
+environments on your side.
+
+![DiffusionBear](docs/screenshots/main-page.png)
+
+| | Detail |
+|---|---|
+| **Requires** | An Apple Silicon Mac, **macOS 15 (Sequoia) or later**. The bundle declares `LSMinimumSystemVersion 15.0`: MLX calls a Metal API that Sonoma does not have, so macOS refuses to launch it rather than crashing at import. |
+| **First launch** | The app is ad-hoc signed, not notarised with an Apple Developer ID. macOS will therefore block a plain double-click the first time — **right-click the app → Open** to get past Gatekeeper. |
+| **Your files** | Settings, gallery, LoRA registry and model store live in `~/Library/Application Support/DiffusionBear`, never inside the app bundle. To put the store on another volume, write an absolute path into `~/Library/Application Support/DiffusionBear/store_path`; a store path can be shared by several installs. |
+| **Model weights** | Not bundled. They are downloaded on first use from Hugging Face or [Civitai](https://civitai.red/?ref_code=88C8VEBA) into that store — a few GB for the first model. After that the app works fully offline. |
+
+**No prebuilt binary is attached to this repository's Releases page right now.**
+If you would rather not assemble one yourself, open an issue and say so; otherwise
+[build it from `packaging/`](#build-the-app-yourself) — it is three scripts and no
+decisions to make.
+
+---
+
+## Screenshots
+
+| Generate | Browser |
+|---|---|
+| ![The generation page](docs/screenshots/main-page.png) | ![The browser](docs/screenshots/browser.png) |
+
+| Models | Parameters |
+|---|---|
+| ![The models tab](docs/screenshots/models.png) | ![The parameters tab](docs/screenshots/parameters.png) |
+
+| Prompt enhancer | Licences |
+|---|---|
+| ![Prompt enhancer](docs/screenshots/prompt-enhancer.png) | ![Licences tab](docs/screenshots/licences.png) |
+
+---
+
+## What it does
+
+**Models — find them, get them, make them runnable**
+
+- **Browse and download from inside the app.** The Models tab searches
+  **Hugging Face** and **[Civitai](https://civitai.red/?ref_code=88C8VEBA)**
+  side by side, classifies results into the SDXL / FLUX.2 / Krea 2 / Z-Image
+  buckets, and downloads with live progress, speed and cancel. A direct URL works
+  too.
+- **Convert single-file Civitai SDXL checkpoints** into runnable diffusers
+  directories. The conversion runs out of process so a slow one cannot stall the
+  API, and it repairs the two things diffusers otherwise chokes on: CLIP
+  `text_model.*` key naming and the slow tokenizer's missing `vocab.json` /
+  `merges.txt`.
+- **Register a model you already have.** Point the app at a diffusers folder on
+  disk or at a repo in your Hugging Face cache and it loads it in place — nothing
+  is re-downloaded or copied.
+- **Honest states.** A model that is present but not runnable (missing
+  `model_index`, a stale `.incomplete` download) is reported as not runnable
+  rather than as ready.
+
+**Generating**
+
+- Engine presets, batch counts, seed lock / random / +1 / +1024, guidance, negative
+  prompts where the architecture supports them, and a sampler picker where it
+  matters.
+- **Reference images.** FLUX.2-klein takes up to 10 references referenced in the
+  prompt as `Image 1`, `Image 2`, … ; Z-Image, Krea 2 and Qwen take one.
+- **Generative fill.** Paint a mask on a gallery image and regenerate just that
+  region (FLUX.2-klein only — it is the one engine with spatial conditioning).
+- One generation at a time, behind a worker thread and a FIFO queue. This is
+  deliberate; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Prompt enhancement**
+
+- A local **Qwen2.5-0.5B-Instruct 4-bit** model rewrites your prompt for the
+  selected engine, in prose or in JSON, with editable per-engine system prompts.
+- Active LoRA trigger words are preserved verbatim, with a deterministic
+  re-insertion guarantee.
+
+**LoRAs**
+
+- Drag a `.safetensors` in, or import from [Civitai](https://civitai.red/?ref_code=88C8VEBA)
+  with progress and cancel. FLUX.2 and SDXL formats are both supported, and SDXL
+  adapters stack by rank-concat. Trigger words become clickable chips in the
+  prompt box.
+
+**Your library**
+
+- A local gallery with tags, text search, and one-click **Use as Reference**.
+- **2× / 4× Lanczos upscaling** with unsharp masking.
+- **Civitai-compliant metadata**: every PNG embeds prompt, seed, steps, sampler,
+  CFG, model and LoRA names/hashes as `tEXt` + EXIF, so the exact checkpoint and
+  LoRAs are recognised automatically if you upload the image. A **stealth mode**
+  omits all of it.
+- Interface in English, French, German, Italian, Spanish, Simplified Chinese,
+  Japanese, Portuguese and Korean.
+- A **⚖ Licences** tab listing the licence of every bundled package and every
+  supported model.
+
+---
+
+## Supported models
+
+Nine checkpoints across five families, all quantised to 4-bit and memory-tuned for
+16 GB of unified memory. Switching engine swaps weights on demand rather than
+keeping everything resident.
+
+| Model | Family | Default steps | Notes |
+|---|---|---|---|
+| **FLUX.2-klein 4B** | FLUX.2 | 4 | Up to 10 reference images, LoRA, guidance. No negative prompt (guidance-distilled). |
+| **FLUX.2-klein 9B** | FLUX.2 | 4 | Same capabilities, roughly twice the cost per image. |
+| **Z-Image Turbo 6B** | Z-Image | 6 | One reference image, LoRA. No guidance or negative prompt. |
+| **Krea 2 Turbo 13B** | Krea 2 | 8 | One reference image, LoRA. At 4 steps the app auto-loads the Krea distilled 4-step LoRA, so 4 and 8 steps are two different pipelines, not one model at two budgets. |
+| **Qwen-Image 2.1** | Qwen-Image | 25 | **Experimental.** One reference image, negative prompts supported, no LoRA. Needs ~5 GB free memory; its bf16 VAE decode can exhaust Metal on a busy 16 GB machine. |
+| **Juggernaut XL Lightning** | SDXL | 4 | Distilled 4-step + TAESD decode — the fastest combo here. Sampler picker, negative prompts, DeepCache. |
+| **RealVisXL V5.0 Lightning** | SDXL | 6 | As above, distilled 6-step. |
+| **RealVisXL V5.0 (Hyper-SD)** | SDXL | 25 | Base checkpoint with an 8-step Hyper-SD draft preset. |
+| **Juggernaut XI v11 (Hyper-SD)** | SDXL | 25 | Base checkpoint with an 8-step Hyper-SD draft preset. |
+
+---
+
+## Local by design
 
 Every part of the pipeline runs from your Mac's own memory:
 
-- **Generation runs on the Metal GPU** via MLX (`mflux`), the Apple-silicon-native model framework. Model weights are quantized to 4-bit so a 3–13 billion parameter diffusion model fits in the 16 GB unified memory of an M1 MacBook Pro.
-- **The prompt enhancer is a local LLM too** — a Qwen2.5-0.5B-Instruct 4-bit model (~350 MB RAM, sub-second latency) rewrites your prompts *on-device*.
-- **No telemetry, no API keys, no network calls at generation time.** The studio even works fully offline once the weights are cached in your local Hugging Face cache.
-- **Install from an already-downloaded copy** — register any model tree already on your disk (folder or HF cache) and it loads directly, nothing is re-downloaded or copied.
-- **No data leaves your computer while generating.** Prompts, images, LoRA weights and model weights are all processed and stored locally; the only moment any data is transmitted is when *you* actively upload or export an image online.
-- **Every image ships with its full generation record.** Each PNG embeds prompt, seed, steps, sampler, CFG, and model + LoRA names/hashes as `tEXt` + EXIF metadata — fully compliant with [Civitai](https://civitai.red/?ref_code=88C8VEBA)'s model/LoRA detection, so the exact checkpoint and LoRAs are recognised automatically when you upload.
+- **Generation runs on the Metal GPU** through MLX (`mflux` for the flow-matching
+  models, a native MLX SDXL daemon for the SDXL checkpoints). Weights are 4-bit so
+  a 4–13 B parameter model fits the 16 GB unified memory of an M1 MacBook Pro.
+- **The prompt enhancer is a local LLM too**, so rewriting a prompt never leaves the
+  machine either.
+- **No telemetry, no analytics, no network calls at generation time.** Once the
+  weights are cached the app works fully offline.
+- **No data leaves your computer while generating.** The only moment anything is
+  transmitted is when *you* explicitly download weights, or export an image
+  somewhere. Tokens are stored on your disk and sent only to the service they
+  belong to.
 
-The M1 (2021) runs this comfortably because of unified memory: the CPU and GPU share one pooled 16 GB pool, so the whole quantized model stays resident and there is no CPU-GPU copying — exactly what MLX exploits.
+Unified memory is why this works at all on a 16 GB machine: the CPU and GPU share
+one pool, so a quantised model stays resident with no CPU↔GPU copying — which is
+exactly what MLX is built to exploit.
 
----
+### Optional tokens
 
-## API tokens — smoother downloads
+No account is needed to generate. Two optional tokens make downloads smoother:
 
-No account is required to generate — everything runs offline. **Two optional tokens** make download integration buttery-smooth when you *do* reach for the network:
-
-| Token | Why it helps | Where to set it |
+| Token | Why it helps | Where |
 |---|---|---|
-| **[Civitai](https://civitai.red/?ref_code=88C8VEBA) API key** | Resume-able LoRA/bundle downloads straight from Civitai; some model versions are auth-gated and need it | Settings → Tokens, or env `CIVITAI_API_KEY` |
-| **Hugging Face token** | Unlocks gated/private models and skips rate-limit hiccups on first-weight downloads (~2–3 GB) | Settings → Tokens, or env `HF_TOKEN` (or `huggingface-cli login`) |
-
-> Neither token is ever sent anywhere except the service it belongs to, and tokens stay in `backend/data/` on your disk.
+| **[Civitai](https://civitai.red/?ref_code=88C8VEBA) API key** | Resumable LoRA and checkpoint downloads; some model versions are auth-gated | Settings → Tokens, or env `CIVITAI_API_KEY` |
+| **Hugging Face token** | Unlocks gated and private models, and avoids first-download rate limits | Settings → Tokens, or env `HF_TOKEN` (or `huggingface-cli login`) |
 
 ---
 
-## Engines included
+## Benchmarks
 
-| Engine | Size (quantized) | Sweet spot | Speed on M1 (16 GB) |
-|---|---|---|---|
-| **FLUX.2-klein 4B** | 4-bit | 4 steps, guidance 1.0 | ~90 s @ 768×768 · ~120–140 s @ 1024×1024 |
-| **Juggernaut XL Lightning** (SDXL, distilled) | 4-bit | 4 steps, `euler_trailing` | ~15–20 s @ 1024×1024 (with TAESD) |
-| **Krea 2 Turbo 13B** | 4-bit | 8 steps native · 4 steps with the distill LoRA | ~140 s (4-step) · ~250 s (8-step) @ 512×512 |
-| **Z-Image Turbo 6B** | 4-bit | fast sketches, 16:9 | ~40 s @ 1024×1024 |
-| **Qwen-Image 2.1** (7B) | 4-bit | 20 steps, guidance 1.0 (negative prompts auto-raise it to 3.0) | ~458 s @ 512×768 (20-step arena) |
+Measured on a **2021 MacBook Pro M1 (16 GB)** — the reference machine this project is
+tuned for. This table is a **September 2026 snapshot** (293 timed studio
+generations plus an 18-run repeatability suite). Defaults have moved since — Z-Image
+Turbo in particular now starts at 6 steps instead of 8 — so read it as a record of
+that build, not as a promise about 0.3.1.
 
-All five are quantized and memory-tuned for 16 GB unified memory — switching engines swaps weights on demand instead of keeping everything resident.
-
----
-
-## Benchmarks — generation time vs model vs resolution
-
-Measured on the **2021 MacBook Pro M1 (16 GB)**, from the last 2 days of studio generations (293 timed runs) plus a dedicated repeatability test suite (18 profiling runs).
-
-**Methodology — removing load spikes:** within each model × resolution bucket the **5% fastest and 5% slowest times are excluded** before computing the mean/median (the Mac's background load — e.g. other Metal work — routinely inflates outliers). Aborted records (<2 s) are dropped; single-sample buckets are kept as indicative only.
+**Methodology — removing load spikes:** within each model × resolution bucket the
+**5% fastest and 5% slowest times are excluded** before computing mean and median
+(other Metal work on the machine routinely inflates outliers). Aborted records
+(<2 s) are dropped; single-sample buckets are kept as indicative only.
 
 | Model | Resolution | Steps | n (trim) | Mean | Median | Trimmed range |
 |---|---|---|---|---|---|---|
@@ -100,9 +225,11 @@ Measured on the **2021 MacBook Pro M1 (16 GB)**, from the last 2 days of studio 
 | **Z-Image Turbo 6B** | 768×768 | 8 | 3/5 | 3:49 min | 3:44 min | 3:44 – 3:59 min |
 | **Qwen-Image 2.1** | 512×768 | 20 | 10/10 | 7:38 min | 7:36 min | 7:10 – 8:05 min |
 
-`n (trim)` = samples kept after removing the fastest/slowest 5% out of the raw count.  `*` 4-step Krea runs use the Krea 2 distilled 4-step LoRA. `—` = single-sample bucket.
+`n (trim)` = samples kept after removing the fastest/slowest 5% out of the raw
+count. `*` 4-step Krea runs use the Krea 2 distilled 4-step LoRA. `—` = single-sample
+bucket.
 
-**Dedicated profiling suite (repeatability test, Sep 20, run under elevated system load up to ~9):**
+**Repeatability suite (Sep 20, run under elevated system load up to ~9):**
 
 | Model | Resolution | n | Mean | Median |
 |---|---|---|---|---|
@@ -112,14 +239,27 @@ Measured on the **2021 MacBook Pro M1 (16 GB)**, from the last 2 days of studio 
 | Juggernaut XL Lightning (SDXL) | 1024×1024 | 1 | 1:07 min | 1:07 min |
 | Krea 2 Turbo 13B | 1024×1024 | 2 | 12:16 min | 12:16 min |
 
-**Read the numbers like this:** Juggernaut XL Lightning at 512×768 is by far the fastest combo (median 9 s — its distilled 4-step + TAESD decode), Z-Image Turbo costs ~10× more at the same size, and FLUX.2-klein sits in between with the most resolution flexibility. The wide trimmed ranges on `512×768` buckets (Krea, Z-Image, Juggernaut 832×1216) are exactly the load spikes this methodology filters — treat medians, not means, as the stable number. Qwen-Image 2.1's row is from a dedicated controlled sweep (10 scenes, seeds 1001–1010, 20-step linear, guidance 1.0) that also confirmed its 64-channel RGBA VAE handles 512×768 on the 16 GB M1 without OOM.
+**How to read it:** Juggernaut XL Lightning at 512×768 is by far the fastest combo
+(median 9 s — distilled 4 steps plus a TAESD decode); Z-Image Turbo costs more than
+an order of magnitude as much at the same size (2:22 median), and FLUX.2-klein
+sits in between with the most resolution flexibility. The wide trimmed ranges on
+the 512×768 buckets (Krea, Z-Image, Juggernaut at 832×1216) are exactly the load
+spikes this methodology filters — treat medians, not means, as the stable number.
+The Qwen-Image 2.1 row comes from a separate controlled sweep (10 scenes, seeds
+1001–1010, 20-step linear, guidance 1.0) which also confirmed its 64-channel RGBA
+VAE handles 512×768 on a 16 GB M1 without running out of memory.
 
 ---
 
 ## Model vs model — visual arena
 
-Head-to-head repeatability comparisons from the 11-prompt benchmarking suite (original, royalty-free scenes — a sourdough loaf, a cliff villa, a snow leopard; **no copyrighted characters**). Each duel plays *live right here in the README* as a muted auto-wiping divider video — the same sweep the interactive arena does, no scripts needed (GitHub strips JavaScript from READMEs, so a draggable slider can't render on the repo page; the moving divider below is the closest that does). For the **draggable** version, open [`https://www.ouinche.com/mlx-diffusion-yet-another-open-source-image-generator-on-apple-silicon/`](https://www.ouinche.com/mlx-diffusion-yet-another-open-source-image-generator-on-apple-silicon/) in a browser.
- in a browser.
+Head-to-head repeatability comparisons on original, royalty-free scenes — a
+sourdough loaf, a cliff villa, a snow leopard, no copyrighted characters. Each duel
+plays *right here in the README* as a muted auto-wiping divider video; for the
+**draggable** version, open
+[ouinche.com/mlx-diffusion-yet-another-open-source-image-generator-on-apple-silicon](https://www.ouinche.com/mlx-diffusion-yet-another-open-source-image-generator-on-apple-silicon/)
+in a browser. GitHub strips JavaScript from READMEs, so a slider cannot render on
+the repo page — the moving divider is the closest thing that does.
 
 ### FLUX.2-klein 4B vs Z-Image Turbo 6B — "Rustic Sourdough" (512×768)
 
@@ -151,136 +291,165 @@ Head-to-head repeatability comparisons from the 11-prompt benchmarking suite (or
 |---|---|
 | ![FLUX.2-klein 4B, Snow Leopard](docs/model-arena/images/flux2_klein_leopard.png) | ![Krea 2 Turbo 13B, Snow Leopard](docs/model-arena/images/krea_leopard.png) |
 
-> For the full interactive arena: open [`https://www.ouinche.com/mlx-diffusion-yet-another-open-source-image-generator-on-apple-silicon/`](https://www.ouinche.com/mlx-diffusion-yet-another-open-source-image-generator-on-apple-silicon/) in a browser.
-
 ---
 
-## Feature highlights
+## Build the app yourself
 
-- **✨ Prompt Enhancer** — local 4-bit LLM that rewrites prompts per-engine, preserves your LoRA trigger words verbatim (with a deterministic re-insertion guarantee), and offers editable per-engine system prompts in **text or JSON mode**.
-- **Multi-LoRA** — FLUX.2 and SDXL LoRA support, drag-and-drop `.safetensors`, rank-concat stacking for SDXL, and a built-in [Civitai](https://civitai.red/?ref_code=88C8VEBA) importer with live progress, speed, and cancel.
-- **In-context multi-reference** — condition FLUX.2 on 1–10 reference images by referencing them as `Image 1`, `Image 2`, … in the prompt.
-- **Exact color control** — strict `#HEX` palette matching with an in-app visual palette.
-- **Civitai-compliant metadata** — every PNG embeds prompt, seed, steps, sampler, CFG, checkpoint and LoRA hashes in `tEXt` + EXIF, fully parseable by [Civitai](https://civitai.red/?ref_code=88C8VEBA)'s uploader for automatic model/LoRA detection.
-- **Split-screen studio & gallery** — left form / right interactive canvas, lazy-loaded gallery with tags, text search and one-click "Use as Reference", plus a local **2x/4x upscaler** (Lanczos) and **AI neural 2x** (SeedVR2).
-
----
-
-## Quick start
-
-### 0. Download
+The bundle is assembled by three scripts, in this order:
 
 ```bash
-git clone https://github.com/OuincheWinch/MLX-Diffusion.git
+packaging/build_runtime_venv.sh   # main runtime: Python 3.10 + mflux
+packaging/build_sdxl_venv.sh      # SDXL engine runtime: Python 3.14 + mlx_diffuser
+packaging/build_app.sh            # assembles and ad-hoc signs DiffusionBear.app
 ```
 
-### 1. Install
-
-From the repo root, create the two Python virtual environments (both are
-required — the main engine venv `venv/` and the isolated SDXL engine `venv-sdxl/`):
+They write to `packaging/dist/DiffusionBear.app`. Install it with a copy, not
+`ditto` (see the note at the end of `build_app.sh`):
 
 ```bash
-cd MLX-Diffusion
+rm -rf /Applications/DiffusionBear.app
+cp -R packaging/dist/DiffusionBear.app /Applications/
+```
+
+Two things worth knowing before you touch these scripts. The runtimes are
+[python-build-standalone](https://github.com/astral-sh/python-build-standalone)
+interpreters, **not** a copy of `venv/` — a repo venv points at a Homebrew install
+and is not relocatable, which is precisely what breaks inside a bundle. And
+`build_app.sh` audits the result and **fails the build** if it finds model weights,
+credential-shaped files, or unexpected large files outside the runtimes; if it
+complains, do not ship the bundle.
+
+---
+
+## Build from source
+
+If you would rather run it from a checkout than install the app — for development,
+or to read it — the source is the whole thing and there are two ways to launch it.
+
+**Requirements:** an Apple Silicon Mac (16 GB+ recommended), Python 3.10 and
+Python 3.14, Node.js 18+.
+
+```bash
+git clone https://github.com/OuincheWinch/DiffusionBear.git
+cd DiffusionBear
+```
+
+Both virtual environments are required: `venv/` for the main engine,
+`venv-sdxl/` for the isolated SDXL engine.
+
+```bash
 python3 -m venv venv
 python3 -m venv venv-sdxl
-```
 
-Install the Python dependencies into each venv:
-
-```bash
 ./venv/bin/python -m pip install -r backend/requirements.txt
 ./venv-sdxl/bin/python -m pip install -r backend/requirements-sdxl.txt
-```
 
-Install the frontend dependencies,
-(backend on port **8001**, frontend on port **5174**, browser opens automatically):
-
-```bash
 cd frontend && npm install && cd ..
 ```
 
-### 2. Run
-
-Launch MLX-Diffusion
+Then launch everything — backend, frontend and browser:
 
 ```bash
 ./run.sh
 ```
-Type CTRL+C in your terminal to close MLX-Diffusion
 
-> `run.sh` uses `./venv/bin/python -m uvicorn main:app` (never the stale
-> console-script shebangs) and keeps the Mac awake with `caffeinate` during
-> long renders. First generation downloads the model weights once (~2–3 GB
-> into the Hugging Face cache, allow ~20 min); afterwards it runs fully offline.
+`run.sh` starts FastAPI on **8001**, Vite on **5174**, opens the UI, and keeps the
+Mac awake with `caffeinate` during long renders. `CTRL+C` stops everything. The
+first generation downloads the model weights once (a few GB into the Hugging Face
+cache); after that it runs offline.
 
+> **Ports 8001 and 5174 are deliberate.** 8000 and 5173 belong to other tools on
+> the author's machine. Do not "fix" them.
+>
+> Launch the backend with `./venv/bin/python -m uvicorn …`, never
+> `./venv/bin/uvicorn` — the venv console-script shebangs can point at a stale
+> interpreter after the project folder is renamed, and the app then silently boots
+> with the wrong `mflux`. `run.sh` already resolves the right one.
 
+### Development mode (two terminals)
 
-### 3. Your first prompt
+```bash
+./dev-backend.sh                   # FastAPI, port 8001, hot reload
+cd frontend && npm run dev         # Vite, port 5174, hot reload
+```
 
-Suggested starting prompt with **FLUX.2-klein 4B**, **Z-Image Turbo 6B** or
-**Krea 2 Turbo 13B** (4 steps for FLUX/Krea-distill, 8 steps for Z-Image):
+Free a stuck service with `lsof -ti :8001,5174 | xargs kill -9`.
+
+Other frontend tasks: `npm run lint` (oxlint) and `npm run build` (production
+bundle). The GitHub Actions workflow compiles the backend, runs its test suite, and
+runs frontend lint plus build on every push to `main` and on every pull request.
+
+Your first prompt — FLUX.2-klein 4B at 4 steps is a good first run:
 
 > A mischievous baby otter wearing a tiny yellow developer helmet, sitting in
 > front of a futuristic glowing computer setup. The glowing computer screen
 > clearly displays the words "HELLO WORLD" in vibrant neon text. Warm studio
-> lighting, shallow depth of field, 8k resolution, cinematic photorealism. [Image 1]
+> lighting, shallow depth of field, 8k resolution, cinematic photorealism.
 
-> **In-context reference (`[Image 1]`)** — the tag at the end conditions the
-> generation on a reference image, but you must **load that image into the
-> reference tray first**, and **only FLUX.2-klein 4B accepts image input**.
-> On Z-Image, Krea 2 or SDXL the studio refuses the prompt with:
->
 <img width="512" height="768" alt="HELLOWORLD" src="https://github.com/user-attachments/assets/e0f899e0-3f8f-4edf-8211-aa7542c27c65" />
->
 
-### 3. Uninstall (full removal) when needed
+### Uninstall
 
-Ensure your terminal is open inside the project folder you wish to remove:
-
-( Check path twice ! ) 
+Check the path twice, then:
 
 ```bash
-cd /path/to/your/MLX-Diffusion
-cd .. && rm -rf MLX-Diffusion
+cd /path/to/your/DiffusionBear
+cd .. && rm -rf DiffusionBear
 ```
 
-Purge the leftover caches so nothing lingers on the machine:
+To leave nothing behind:
 
 ```bash
-# purge pip cache (clears downloaded wheels and packages)
-python3 -m pip cache purge
-
-# clear npm global cache
-npm cache clean --force
-```
----
-
-
-Development mode (2 terminals):
-
-```bash
-./dev-backend.sh                         # FastAPI, port 8001, hot reload
-cd frontend && npm run dev               # Vite, port 5174, hot reload
+python3 -m pip cache purge     # downloaded wheels and packages
+npm cache clean --force        # npm cache
 ```
 
-Free stuck services: `lsof -ti :8001,5174 | xargs kill -9`
-Ports are fixed — **8001** and **5174** (8000 and 5173 belong to other local tools).
+### Repository layout
 
-> Full guide (models, tuning rules, troubleshooting): [`readme.txt`](readme.txt)
+| Path | What it is |
+|---|---|
+| `backend/` | FastAPI service (`main.py`), generation engines (`generator.py`, `sdxl_engine.py`, `qwen_engine.py`), model registry and the Hugging Face / Civitai / SDXL-conversion clients |
+| `frontend/` | React 19 + Vite single-page UI |
+| `packaging/` | Scripts and Swift shell that build and sign `DiffusionBear.app` |
+| `docs/` | Assets used by this README, including the interactive benchmark arena |
+| `test/` | Benchmark, A/B and repeatability harnesses, and the runs they recorded |
+
+Longer guides: [`readme.txt`](readme.txt) (models, tuning rules, troubleshooting)
+and [`USER_GUIDE.md`](USER_GUIDE.md).
 
 ---
 
-## Tech stack
+## Documentation
 
-- **Backend** — Python / FastAPI, worker thread + FIFO queue, MLX inference via `mflux` and a native MLX SDXL daemon
-- **Frontend** — React 19 + Vite
-- **Engines** — FLUX.2-klein 4B, Juggernaut XL Lightning (SDXL), Krea 2 Turbo, Z-Image Turbo, Qwen-Image 2.1
-- **Cleanup** — idle watchdogs release the ~10 GB resident pipeline 5 min after the last generation
+- [CHANGELOG.md](CHANGELOG.md) — what changed in each release
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to build, verify and propose a change
+- [SECURITY.md](SECURITY.md) — privacy posture and how to report a vulnerability
+- [readme.txt](readme.txt) / [USER_GUIDE.md](USER_GUIDE.md) — full usage guide
 
 ---
+
+## Author and AI-assisted development
+
+DiffusionBear is written and maintained by **[Ouinche](https://www.ouinche.com)**
+(<https://github.com/OuincheWinch>), and is **heavily coded by AI** — Gemini,
+0xAlpha and Big Pickle do a large share of the writing. That is a deliberate
+choice, not an accident, and it is why the contribution rules ask for a human
+review and a measurement alongside every change.
+
+## Security
+
+Please **do not open a public issue** for a security problem. Use GitHub's
+[private vulnerability report](https://github.com/OuincheWinch/DiffusionBear/security/advisories/new),
+or email the author with the subject `[DiffusionBear security]`. Acknowledgement
+within 3 working days; treat proof-of-concepts as embargoed until the issue is
+fixed or declined. Scope and the privacy posture are in [SECURITY.md](SECURITY.md).
 
 ## License
 
-[MIT](LICENSE) — Copyright © 2026 **[Ouinche](https://www.ouinche.com)**. Covers this project's source code only. Model weights carry their own terms (e.g. FLUX.2-klein is Black Forest Labs Non-Commercial; Juggernaut XL is non-commercial); checkpoints are not covered by this license and are **not redistributed** by this project — they are downloaded on first use.
-
-The app shows the full per-package and per-model licences in the **⚖ Licences** tab. Package identifiers were verified from the installed distribution metadata.
+[MIT](LICENSE) — Copyright © 2026 **[Ouinche](https://www.ouinche.com)**. This
+covers the project's source code only. Model weights carry their own terms (FLUX.2
+is Black Forest Labs non-commercial; the Juggernaut and RealVisXL checkpoints are
+non-commercial too), and none of them are redistributed here — they are downloaded
+from Hugging Face or [Civitai](https://civitai.red/?ref_code=88C8VEBA) on first
+use. The app shows the full per-package and per-model licences in its **⚖
+Licences** tab.

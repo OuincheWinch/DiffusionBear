@@ -4,8 +4,8 @@ import queue
 import re
 import struct
 import tempfile
-import threading
 import time
+import threading
 from pathlib import Path
 from typing import Literal
 from fastapi import HTTPException
@@ -181,6 +181,7 @@ _gallery_lock = threading.Lock()
 _IMAGE_MUTATION_LOCK = threading.RLock()
 _IMAGE_TOMBSTONES: set[str] = set()
 GALLERY_INDEX: dict[str, dict] = {}
+_GALLERY_INDEX_BUILT_AT: float = 0.0
 
 
 def _image_is_deleted(image_id: str) -> bool:
@@ -195,7 +196,19 @@ def _unmark_image_deleted(image_id: str):
     _IMAGE_TOMBSTONES.discard(image_id)
 
 
-def _init_gallery_index():
+def _init_gallery_index() -> int:
+    """Rebuild the gallery index from sidecars. Returns how many entries landed.
+
+    The index is a cache, and it is only built at startup. If every read fails --
+    which is exactly what happens when the data directory is on an external volume
+    and macOS has not yet granted access, so every open() raises -- then the loop
+    below skips every file and the app presents an EMPTY gallery indefinitely, with
+    no error anywhere. That is not a cosmetic failure: the images are on disk and
+    the API answers 200 with an empty list.
+
+    So the result is now returned, and an empty index is treated as suspect rather
+    than authoritative. See ensure_gallery_index().
+    """
     valid_entries = []
     for jf in GENERATED_DIR.glob("*.json"):
         try:
@@ -212,9 +225,31 @@ def _init_gallery_index():
             valid_entries.append((image_id, data))
         except (OSError, UnicodeError, json.JSONDecodeError):
             continue
+    global _GALLERY_INDEX_BUILT_AT
     with _gallery_lock:
         GALLERY_INDEX.clear()
         GALLERY_INDEX.update(valid_entries)
+        _GALLERY_INDEX_BUILT_AT = time.time()
+    return len(GALLERY_INDEX)
+
+
+def ensure_gallery_index(max_age: float = 0.0) -> int:
+    """Return the index size, rebuilding if it is empty or older than max_age.
+
+    An empty index next to a non-empty directory is the signature of a failed scan,
+    not an empty gallery, so it is retried rather than believed. Retries are rate
+    limited so a genuinely empty store cannot turn every request into a full scan.
+    """
+    now = time.time()
+    with _gallery_lock:
+        size = len(GALLERY_INDEX)
+        age = now - _GALLERY_INDEX_BUILT_AT if _GALLERY_INDEX_BUILT_AT else None
+    stale = size == 0 and any(GENERATED_DIR.glob("*.json"))
+    if stale and (age is None or age > 5.0):
+        return _init_gallery_index()
+    if max_age and (age is None or age > max_age):
+        return _init_gallery_index()
+    return size
 
 
 
@@ -234,9 +269,19 @@ class GenerateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     prompt: str = Field(min_length=1, max_length=100_000)
     model: str = Field(default=generator.DEFAULT_MODEL_ID, min_length=1, max_length=200)
-    width: int = Field(default=1024, ge=128, le=2048)
-    height: int = Field(default=1024, ge=128, le=2048)
-    steps: int = Field(default=4, ge=1, le=50)
+    # None means "use the model's own default_width/default_height". The old
+    # hardcoded 1024x1024 default was a trap for qwen-image-2.1, whose engine
+    # rejects anything above 589824 px, so a minimal API request could only ever
+    # fail. Resolved at the request boundary so everything downstream sees ints.
+    width: int | None = Field(default=None, ge=128, le=2048)
+    height: int | None = Field(default=None, ge=128, le=2048)
+    # None means "use the model's own default_steps", resolved in
+    # generator.generate(). A hardcoded 4 here was applied to every model: an API
+    # caller that omitted steps got 4 steps on juggernaut-xi (default 25),
+    # realvis-xl-v5 (25), qwen-image-2.1 (25), z-image-turbo (8) and krea2 (8).
+    # The frontend always sends steps explicitly, so only direct API callers were
+    # affected - but they were getting badly under-sampled images.
+    steps: int | None = Field(default=None, ge=1, le=50)
     guidance: float | None = Field(default=None, ge=0.0, le=10.0)
     seed: int | None = Field(default=None, ge=0, le=2**63 - 1)
     quantization: Literal[4, 8] = 4
@@ -520,7 +565,10 @@ _init_queue_recovery_on_startup()
 
 
 def _emit_generation_event(message: str):
-    event_log = os.environ.get("MLX_DIFFUSION_EVENT_LOG", "").strip()
+    event_log = (
+        os.environ.get("DIFFUSIONBEAR_EVENT_LOG", "").strip()
+        or os.environ.get("DIFFUSIONBEAR_EVENT_LOG", "").strip()
+    )
     if not event_log:
         return
     try:
@@ -532,6 +580,20 @@ def _emit_generation_event(message: str):
 
 def _generation_text(value: object, limit: int = 180) -> str:
     return " ".join(str(value or "").split())[:limit] or "-"
+
+
+def _effective_request_steps(req) -> int:
+    """Step count a job will actually run.
+
+    GenerateRequest.steps is None when the caller omitted it, leaving the choice
+    to the model registry. Resolved once per job so the progress readout and the
+    engine agree; reading it inside the per-step callback crashed the job with
+    "unsupported operand type(s) for -: 'NoneType' and 'int'".
+    """
+    if req.steps is not None:
+        return int(req.steps)
+    minfo = generator.get_model_info(req.model) or {}
+    return int(minfo.get("default_steps") or 4)
 
 
 def _worker():
@@ -584,6 +646,10 @@ def _worker():
                 req = job["request"]
                 batch = max(1, req.batch)
                 base_seed = req.seed if req.seed is not None else int(time.time())
+                # req.steps is None when the caller omitted it, so the model owns
+                # the default. Resolved once for the progress readout rather
+                # than read inside the per-step callback.
+                req_steps = _effective_request_steps(req)
                 for i in range(batch):
                     img_start_time = time.time()
                     if i > 0:
@@ -591,16 +657,16 @@ def _worker():
                             job["phase"] = "preparing"
                             job["phase_detail"] = f"Preparing image {i + 1}/{batch}..."
 
-                    def on_step(t):
+                    def on_step(t, _total=req_steps):
                         done = t + 1
                         elapsed = time.time() - img_start_time
-                        eta = elapsed / done * (req.steps - done) if done else None
+                        eta = elapsed / done * (_total - done) if done else None
                         with _JOBS_LOCK:
                             job["phase"] = "generating"
-                            job["phase_detail"] = f"Denoising step {done}/{req.steps}..."
+                            job["phase_detail"] = f"Denoising step {done}/{_total}..."
                             job["progress"] = {
                                 "step": done,
-                                "steps": req.steps,
+                                "steps": _total,
                                 "elapsed": round(elapsed, 1),
                                 "eta_seconds": round(eta, 1) if eta is not None else None,
                                 "image_index": i,
@@ -773,12 +839,33 @@ def _valid_registry_entry(entry: object) -> bool:
     return True
 
 
+def _loras_signature():
+    try:
+        st = LORAS_FILE.stat()
+    except OSError:
+        return None
+    try:
+        resolved = str(LORAS_FILE.resolve())
+    except OSError:
+        resolved = ""
+    return (st.st_mtime_ns, st.st_size, resolved)
+
+
+# (signature, validated registry) for the last successful _read_loras(). Every
+# caller holds _loras_lock, so no extra locking is needed here.
+_loras_cache: dict = {}
+
+
 def _read_loras() -> list[dict]:
     with _loras_lock:
+        signature = _loras_signature()
+        cached = _loras_cache.get("loras")
+        if cached is not None and _loras_cache.get("signature") == signature:
+            return [dict(entry) for entry in cached]
         try:
-            if not LORAS_FILE.exists():
+            if signature is None:
                 return []
-            if not LORAS_FILE.resolve().is_relative_to(DATA_DIR.resolve()) or LORAS_FILE.stat().st_size > MAX_RUNTIME_JSON_BYTES:
+            if not LORAS_FILE.resolve().is_relative_to(DATA_DIR.resolve()) or signature[1] > MAX_RUNTIME_JSON_BYTES:
                 raise ValueError("LoRA registry exceeds the runtime state size limit")
             data = json.loads(LORAS_FILE.read_text(encoding="utf-8"))
         except ValueError:
@@ -787,7 +874,10 @@ def _read_loras() -> list[dict]:
             return []
         if not isinstance(data, list):
             return []
-        return [dict(entry) for entry in data[:512] if _valid_registry_entry(entry)]
+        valid = [dict(entry) for entry in data[:512] if _valid_registry_entry(entry)]
+        _loras_cache["signature"] = signature
+        _loras_cache["loras"] = valid
+        return [dict(entry) for entry in valid]
 
 
 def _write_loras(loras: list[dict]):
@@ -795,6 +885,7 @@ def _write_loras(loras: list[dict]):
         valid = [dict(entry) for entry in loras[:512] if _valid_registry_entry(entry)]
         _ensure_private_dir(LORAS_FILE.parent)
         _atomic_write_text(LORAS_FILE, json.dumps(valid, indent=2, allow_nan=False))
+        _loras_cache.clear()
 
 
 def _upsert_lora_entries(entries: list[dict]):
@@ -941,12 +1032,19 @@ def sync_lora_entry_with_civitai(entry: dict, force: bool = False) -> bool:
 
 
 def _discover_local_loras():
-    with _loras_lock:
-        return _discover_local_loras_locked()
+    """Register safetensors dropped into lora_files/ or SDXL/. Runs at startup and after uploads.
 
+    Deliberately does NOT hold _loras_lock for the duration. The slow parts here
+    are reading every safetensors header, streaming a full-file SHA-256 for any
+    registry entry that lacks one, and a Civitai HTTP lookup (8s timeout) per
+    entry needing metadata. That used to all happen inside the lock, so a single
+    entry missing its sha256 stalled /api/loras and /api/gallery/loras - both of
+    which need that same lock - for the length of a 4-12s hash plus the HTTP
+    round trip, on a background thread, at every startup.
 
-def _discover_local_loras_locked():
-    """Register safetensors dropped into lora_files/ or SDXL/. Runs at startup and after uploads."""
+    _read_loras() and _upsert_lora_entries() each take the lock only for the
+    duration of their own read or write, so the registry merge stays atomic.
+    """
     loras = _read_loras()
     changed = False
 

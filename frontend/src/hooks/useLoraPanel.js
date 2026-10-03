@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { findLoraEntry } from "../utils/loraUtils";
+import { useI18n } from "../i18n/I18nContext";
 
 export function useLoraPanel({ onError }) {
+  // A hook is used inside a hook, so the translator comes from the provider rather
+  // than the module-level fallback, which would ignore a live language change.
+  const { t } = useI18n();
   const [loras, setLoras] = useState([]);
   const [loraRegistry, setLoraRegistry] = useState([]);
   const [newLora, setNewLora] = useState({ name: "", path: "" });
@@ -52,7 +56,7 @@ export function useLoraPanel({ onError }) {
   async function uploadLoraFile(file) {
     if (!file) return;
     setSavingLora(true);
-    setUploadProgress("Uploading LoRA…");
+    setUploadProgress(t("generate.lora.uploading"));
     try {
       const form = new FormData();
       form.append("file", file);
@@ -67,7 +71,7 @@ export function useLoraPanel({ onError }) {
       ]);
       await refreshLoraRegistry();
       setNewLora({ name: "", path: "" });
-      setUploadProgress(`Registered "${entry.name}" — pick it from the dropdown.`);
+      setUploadProgress(t("generate.lora.registered", { name: entry.name }));
     } catch (err) {
       onErrorRef.current?.(`LoRA upload failed: ${err.message || err}`);
       setUploadProgress(null);

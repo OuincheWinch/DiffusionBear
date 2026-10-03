@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api";
+import { useI18n } from "../../i18n/I18nContext";
 
 const STATUS_CLASS = {
   generating: "badge-generating",
@@ -19,6 +20,7 @@ function fmtTime(ts) {
 }
 
 export default function QueueSection({ onNavigate }) {
+  const { t } = useI18n();
   const [jobs, setJobs] = useState(null);
   const [active, setActive] = useState([]);
   const [recovery, setRecovery] = useState([]);
@@ -37,8 +39,26 @@ export default function QueueSection({ onNavigate }) {
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 4000);
-    return () => clearInterval(t);
+    let timer = null;
+    const tick = () => {
+      const hidden = typeof document !== "undefined" && document.hidden;
+      timer = setTimeout(async () => {
+        await refresh();
+        tick();
+      }, hidden ? 20000 : 4000);
+    };
+    tick();
+    const onVisibility = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        clearTimeout(timer);
+        tick();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      clearTimeout(timer);
+    };
   }, [refresh]);
 
   async function cancelJob(id) {
@@ -51,7 +71,7 @@ export default function QueueSection({ onNavigate }) {
   }
 
   async function cancelAll() {
-    if (!window.confirm("Cancel the entire queue? Running generations are stopped and archived for recovery.")) return;
+    if (!window.confirm(t("settings.queue.cancelAllConfirm"))) return;
     setBusy(true);
     try {
       await api("/api/jobs/cancel-all", { method: "POST" });
@@ -82,7 +102,7 @@ export default function QueueSection({ onNavigate }) {
   }
 
   async function clearRecovery() {
-    if (!window.confirm("Delete all recovery records? (interrupted prompts stay archived unless you also clear the pending queue).")) return;
+    if (!window.confirm(t("settings.queue.clearRecoveryConfirm"))) return;
     try {
       await api("/api/queue/recovery", { method: "DELETE" });
       await refresh();
@@ -101,11 +121,30 @@ export default function QueueSection({ onNavigate }) {
     <div className="settings-row">
       <div className="settings-inline">
         <span className={`settings-badge ${live ? "ok" : ""}`}>
-          {active.length} active · {recovery.length} recoverable
+          {t("settings.queue.counts", { active: active.length, recovery: recovery.length })}
         </span>
+        {/* Both destructive actions live HERE, in the row that is always visible.
+         *
+         * They used to be reachable only by expanding Recovery, and Cancel all only
+         * appeared when something was running. So in the most common state -- 0 active
+         * and a few recoverable prompts left over from a crash -- the panel offered no way
+         * to delete anything at all: you had to expand a list just to find the button
+         * that clears it. Nothing is lost by expanding a list to read it; losing the
+         * ability to delete without a pointless detour is a real defect. */}
         {active.length > 0 && (
           <button type="button" className="btn-mini" disabled={busy} onClick={cancelAll}>
-            ⌫ Cancel all
+            {t("settings.queue.cancelAll")}
+          </button>
+        )}
+        {recovery.length > 0 && (
+          <button
+            type="button"
+            className="btn-mini danger"
+            disabled={busy}
+            onClick={clearRecovery}
+            title={t("settings.queue.clearRecoveryConfirm")}
+          >
+            {t("settings.queue.clearHistory")}
           </button>
         )}
         <button
@@ -113,23 +152,23 @@ export default function QueueSection({ onNavigate }) {
           className="btn-mini"
           onClick={() => setShowRecovery((v) => !v)}
         >
-          {showRecovery ? "Hide recovery" : `↺ Recovery (${recovery.length})`}
+          {showRecovery ? t("settings.queue.hideRecovery") : t("settings.queue.recovery", { count: recovery.length })}
         </button>
       </div>
 
       {active.length === 0 ? (
         <p className="params-hint">
           {jobs === null
-            ? "Loading queue…"
-            : "Queue idle — no generation currently running or waiting."}
+            ? t("settings.queue.loading")
+            : t("settings.queue.idle")}
         </p>
       ) : (
         <div className="models-table">
           <div className="models-table-head">
-            <span>Prompt / model</span>
-            <span>Status</span>
-            <span>Queued</span>
-            <span>Actions</span>
+            <span>{t("settings.queue.colPromptModel")}</span>
+            <span>{t("settings.queue.colStatus")}</span>
+            <span>{t("settings.queue.colQueued")}</span>
+            <span>{t("settings.queue.colActions")}</span>
           </div>
           {active.map((j) => (
             <div className="models-table-row" key={j.id}>
@@ -141,13 +180,13 @@ export default function QueueSection({ onNavigate }) {
                 <span className={`settings-badge ${STATUS_CLASS[j.status] || ""}`}>
                   {j.status === "generating"
                     ? `⚙ ${j.progress?.step ?? "…"}/${j.progress?.steps ?? "…"}`
-                    : "queued"}
+                    : t("settings.queue.queued")}
                 </span>
               </span>
               <span className="models-size">{fmtTime(j.created_at)}</span>
               <span className="models-actions">
                 <button type="button" className="btn-mini" onClick={() => cancelJob(j.id)}>
-                  ✕ Cancel
+                  {t("settings.queue.cancel")}
                 </button>
               </span>
             </div>
@@ -158,29 +197,23 @@ export default function QueueSection({ onNavigate }) {
       {showRecovery && (
         <div className="recovery-box">
           <div className="settings-inline">
-            <strong>↺ Recoverable prompts</strong>
+            <strong>{t("settings.queue.recoverableTitle")}</strong>
             {recovery.length > 0 && (
               <>
                 <button type="button" className="btn-mini" disabled={busy} onClick={() => restoreItem(null)}>
-                  ↺ Requeue all ({recovery.length})
-                </button>
-                <button type="button" className="btn-mini" onClick={clearRecovery}>
-                  🗑 Clear history
+                  {t("settings.queue.requeueAll", { count: recovery.length })}
                 </button>
               </>
             )}
           </div>
           {recovery.length === 0 ? (
-            <p className="params-hint">
-              Nothing recoverable. Cancelled or interrupted generations are archived here
-              (queue_recovery.json) and can be requeued after a restart.
-            </p>
+            <p className="params-hint">{t("settings.queue.nothingRecoverable")}</p>
           ) : (
             <div className="recovery-list">
               {recovery.map((it) => (
                 <div className="recovery-item" key={it.id}>
                   <div className="recovery-item-head">
-                    <span className="settings-badge">{it.reason === "interrupted" ? "⚡ interrupted" : "⌫ cancelled"}</span>
+                    <span className="settings-badge">{it.reason === "interrupted" ? t("settings.queue.interrupted") : t("settings.queue.cancelled")}</span>
                     <span className="models-id">{it.request?.model || ""}</span>
                   </div>
                   <div className="recovery-prompt" title={it.request?.prompt}>
@@ -188,10 +221,10 @@ export default function QueueSection({ onNavigate }) {
                   </div>
                   <div className="recovery-actions">
                     <button type="button" className="btn-mini" disabled={busy} onClick={() => restoreItem(it.id)}>
-                      ↺ Requeue
+                      {t("settings.queue.requeue")}
                     </button>
                     <button type="button" className="btn-mini" onClick={() => loadInForm(it)}>
-                      ✎ Load in form
+                      {t("settings.queue.loadInForm")}
                     </button>
                     <button type="button" className="btn-mini" onClick={() => deleteRecoveryItem(it.id)}>
                       ✕

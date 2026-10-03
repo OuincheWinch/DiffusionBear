@@ -7,12 +7,14 @@ import UniversalDownloader from "./UniversalDownloader";
 import LoraManagerDrawer from "./LoraManagerDrawer";
 import ModelInstaller from "./ModelInstaller";
 import GenerationParams from "./GenerationParams";
+import SizeSelector from "./SizeSelector";
 import { findLoraEntry, getModelBase, isKreaDistillLora } from "../utils/loraUtils";
 import { normalizeRequest, referenceItems, resolveRequestModel } from "../utils/requestUtils";
 import { useGenerationJob } from "../hooks/useGenerationJob";
 import { useModelConfig } from "../hooks/useModelConfig";
 import { useLoraPanel } from "../hooks/useLoraPanel";
 import { useSettings } from "../hooks/useSettings";
+import { useI18n } from "../i18n/I18nContext";
 
 function getNextSeed(currentSeed) {
   if (currentSeed != null && currentSeed !== "" && !isNaN(Number(currentSeed))) {
@@ -73,22 +75,26 @@ function kreaDistillUpdater(steps, registry) {
   };
 }
 
+// Swatches carry the i18n key rather than the label: the table lives at module
+// level, outside the component, so it cannot call useI18n(). `hex` stays literal
+// because it is the value being inserted into the prompt.
 const HEX_PALETTE = [
-  { name: "Neon Pink", hex: "#FF3366" },
-  { name: "Cyber Cyan", hex: "#00E5FF" },
-  { name: "Cyber Gold", hex: "#FFD700" },
-  { name: "Electric Violet", hex: "#7928CA" },
-  { name: "Neon Green", hex: "#00FF66" },
-  { name: "Tangerine", hex: "#FF5500" },
-  { name: "Pure White", hex: "#FFFFFF" },
-  { name: "Matte Black", hex: "#111111" },
-  { name: "Royal Blue", hex: "#2E5BFF" },
-  { name: "Lavender", hex: "#E056FD" },
-  { name: "Crimson", hex: "#FF0033" },
-  { name: "Emerald", hex: "#00B894" },
+  { key: "generate.palette.neonPink", hex: "#FF3366" },
+  { key: "generate.palette.cyberCyan", hex: "#00E5FF" },
+  { key: "generate.palette.cyberGold", hex: "#FFD700" },
+  { key: "generate.palette.electricViolet", hex: "#7928CA" },
+  { key: "generate.palette.neonGreen", hex: "#00FF66" },
+  { key: "generate.palette.tangerine", hex: "#FF5500" },
+  { key: "generate.palette.pureWhite", hex: "#FFFFFF" },
+  { key: "generate.palette.matteBlack", hex: "#111111" },
+  { key: "generate.palette.royalBlue", hex: "#2E5BFF" },
+  { key: "generate.palette.lavender", hex: "#E056FD" },
+  { key: "generate.palette.crimson", hex: "#FF0033" },
+  { key: "generate.palette.emerald", hex: "#00B894" },
 ];
 
 export default function GenerateForm({ onGenerated, initialParams, onModelChange, onImageSaved }) {
+  const { t } = useI18n();
   const {
     jobId,
     status,
@@ -220,10 +226,10 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
     if (source.id) setCurrentResult(source);
     setEnhanceFeedback(null);
     if (requestedModel && !matched) {
-      setError(`Model "${requestedModel}" is not available in the current registry.`);
+      setError(t("generate.error.modelNotInRegistry", { model: requestedModel }));
     }
     return matched;
-  }, [model, modelInfo, models, setError, setModel]);
+  }, [model, modelInfo, models, setError, setModel, t]);
 
   useEffect(() => {
     if (!initialParams || !models.length) return;
@@ -321,7 +327,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
   const switchModel = useCallback((id) => {
     const nextModel = models.find((item) => item.id === id);
     if (!nextModel) {
-      setError(`Model "${id}" is not available in the current registry.`);
+      setError(t("generate.error.modelNotInRegistry", { model: id }));
       return;
     }
     setModel(id);
@@ -364,7 +370,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
       }));
     }
     setEnhanceFeedback(null);
-  }, [height, loraRegistry, models, onModelChange, setError, setModel, width]);
+  }, [height, loraRegistry, models, onModelChange, setError, setModel, t, width]);
 
   useEffect(() => {
     function handleLoadPrompt(event) {
@@ -389,7 +395,9 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
   function fmt(s) {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
-    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+    return m > 0
+      ? t("params.duration.minutesSeconds", { m, s: sec })
+      : t("params.duration.secondsOnly", { s: sec });
   }
 
   const supportsMultiRef = Boolean(modelInfo.supports_multi_reference);
@@ -423,7 +431,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
   async function runEnhancePrompt() {
     if (!prompt.trim() || enhancing) return;
     if (!enhancerAvailable) {
-      setError("Prompt enhancement is not available for this model.");
+      setError(t("generate.error.enhancerUnavailable"));
       return;
     }
     const requestId = ++enhanceRequestRef.current;
@@ -445,19 +453,21 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
       });
       if (requestId !== enhanceRequestRef.current) return;
       if (res?.cancelled) {
-        setEnhanceFeedback({ type: "info", text: "Prompt enhancement cancelled." });
+        setEnhanceFeedback({ type: "info", text: t("generate.enhanceFeedback.cancelled") });
       } else if (res?.enhanced) {
         setPrompt(res.enhanced);
         setEnhanceFeedback({
           type: res.parse_error ? "info" : "success",
-          text: res.parse_error ? "Prompt enhanced with a prose fallback." : `Enhanced for ${res.engine || modelInfo.label}.`,
+          text: res.parse_error
+            ? t("generate.enhanceFeedback.proseFallback")
+            : t("generate.enhanceFeedback.enhancedFor", { engine: res.engine || modelInfo.label }),
         });
       } else {
-        throw new Error("The enhancer returned no prompt.");
+        throw new Error(t("generate.error.enhancerNoPrompt"));
       }
     } catch (err) {
       if (requestId !== enhanceRequestRef.current || err?.name === "AbortError") return;
-      const message = `Prompt enhancer: ${err.message || err}`;
+      const message = t("generate.error.enhancerFailed", { message: err.message || err });
       setError(message);
       setEnhanceFeedback({ type: "error", text: message });
     } finally {
@@ -471,7 +481,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
   function handleEnhancePrompt() {
     if (!prompt.trim() || enhancing) return;
     if (!enhancerAvailable) {
-      setError("Prompt enhancement is not available for this model.");
+      setError(t("generate.error.enhancerUnavailable"));
       return;
     }
     if (busy) {
@@ -486,7 +496,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
     enhanceAbortRef.current?.abort();
     enhanceAbortRef.current = null;
     setEnhancing(false);
-    setEnhanceFeedback({ type: "info", text: "Prompt enhancement cancelled." });
+    setEnhanceFeedback({ type: "info", text: t("generate.enhanceFeedback.cancelled") });
   }
 
   function removeRefImage(index) {
@@ -501,12 +511,15 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
 
   function addRefImage(item) {
     if (!supportsRef) {
-      setError(`Reference images are not supported on ${modelInfo.label}.`);
+      setError(t("generate.error.refNotSupported", { model: modelInfo.label }));
       return;
     }
     setRefImages((previous) => {
       if (previous.length >= maxRefImages) {
-        setError(`This model accepts at most ${maxRefImages} reference image${maxRefImages === 1 ? "" : "s"}.`);
+        setError(t(
+          maxRefImages === 1 ? "generate.error.maxReferencesOne" : "generate.error.maxReferencesMany",
+          { max: maxRefImages }
+        ));
         return previous;
       }
       if (previous.some((image) => image.path === item.path)) return previous;
@@ -519,14 +532,17 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
 
   async function uploadImageFiles(files) {
     if (!supportsRef) {
-      setError(`Reference images are not supported on ${modelInfo.label}.`);
+      setError(t("generate.error.refNotSupported", { model: modelInfo.label }));
       return;
     }
     const list = Array.from(files).filter(isImageFile);
     if (!list.length) return;
     const remainingSlots = Math.max(0, maxRefImages - refImages.length);
     if (remainingSlots === 0) {
-      setError(`This model accepts at most ${maxRefImages} reference image${maxRefImages === 1 ? "" : "s"}.`);
+      setError(t(
+        maxRefImages === 1 ? "generate.error.maxReferencesOne" : "generate.error.maxReferencesMany",
+        { max: maxRefImages }
+      ));
       return;
     }
     const toUpload = list.slice(0, remainingSlots);
@@ -540,7 +556,10 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
         const previewUrl = res.url ? `${API_BASE}${res.url}` : isHeic ? "" : URL.createObjectURL(file);
         setRefImages((previous) => {
           if (previous.length >= maxRefImages) {
-            setError(`This model accepts at most ${maxRefImages} reference image${maxRefImages === 1 ? "" : "s"}.`);
+            setError(t(
+              maxRefImages === 1 ? "generate.error.maxReferencesOne" : "generate.error.maxReferencesMany",
+              { max: maxRefImages }
+            ));
             return previous;
           }
           return [
@@ -554,7 +573,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
           ];
         });
       } catch (err) {
-        setError(`Reference upload failed: ${err.message || err}`);
+        setError(t("generate.error.refUploadFailed", { message: err.message || err }));
       }
     }
   }
@@ -566,19 +585,139 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
     }
   }
 
+  function firstDragValue(dt, type) {
+    try {
+      return (dt?.getData?.(type) || "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0] || "";
+    } catch {
+      return "";
+    }
+  }
+
+  /** Attach an image that is already in our own gallery -- no upload, no copy. */
+  function attachGalleryImage(imageId) {
+    const clean = String(imageId || "").trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(clean)) return false;
+    if (!supportsRef) {
+      setError(t("generate.error.refNotSupported", { model: modelInfo.label }));
+      return false;
+    }
+    if (refImages.length >= maxRefImages) {
+      setError(t(
+        maxRefImages === 1 ? "generate.error.maxReferencesOne" : "generate.error.maxReferencesMany",
+        { max: maxRefImages }
+      ));
+      return false;
+    }
+    // A bare filename: the backend resolves it against the gallery directory, so this
+    // works without knowing where the data directory lives.
+    const name = `${clean}.png`;
+    setRefImages((previous) => [
+      ...previous,
+      {
+        id: crypto.randomUUID(),
+        path: name,
+        preview: `${API_BASE}/api/images/${clean}/file`,
+        name,
+      },
+    ]);
+    return true;
+  }
+
+  // The native shell owns a real NSView drop destination, because WKWebView's HTML5
+  // drag-and-drop is unreliable for files. When a drop lands there the shell calls
+  // this global with absolute paths; there is no way to reach React state from
+  // outside, so it has to be a function we own.
+  useEffect(() => {
+    const acceptDragOver = (event) => {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    };
+    const onNativeDrop = (paths) => {
+      const list = Array.isArray(paths) ? paths : [paths];
+      list.filter(Boolean).forEach((value) => importDroppedPath(value));
+    };
+    window.__mlxDropPaths = onNativeDrop;
+    // A drop is only accepted where dragover is cancelled, and any element between
+    // here and the textarea can silently reject it and fall back to inserting text.
+    document.addEventListener("dragover", acceptDragOver);
+    return () => {
+      document.removeEventListener("dragover", acceptDragOver);
+      if (window.__mlxDropPaths === onNativeDrop) delete window.__mlxDropPaths;
+    };
+  });
+
+  async function importDroppedPath(path) {
+    // A real local file path from Finder. WKWebView cannot hand the page a File, so
+    // this is the channel that case arrives on.
+    const trimmed = decodeURIComponent(String(path || "").trim().replace(/^file:\/\//, ""));
+    if (!trimmed.startsWith("/")) return false;
+    try {
+      const res = await api("/api/import-path", { method: "POST", body: JSON.stringify({ path: trimmed }) });
+      if (trimmed.toLowerCase().endsWith(".safetensors")) {
+        setError("");
+        return true;
+      }
+      if (res?.name) {
+        const previewUrl = res.url ? `${API_BASE}${res.url}` : "";
+        setRefImages((previous) => {
+          if (previous.length >= maxRefImages) {
+            setError(t(
+              maxRefImages === 1 ? "generate.error.maxReferencesOne" : "generate.error.maxReferencesMany",
+              { max: maxRefImages }
+            ));
+            return previous;
+          }
+          return [...previous, { id: crypto.randomUUID(), path: res.path, preview: previewUrl, name: res.name }];
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      setError(t("generate.error.importFailed", { path: trimmed, message: err.message || err }));
+      return false;
+    }
+  }
+
   async function handleDrop(e) {
     e.preventDefault();
     setDragOver(false);
-    const files = Array.from(e.dataTransfer?.files || []);
-    if (!files.length) return;
-    const loraFile = files.find((f) => f.name.endsWith(".safetensors"));
-    if (loraFile) {
-      await uploadLoraFile(loraFile);
+    const dt = e.dataTransfer;
+    const files = Array.from(dt?.files || []);
+    if (files.length) {
+      const loraFile = files.find((f) => f.name.endsWith(".safetensors"));
+      if (loraFile) {
+        await uploadLoraFile(loraFile);
+        return;
+      }
+      const imgFiles = files.filter(isImageFile);
+      if (imgFiles.length > 0) {
+        await uploadImageFiles(imgFiles);
+      }
       return;
     }
-    const imgFiles = files.filter(isImageFile);
-    if (imgFiles.length > 0) {
-      await uploadImageFiles(imgFiles);
+
+    // No File objects. In a real browser this branch never runs; in WKWebView it is
+    // the only way anything arrives, and it arrives as a string. Try, in order:
+    //   1. our own image id, set by the gallery's drag handler
+    //   2. one of our own /api/images/<id>/file URLs
+    //   3. a local filesystem path (Finder)
+    //   4. give up with a clear message rather than silently pasting a URL
+    const internalId = firstDragValue(dt, "application/x-mlx-image-id");
+    if (internalId && attachGalleryImage(internalId)) return;
+
+    const raw = firstDragValue(dt, "text/uri-list") || firstDragValue(dt, "text/plain");
+    const decoded = decodeURIComponent(raw.replace(/^file:\/\//, ""));
+    const own = decoded.match(/\/api\/images\/([A-Za-z0-9][A-Za-z0-9_-]{0,127})\/file/);
+    if (own && attachGalleryImage(own[1])) return;
+
+    if (decoded.startsWith("/") && (await importDroppedPath(decoded))) return;
+
+    if (decoded) {
+      setError(
+        decoded.startsWith("http")
+          ? t("generate.error.dropWebUrl", { url: decoded.slice(0, 80) })
+          : t("generate.error.dropNothingUsable"),
+      );
     }
   }
 
@@ -626,13 +765,13 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
   function modelLaunchBlocked() {
     if (!modelConfirmationRequired) return false;
     const message = modelInfo.confirmation_message
-      || `${modelInfo.label} is marked experimental on this machine. Launch anyway?`;
+      || t("generate.confirm.experimentalModel", { model: modelInfo.label });
     return !window.confirm(message);
   }
 
   async function postGenerate(isQueued = false) {
     if (!model || modelsLoading || modelsError) {
-      setError(modelsError || "Select an available model before generating.");
+      setError(modelsError || t("generate.error.selectModelFirst"));
       return;
     }
     const paramsStr = currentParams();
@@ -740,22 +879,6 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
     submittedParams !== null &&
     currentParams() !== submittedParams;
 
-  const PRESETS = Object.fromEntries(
-    (modelInfo.presets.length
-      ? modelInfo.presets
-      : [{ id: "default", label: "Default", width: 1024, height: 1024, steps: modelInfo.default_steps }]
-    ).map((p) => [p.id, p])
-  );
-  const activePreset =
-    Object.entries(PRESETS).find(
-      ([, p]) =>
-        p.width === Number(width) &&
-        p.height === Number(height) &&
-        p.steps === Number(steps) &&
-        (p.sampler === undefined || p.sampler === sampler) &&
-        (p.cache_interval === undefined || p.cache_interval === cacheInterval)
-    )?.[0] ?? null;
-
   return (
     <div className="studio-layout">
       <div className="studio-form-pane">
@@ -769,11 +892,41 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
+          {/* Errors live at the TOP of the form, not the bottom.
+
+              They used to render as a quiet 0.85rem paragraph after <GenerationStack />,
+              i.e. below the prompt, the canvas controls and the advanced panels. By the
+              time a generation failed you had to scroll to the end of a long form to find
+              out why -- and a raw MLX message like "[METAL] Command buffer execution
+              failed: Insufficient Memory (00000008:kiOGPU...)" reads as a stray log line
+              rather than as the reason nothing happened.
+
+              Sticky, because the failure almost always arrives after a long wait during
+              which the user has scrolled away from the top of the form. */}
+          {error && (
+            <div className="error-banner" role="alert" aria-live="assertive">
+              <div className="error-banner-head">
+                <span className="error-banner-icon" aria-hidden="true">⛔</span>
+                <strong className="error-banner-title">{t("generate.error.title")}</strong>
+                <button
+                  type="button"
+                  className="error-banner-dismiss"
+                  onClick={() => setError(null)}
+                  title={t("app.dismiss")}
+                  aria-label={t("app.dismiss")}
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="error-banner-body">{error}</p>
+            </div>
+          )}
+
           <div className="prompt-toolbar">
             <div className="prompt-toolbar-left">
               {activeTriggerWords.length > 0 && (
                 <div className="trigger-chips-bar">
-                  <span className="trigger-chips-label">LoRA:</span>
+                  <span className="trigger-chips-label">{t("generate.triggers.label")}</span>
                   <div className="trigger-chips-list">
                     {activeTriggerWords.map((tw) => {
                       const inPrompt = new RegExp(`(^|\\s|,)${escapeRegExp(tw)}($|\\s|,)`, "i").test(prompt);
@@ -783,7 +936,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                           type="button"
                           className={`trigger-chip${inPrompt ? " active" : ""}`}
                           onClick={() => toggleTriggerWord(tw)}
-                          title={inPrompt ? "Click to remove from prompt" : "Click to add to prompt"}
+                          title={t(inPrompt ? "generate.triggers.titleRemove" : "generate.triggers.titleAdd")}
                         >
                           {inPrompt ? `✓ ${tw}` : `+ ${tw}`}
                         </button>
@@ -794,16 +947,16 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
               )}
               {refImages.length > 0 && (
                 <div className="ref-quick-chips">
-                  <span className="ref-chips-label">Ref tags:</span>
+                  <span className="ref-chips-label">{t("generate.refTags.label")}</span>
                   {refImages.map((_, i) => (
                     <button
                       key={i}
                       type="button"
                       className="ref-tag-chip"
                       onClick={() => insertIntoPrompt(`Image ${i + 1}`)}
-                      title={`Insert "Image ${i + 1}" at cursor`}
+                      title={t("generate.refTags.titleInsert", { n: i + 1 })}
                     >
-                      + Image {i + 1}
+                      {t("generate.refTags.add", { n: i + 1 })}
                     </button>
                   ))}
                 </div>
@@ -815,38 +968,38 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                 className="color-tool-btn"
                  onClick={handleEnhancePrompt}
                  disabled={enhancing || !prompt.trim() || !enhancerAvailable}
-                 title={enhancerAvailable
-                   ? "Enhance the prompt for the selected model using the local prompt engine."
-                   : "Prompt enhancement is not available for this model."}
+                 title={t(enhancerAvailable
+                   ? "generate.enhance.titleAvailable"
+                   : "generate.error.enhancerUnavailable")}
 
               >
-                {enhancing ? "✨ Enhancing…" : "✨ Enhance (experimental)"}
+                {t(enhancing ? "generate.enhance.btnBusy" : "generate.enhance.btnIdle")}
               </button>
               {enhancing && (
                 <button
                   type="button"
                   className="color-tool-btn enhance-cancel-btn"
                   onClick={cancelEnhancePrompt}
-                  title="Cancel prompt enhancement"
+                  title={t("generate.enhance.cancelTitle")}
                 >
-                  ✕ Cancel
+                  {t("generate.enhance.cancelBtn")}
                 </button>
               )}
               <button
                 type="button"
                 className={`color-tool-btn${enhanceJson ? " active" : ""}`}
                 onClick={() => setEnhanceJson((prev) => !prev)}
-                title="Enhance as structured JSON prompt (subject / appearance / action / setting / lighting / atmosphere / composition / details / text_elements / technical / trigger_word)"
+                title={t("generate.enhance.jsonTitle")}
               >
-                {"{ } JSON"}
+                {t("generate.enhance.jsonBtn")}
               </button>
               <button
                 type="button"
                 className={`color-tool-btn${showColorPicker ? " active" : ""}`}
                 onClick={() => setShowColorPicker((prev) => !prev)}
-                title="Exact Color Matching (#HEX)"
+                title={t("generate.color.title")}
               >
-                🎨 Color #{customHex.slice(1)}
+                {t("generate.color.btn", { hex: customHex.slice(1) })}
               </button>
             </div>
           </div>
@@ -854,7 +1007,9 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
           {showColorPicker && (
             <div className="color-popover">
               <div className="color-popover-header">
-                 <span className="color-popover-title">{modelInfo.label} Exact Color Matching (#HEX)</span>
+                 <span className="color-popover-title">
+                   {t("generate.color.popoverTitle", { model: modelInfo.label })}
+                 </span>
 
                 <button
                   type="button"
@@ -872,9 +1027,9 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                     className="color-swatch-btn"
                     style={{ backgroundColor: c.hex, color: getContrastColor(c.hex) }}
                     onClick={() => insertIntoPrompt(c.hex)}
-                    title={`${c.name} (${c.hex}) - Click to insert into prompt`}
+                    title={t("generate.color.swatchTitle", { name: t(c.key), hex: c.hex })}
                   >
-                    {c.name}
+                    {t(c.key)}
                   </button>
                 ))}
               </div>
@@ -883,13 +1038,13 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                   type="color"
                   value={customHex}
                   onChange={(e) => setCustomHex(e.target.value.toUpperCase())}
-                  title="Pick custom color"
+                  title={t("generate.color.pickCustom")}
                 />
                 <input
                   type="text"
                   value={customHex}
                   onChange={(e) => setCustomHex(e.target.value.toUpperCase())}
-                  placeholder="#FFFFFF"
+                  placeholder={t("generate.color.hexPlaceholder")}
                   maxLength={7}
                   className="hex-input"
                 />
@@ -898,7 +1053,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                   className="btn-mini btn-color-insert"
                   onClick={() => insertIntoPrompt(customHex)}
                 >
-                  + Insert #{customHex.replace("#", "")}
+                  {t("generate.color.insert", { hex: customHex.replace("#", "") })}
                 </button>
               </div>
             </div>
@@ -908,14 +1063,23 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
             ref={promptRef}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe the image to generate... (or drag & drop an image/LoRA here)"
+            // The prompt box is the deepest drop target, and a drop is only accepted
+            // if `dragover` is cancelled *there*. Cancelling it on the form alone was
+            // not enough: WebKit treated the textarea as an editable and inserted the
+            // dragged URL as literal text instead of firing a drop event at all.
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+            }}
+            onDrop={(e) => e.preventDefault()}
+            placeholder={t("generate.prompt.placeholder")}
             rows={4}
             required
           />
 
           {detectedColors.length > 0 && (
             <div className="active-hex-bar">
-              <span className="active-hex-label">Active #HEX Colors:</span>
+              <span className="active-hex-label">{t("generate.hexBar.label")}</span>
               <div className="active-hex-list">
                 {detectedColors.map((hex) => (
                    <button
@@ -923,8 +1087,8 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                      type="button"
                      className="active-hex-badge"
                      style={{ backgroundColor: hex, color: getContrastColor(hex) }}
-                     title={`Remove ${hex} from prompt`}
-                     aria-label={`Remove ${hex} from prompt`}
+                     title={t("generate.hexBar.removeTitle", { hex })}
+                     aria-label={t("generate.hexBar.removeTitle", { hex })}
                      onClick={() => removeColorFromPrompt(hex)}
                    >
                      {hex} <span className="badge-remove">✕</span>
@@ -941,7 +1105,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                 value={model}
                 onChange={(e) => switchModel(e.target.value)}
               >
-                 {modelsLoading && <option value="">Loading models…</option>}
+                 {modelsLoading && <option value="">{t("generate.model.loading")}</option>}
                  {models.map((m) => (
                    <option key={m.id} value={m.id} className={m.installed ? "" : "model-option-offline"}>
                      {m.installed === false ? "⬇ " : ""}{m.label}
@@ -953,7 +1117,7 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                   <p className="error" role="alert">
                     {modelsError}{" "}
                     <button type="button" className="btn-mini" onClick={refreshModels}>
-                      Retry
+                      {t("app.retry")}
                     </button>
                   </p>
                 )}
@@ -964,9 +1128,12 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                   target="_blank"
                   rel="noreferrer"
                   className="civitai-badge model-civitai-badge"
-                  title={`Civitai Model #${modelInfo.civitai_model_id || ""} (Version #${modelInfo.civitai_version_id})`}
+                  title={t("generate.civitai.title", {
+                    modelId: modelInfo.civitai_model_id || "",
+                    versionId: modelInfo.civitai_version_id,
+                  })}
                 >
-                  Civitai #{modelInfo.civitai_version_id} ↗
+                  {t("generate.civitai.badge", { versionId: modelInfo.civitai_version_id })}
                 </a>
               )}
             </div>
@@ -976,29 +1143,60 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
                 onInstalled={refreshModels}
               />
             )}
-            {Object.entries(PRESETS).map(([key, p]) => (
-              <button
-                key={key}
-                type="button"
-                className={`preset-btn${activePreset === key ? " active" : ""}`}
-                onClick={() => {
-                  setWidth(p.width);
-                  setHeight(p.height);
-                  setSteps(p.steps);
-                  if (p.guidance !== undefined) setGuidance(p.guidance);
-                  if (p.sampler !== undefined) setSampler(p.sampler);
-                  setCacheInterval(p.cache_interval ?? 1);
-                   if (getModelBase(modelInfo, model) === "krea2") {
-                     setLoras(kreaDistillUpdater(p.steps, loraRegistry));
-                   }
-
-                }}
-                title={`${p.width}×${p.height}, ${p.steps} steps${p.sampler ? `, ${p.sampler}` : ""}`}
-              >
-                {p.label}
-              </button>
-            ))}
           </div>
+      <div className="generate-btn-row generate-btn-row-primary">
+        <button
+          type="submit"
+          className="generate-btn"
+           disabled={modelsLoading || Boolean(modelsError) || !model || (busy && !dirty) || modelInfo?.installed === false}
+
+          title={
+            modelInfo?.installed === false
+              ? t("generate.btn.downloadFirstTitle")
+              : undefined
+          }
+        >
+          {busy
+            ? dirty
+              ? t("generate.btn.queueWithNewParams")
+              : status === "queued"
+                ? t("generate.btn.queued")
+                : jobPhase === "downloading"
+                  ? t("generate.btn.downloadingModel")
+                  : jobPhase === "loading_model"
+                    ? t("generate.btn.loadingMemory")
+                    : jobPhase === "compiling"
+                      ? t("generate.btn.compilingShaders")
+                      : jobPhase === "saving"
+                        ? t("generate.btn.finalizingImage")
+                        : progress && progress.steps > 0
+                          ? t("generate.btn.stepProgress", { step: progress.step, steps: progress.steps })
+                          : t("generate.btn.generating")
+            : t("generate.btn.generate")}
+        </button>
+        {busy && (
+          <button
+            type="button"
+            className="cancel-action-btn"
+            title={t("generate.btn.cancelTitle")}
+            onClick={async () => {
+              await cancelJob();
+            }}
+          >
+            {t("generate.btn.cancel")}
+          </button>
+        )}
+      </div>
+
+          <SizeSelector
+            width={width}
+            setWidth={setWidth}
+            height={height}
+            setHeight={setHeight}
+            maxPixels={maxPixels}
+            modelInfo={modelInfo}
+          />
+
           <GenerationParams
             modelInfo={modelInfo}
             width={width}
@@ -1033,6 +1231,18 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
             setMaxPixels={setMaxPixels}
           />
       {modelInfo.supports_loras && modelInfo.lora_format ? (
+        <details
+          className={`advanced-settings lora-disclosure${loras.length ? " has-active" : ""}`}
+          open={loras.length > 0}
+        >
+          <summary className="advanced-settings-summary">
+            <span className="advanced-settings-chevron" aria-hidden="true" />
+            {t("lora.disclosureLabel")}
+            {loras.length > 0 && (
+              <span className="lora-disclosure-count">{loras.length}</span>
+            )}
+          </summary>
+          <div className="advanced-settings-body lora-disclosure-body">
         <LoraManagerDrawer
           loras={loras}
           setLoras={setLoras}
@@ -1049,32 +1259,32 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
           }}
         >
           <details className="lora-add">
-            <summary>＋ Import or Register new LoRA</summary>
+            <summary>{t("generate.lora.summary")}</summary>
             <UniversalDownloader
                engineBase={engineBase}
                onLoraDownloaded={refreshLoraRegistry}
 
               onSwitchModel={(base) => switchToLoraModel(base)}
             />
-            <div className="lora-divider"><span>or register local file</span></div>
+            <div className="lora-divider"><span>{t("generate.lora.orRegisterLocal")}</span></div>
             <div className="lora-add-row">
               <input
-                placeholder="name"
+                placeholder={t("generate.lora.namePlaceholder")}
                 value={newLora.name}
                 onChange={(e) => setNewLora({ ...newLora, name: e.target.value })}
               />
               <input
-                placeholder="/absolute/path/to/lora.safetensors"
+                placeholder={t("generate.lora.pathPlaceholder")}
                 value={newLora.path}
                 onChange={(e) => setNewLora({ ...newLora, path: e.target.value })}
               />
               <button type="button" onClick={saveNewLora} disabled={savingLora}>
-                {savingLora ? "Saving..." : "Save"}
+                {t(savingLora ? "generate.lora.saveBtnBusy" : "generate.lora.saveBtnIdle")}
               </button>
             </div>
             <div className="lora-add-row">
               <label className="file-label">
-                …or upload a local .safetensors file
+                {t("generate.lora.uploadLabel")}
                 <input
                   type="file"
                   accept=".safetensors"
@@ -1084,64 +1294,30 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
               </label>
             </div>
             {uploadProgress && <p className="hint">{uploadProgress}</p>}
-            <p className="hint">Must be a {modelInfo.lora_format}-compatible LoRA (.safetensors).</p>
+            <p className="hint">
+              {t("generate.lora.formatHint", { format: modelInfo.lora_format })}
+            </p>
           </details>
         </LoraManagerDrawer>
+          </div>
+        </details>
       ) : (
-        <p className="hint">LoRAs unavailable on {modelInfo.label}.</p>
+        <p className="hint">{t("generate.lora.unavailableHint", { model: modelInfo.label })}</p>
       )}
 
-      <div className="generate-btn-row">
-        <button
-          type="submit"
-          className="generate-btn"
-           disabled={modelsLoading || Boolean(modelsError) || !model || (busy && !dirty) || modelInfo?.installed === false}
-
-          title={
-            modelInfo?.installed === false
-              ? "Download this model first"
-              : undefined
-          }
-        >
-          {busy
-            ? dirty
-              ? "⚡ Queue with new parameters…"
-              : status === "queued"
-                ? "⏳ Queued (waiting for engine)…"
-                : jobPhase === "downloading"
-                  ? "📥 Downloading Model…"
-                  : jobPhase === "loading_model"
-                    ? "🧠 Loading into Memory…"
-                    : jobPhase === "compiling"
-                      ? "⚡ Compiling Shaders…"
-                      : jobPhase === "saving"
-                        ? "🎨 Finalizing Image…"
-                        : progress && progress.steps > 0
-                          ? `⚙ Step ${progress.step}/${progress.steps}…`
-                          : "⚙ Generating…"
-            : "Generate"}
-        </button>
-        {busy && (
-          <button
-            type="button"
-            className="cancel-action-btn"
-            title="Cancel this generation"
-            onClick={async () => {
-              await cancelJob();
-            }}
-          >
-            ✕ Cancel
-          </button>
-        )}
-      </div>
       {busy && progress && progress.steps > 0 && (
         <div className="progress-box">
           <p className="hint">
-            {progress.batch > 1 && <>Image {progress.saved_index ?? Math.floor(progress.step / progress.steps) + 1}/{progress.batch} saved ✓ · </>}
-            Step {progress.step}/{progress.steps} · elapsed{" "}
+            {progress.batch > 1 && (
+              <>{t("generate.progress.batchSaved", {
+                index: progress.saved_index ?? Math.floor(progress.step / progress.steps) + 1,
+                batch: progress.batch,
+              })} </>
+            )}
+            {t("generate.progress.stepElapsed", { step: progress.step, steps: progress.steps })}{" "}
             {fmt(progress.elapsed)}
             {progress.eta_seconds != null && (
-              <> · ETA ~{fmt(progress.eta_seconds)}</>
+              <>{t("generate.progress.eta", { eta: fmt(progress.eta_seconds) })}</>
             )}
           </p>
         </div>
@@ -1150,20 +1326,15 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
         <p className="hint">
           {jobPhaseDetail ||
             (jobPhase === "downloading"
-              ? "Downloading model weights from repository…"
+              ? t("generate.progress.phaseDownloading")
               : jobPhase === "loading_model"
-                ? "Loading model weights into Apple Silicon unified memory (100% local, no internet)…"
+                ? t("generate.progress.phaseLoadingMemory")
                 : jobPhase === "compiling"
-                  ? "Compiling Metal shaders & encoding prompt…"
-                  : "Preparing generation…")}
+                  ? t("generate.progress.phaseCompiling")
+                  : t("generate.progress.phasePreparing"))}
         </p>
       )}
       <GenerationStack />
-       {error && (
-         <p className="error" role="alert">
-           {error}
-         </p>
-       )}
        {enhanceFeedback && (
          <p
            className={`civitai-feedback ${enhanceFeedback.type}`}
@@ -1184,15 +1355,16 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
         ariaLabelledBy="switch-dialog-title"
         ariaDescribedBy="switch-dialog-description"
       >
-        <h3 id="switch-dialog-title">Generation in progress with different settings</h3>
+        <h3 id="switch-dialog-title">{t("generate.switchDialog.title")}</h3>
         <p id="switch-dialog-description">
-          You modified the prompt or parameters. Queue this new generation after the current one,
-          or stop the current one and start now?
+          {t("generate.switchDialog.body")}
         </p>
         <div className="detail-actions">
-          <button type="button" onClick={queueNext}>Queue after current</button>
-          <button type="button" onClick={stopAndSwitch}>Stop current &amp; switch</button>
-          <button type="button" onClick={() => setShowSwitchDialog(false)}>Cancel</button>
+          <button type="button" onClick={queueNext}>{t("generate.switchDialog.queueBtn")}</button>
+          <button type="button" onClick={stopAndSwitch}>{t("generate.switchDialog.switchBtn")}</button>
+          <button type="button" onClick={() => setShowSwitchDialog(false)}>
+            {t("generate.switchDialog.cancelBtn")}
+          </button>
         </div>
       </Dialog>
 
@@ -1204,15 +1376,13 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
         ariaDescribedBy="enhance-warning-description"
       >
         <h3 id="enhance-warning-title">
-          {engineLoading ? "Model is loading" : "Generation in progress"}
+          {t(engineLoading ? "generate.enhanceWarning.titleLoading" : "generate.enhanceWarning.titleGenerating")}
         </h3>
         <p id="enhance-warning-description">
-          {engineLoading
-            ? "The engine is still loading into unified memory."
-            : "An image is currently being generated."}{" "}
-          The prompt enhancer runs a second local model on the same Apple Silicon GPU and unified
-          memory, so enhancing now can slow the current job and take longer itself. You can cancel
-          the enhancement at any time. Output is capped to the selected engine profile.
+          {t(engineLoading
+            ? "generate.enhanceWarning.leadLoading"
+            : "generate.enhanceWarning.leadGenerating")}{" "}
+          {t("generate.enhanceWarning.body")}
         </p>
         <div className="detail-actions">
           <button
@@ -1222,9 +1392,11 @@ export default function GenerateForm({ onGenerated, initialParams, onModelChange
               runEnhancePrompt();
             }}
           >
-            Enhance anyway
+            {t("generate.enhanceWarning.confirmBtn")}
           </button>
-          <button type="button" onClick={() => setShowEnhanceWarning(false)}>Cancel</button>
+          <button type="button" onClick={() => setShowEnhanceWarning(false)}>
+            {t("generate.enhanceWarning.cancelBtn")}
+          </button>
         </div>
       </Dialog>
 

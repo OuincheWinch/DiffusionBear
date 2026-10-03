@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, imageUrl } from "../api";
-import { bindFullImageDrag, copyFullImageToClipboard, revealImageInFinder } from "../utils/dragDrop";
+import {
+  bindFullImageDrag,
+  copyFullImageToClipboard,
+  revealImageInFinder,
+  exportImageNatively,
+  nativeDragSuppression,
+  publishDragRectsToShell,
+} from "../utils/dragDrop";
 import LazyGalleryImage from "./LazyGalleryImage";
+import FillBrush from "./FillBrush";
+import { useI18n } from "../i18n/I18nContext";
 
 export default function Gallery({ refreshKey, onReuse, activeTab = "browser", newImage = null }) {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
@@ -18,6 +28,20 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   const limit = 24;
 
   const abortRef = useRef(null);
+
+  // Typing in the search boxes used to re-run the full gallery query per
+  // keystroke, and each run copies + filters + sorts the whole index server-side
+  // (~1469 entries) for a result that is thrown away a few ms later. The inputs
+  // stay instant; only the request is debounced.
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [debouncedTags, setDebouncedTags] = useState(tags);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+      setDebouncedTags(tags);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query, tags]);
 
   useEffect(() => {
     api("/api/models").then(setModels).catch(() => {});
@@ -57,8 +81,8 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
     abortRef.current = controller;
     try {
       const params = new URLSearchParams({
-        query: query.trim(),
-        tags,
+        query: debouncedQuery.trim(),
+        tags: debouncedTags,
         sort,
         page,
         limit,
@@ -75,7 +99,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
         /* keep previous items on transient failures */
       }
     }
-  }, [query, tags, sort, page, model, lora]);
+  }, [debouncedQuery, debouncedTags, sort, page, model, lora]);
 
   // Load immediately on tab switch, refreshKey or filter changes
   useEffect(() => {
@@ -86,9 +110,77 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
     };
   }, [load, refreshKey, activeTab]);
 
-  async function openDetail(item) {
+  // True only inside the native shell. In a browser the bridge is absent and the
+  // <a download> fallback is the correct thing to render.
+  const hasNativeBridge = () =>
+    typeof window !== "undefined" && Boolean(window.webkit?.messageHandlers?.native);
+
+  // Hand the shell the on-screen rect of every image, so a drag can start natively
+  // without a JavaScript round-trip at press time.
+  //
+  // The dependency is a SIGNATURE OF THE IDS, not items.length. That distinction was the
+  // bug reported as "I grab one image and get a different one": a new generation refreshes
+  // the gallery with the same page size, so the length is unchanged, the effect never
+  // re-ran, and the shell kept the previous ids at the previous positions -- which is the
+  // state after every generation. `selected?.id` is included because the detail view's
+  // image sits above the cells and must win the hit test.
+  // Report which image is under the cursor, as the cursor moves.
+  //
+  // This is what the shell uses to resolve a drag, in preference to the rect index it
+  // used before. The index drifted from the live layout and produced the reported
+  // "grab N, drop N+4" -- exactly one grid row -- and then, once the grid went to six
+  // columns, cells that resolved to nothing at all. Any cache of geometry has to be
+  // invalidated by every possible relayout and that list is unbounded.
+  //
+  // The page hit-tests instead, because WebKit exposes no way for the shell to convert a
+  // mouse point into page coordinates. A pointermove always precedes the mouseDown that
+  // starts a drag, so the answer is current by construction.
+  //
+  // Throttled with a timer rather than requestAnimationFrame: rAF stops entirely when the
+  // window is occluded, and a cursor position that has silently stopped updating resolves
+  // to whatever was last seen -- the very bug this removes.
+  useEffect(() => {
+    if (!hasNativeBridge()) return undefined;
+    const bridge = window.webkit.messageHandlers.native;
+
+    let last = null;
+    let pending = null;
+    let timer = null;
+    const flush = () => {
+      timer = null;
+      const point = pending;
+      pending = null;
+      if (!point) return;
+      const hit = document.elementFromPoint(point.x, point.y);
+      const target = hit && hit.closest ? hit.closest("[data-mlx-file-url]") : null;
+      const fileUrl = target?.getAttribute("data-mlx-file-url") || null;
+      if (fileUrl === last) return;
+      last = fileUrl;
+      try {
+        bridge.postMessage({
+          action: "dragCandidate",
+          imageId: target?.getAttribute("data-mlx-image-id") || null,
+          fileUrl,
+        });
+      } catch {}
+    };
+
+    const onMove = (event) => {
+      pending = { x: event.clientX, y: event.clientY };
+      if (timer == null) timer = window.setTimeout(flush, 16);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      if (timer != null) window.clearTimeout(timer);
+    };
+  }, []);
+
+  // The list rows are the full sidecar dicts, so opening one needs no extra
+  // round-trip to /api/images/{id}.
+  function openDetail(item) {
     setSelected(item);
-    api(`/api/images/${item.id}`).then(setSelected).catch(() => {});
   }
 
   const selectedIndex = selected
@@ -101,7 +193,6 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
       const next = items[selectedIndex + delta];
       if (!next) return;
       setSelected(next);
-      api(`/api/images/${next.id}`).then(setSelected).catch(() => {});
     },
     [selectedIndex, items]
   );
@@ -131,8 +222,11 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
         tags: tagString.split(",").map((t) => t.trim()).filter(Boolean),
       }),
     });
+    // Same ordering as upscale: the list has to contain the new id before the
+    // detail view points at it, or the panel renders a selection that is not on
+    // screen.
+    await load();
     setSelected(updated);
-    load();
   }
 
   const pages = Math.max(1, Math.ceil(total / limit));
@@ -141,6 +235,9 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
   const [promptCopied, setPromptCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  // The image being filled, or null. Null means the brush is closed.
+  const [fillTarget, setFillTarget] = useState(null);
+  const [fillResult, setFillResult] = useState(null);
   const [cardCopiedId, setCardCopiedId] = useState(null);
   const [upscaling, setUpscaling] = useState(false);
 
@@ -205,10 +302,15 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
         method: "POST",
         body: JSON.stringify({ scale }),
       });
+      // await load(), do not fire and forget. It was called without await, so the
+      // detail view kept rendering the OLD id while the grid was still on the
+      // previous page; the user saw nothing happen, pressed upscale again, and
+      // every press made another upscale. Several near-identical upscaled images in
+      // the gallery were that loop, not a backend fault.
+      await load();
       setSelected(upscaled);
-      load();
     } catch (e) {
-      alert(`Upscale error: ${e.message || e}`);
+      alert(t("gallery.upscaleError", { message: e.message || e }));
     } finally {
       setUpscaling(false);
     }
@@ -216,10 +318,32 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
 
   return (
     <div className="gallery">
+      {fillTarget && (
+        <FillBrush
+          image={fillTarget}
+          imageUrl={imageUrl(fillTarget.id)}
+          onClose={() => setFillTarget(null)}
+          onComplete={(result) => {
+            setFillTarget(null);
+            setFillResult(result);
+            // The new image has to reach the grid, not just the backend: a fill
+            // writes a sidecar and the index, but this view renders from `items`.
+            load();
+          }}
+        />
+      )}
+      {fillResult && (
+        <div className="fill-done-banner" role="status">
+          {t("fill.doneBanner")}
+          <button type="button" className="btn-mini" onClick={() => setFillResult(null)}>
+            {t("app.dismiss")}
+          </button>
+        </div>
+      )}
       <div className="gallery-controls">
         <input
           className="search"
-          placeholder="Search prompts or seeds..."
+          placeholder={t("gallery.searchPlaceholder")}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -227,7 +351,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
           }}
         />
         <input
-          placeholder="tags: comma,separated"
+          placeholder={t("gallery.tagsPlaceholder")}
           value={tags}
           onChange={(e) => {
             setTags(e.target.value);
@@ -235,8 +359,8 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
           }}
         />
         <select value={sort} onChange={(e) => setSort(e.target.value)}>
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
+          <option value="newest">{t("gallery.sortNewest")}</option>
+          <option value="oldest">{t("gallery.sortOldest")}</option>
         </select>
         <select
           className="model-filter"
@@ -246,7 +370,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
             setPage(1);
           }}
         >
-          <option value="">All models</option>
+          <option value="">{t("gallery.allModels")}</option>
           {models.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
@@ -260,13 +384,13 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
             setLora(e.target.value);
             setPage(1);
           }}
-          title="Filter images by LoRA"
+          title={t("gallery.loraFilterTitle")}
         >
-          <option value="">All Images ({loraStats?.total ?? total})</option>
-          <option value="__none__">Without LoRA ({loraStats?.without_lora ?? 0})</option>
-          <option value="__any__">With any LoRA ({loraStats?.with_lora ?? 0})</option>
+          <option value="">{t("gallery.loraOptionAll", { count: loraStats?.total ?? total })}</option>
+          <option value="__none__">{t("gallery.loraOptionNone", { count: loraStats?.without_lora ?? 0 })}</option>
+          <option value="__any__">{t("gallery.loraOptionAny", { count: loraStats?.with_lora ?? 0 })}</option>
           {loraStats?.loras?.length > 0 && (
-            <optgroup label="Installed & Used LoRAs">
+            <optgroup label={t("gallery.loraOptgroup")}>
               {loraStats.loras.map((l) => (
                 <option key={l.name} value={l.name}>
                   {l.name} ({l.count})
@@ -276,13 +400,13 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
           )}
         </select>
         <span className="count">
-          {total} image{total === 1 ? "" : "s"}
+          {total === 1 ? t("gallery.countOne", { count: total }) : t("gallery.countMany", { count: total })}
         </span>
       </div>
 
       <div className="gallery-lora-tabs-bar">
         <div className="gallery-lora-tabs-header">
-          <span className="lora-tabs-title">LoRA:</span>
+          <span className="lora-tabs-title">{t("gallery.loraPrefix")}</span>
           {lora && (
             <button
               type="button"
@@ -291,9 +415,9 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 setLora("");
                 setPage(1);
               }}
-              title="Reset LoRA filter"
+              title={t("gallery.loraResetTitle")}
             >
-              ✕ Clear filter
+              {t("gallery.loraClearBtn")}
             </button>
           )}
         </div>
@@ -306,7 +430,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
               setPage(1);
             }}
           >
-            All Images <span className="lora-tab-count">{loraStats?.total ?? total}</span>
+            {t("gallery.loraTabAll")} <span className="lora-tab-count">{loraStats?.total ?? total}</span>
           </button>
           <button
             type="button"
@@ -316,7 +440,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
               setPage(1);
             }}
           >
-            Without LoRA <span className="lora-tab-count">{loraStats?.without_lora ?? 0}</span>
+            {t("gallery.loraTabNone")} <span className="lora-tab-count">{loraStats?.without_lora ?? 0}</span>
           </button>
           <button
             type="button"
@@ -326,7 +450,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
               setPage(1);
             }}
           >
-            With any LoRA <span className="lora-tab-count">{loraStats?.with_lora ?? 0}</span>
+            {t("gallery.loraTabAny")} <span className="lora-tab-count">{loraStats?.with_lora ?? 0}</span>
           </button>
           {loraStats?.loras?.map((l) => (
             <button
@@ -337,7 +461,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 setLora(lora === l.name ? "" : l.name);
                 setPage(1);
               }}
-              title={`Filter by ${l.name} (${l.count} image${l.count === 1 ? "" : "s"})`}
+              title={l.count === 1 ? t("gallery.loraTabTitleOne", { name: l.name, count: l.count }) : t("gallery.loraTabTitleMany", { name: l.name, count: l.count })}
             >
               <span className="lora-tab-name">{l.name}</span>
               <span className="lora-tab-count">{l.count}</span>
@@ -347,7 +471,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
       </div>
 
       {items.length === 0 ? (
-        <p className="hint">No images yet. Generate something!</p>
+        <p className="hint">{t("gallery.empty")}</p>
       ) : (
         <div className="grid">
           {items.map((item) => (
@@ -363,7 +487,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                   openDetail(item);
                 }
               }}
-              title="Click to view details · Drag anywhere for full-resolution image"
+              title={t("gallery.cellTitle")}
               {...bindFullImageDrag(item)}
             >
               <LazyGalleryImage item={item} />
@@ -371,7 +495,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 <button
                   type="button"
                   className="cell-quick-btn"
-                  title="Copier l'image PNG (Cmd+V sur Civitai ou dans le chat)"
+                  title={t("gallery.cellCopyTitle")}
                   onClick={(e) => {
                     e.stopPropagation();
                     copyImage(item);
@@ -382,13 +506,30 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 <button
                   type="button"
                   className="cell-quick-btn"
-                  title="Révéler le fichier dans le Finder macOS"
+                  title={t("gallery.cellRevealTitle")}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleReveal(item);
                   }}
                 >
                   📂
+                </button>
+                {/* Fill is deliberately NOT inside .cell-quick-actions. Those are
+                    opacity:0 until hover, which suits copy and reveal but not an
+                    action you have to see in order to start. A fill also needs the
+                    full-resolution image under the brush -- a thumbnail would make
+                    the user judge the result at thumbnail resolution. */}
+                <button
+                  type="button"
+                  className="cell-fill-btn"
+                  title={t("fill.cardButton")}
+                  aria-label={`${t("fill.cardButton")} — ${labelFor(item.model)}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFillTarget(item);
+                  }}
+                >
+                  🖌
                 </button>
               </div>
               <span className="cell-model-badge">{labelFor(item.model)}</span>
@@ -421,7 +562,7 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 e.stopPropagation();
                 navigateDetail(-1);
               }}
-              title="Previous (←)"
+              title={t("gallery.detailPrevTitle")}
             >
               ←
             </button>
@@ -433,56 +574,65 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 e.stopPropagation();
                 navigateDetail(1);
               }}
-              title="Next (→)"
+              title={t("gallery.detailNextTitle")}
             >
               →
             </button>
           )}
-          <div className="modal-body" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={imageUrl(selected.id)}
-              alt={selected.prompt}
-              title="Drag for full-resolution image"
-              {...bindFullImageDrag(selected)}
-            />
+<div className="modal-body" onClick={(e) => e.stopPropagation()}>
+              <div className="gallery-detail-frame">
+              <img
+                className="gallery-detail-img"
+                style={nativeDragSuppression()}
+                data-mlx-image-id={selected.id}
+                data-mlx-file-url={selected.file_url || ""}
+                src={imageUrl(selected.id)}
+                alt={selected.prompt}
+              title={t("gallery.dragFullResTitle")}
+{...bindFullImageDrag(selected)}
+              />
+              {/* Same trick as the gallery cells: the dragged element must be a link whose
+                  href is the file on disk, or macOS takes the <img>'s http URL and saves a
+                  .webloc. */}
+              </div>
             <div className="detail">
               <p className="detail-prompt">{selected.prompt}</p>
               <dl>
-                <dt>Model</dt>
+                <dt>{t("gallery.fieldModel")}</dt>
                 <dd>{labelFor(selected.model)}</dd>
-                <dt>Seed</dt>
+                <dt>{t("gallery.fieldSeed")}</dt>
                 <dd>{selected.seed}</dd>
-                <dt>Size</dt>
+                <dt>{t("gallery.fieldSize")}</dt>
                 <dd>
                   {selected.width} × {selected.height}
                 </dd>
-                <dt>Steps</dt>
+                <dt>{t("gallery.fieldSteps")}</dt>
                 <dd>{selected.steps}</dd>
-                <dt>Guidance</dt>
+                <dt>{t("gallery.fieldGuidance")}</dt>
                 <dd>{selected.guidance}</dd>
                 {selected.sampler && (
                   <>
-                    <dt>Sampler</dt>
+                    <dt>{t("gallery.fieldSampler")}</dt>
                     <dd>{selected.sampler}</dd>
                   </>
                 )}
                 {selected.negative_prompt && (
                   <>
-                    <dt>Negative</dt>
+                    <dt>{t("gallery.fieldNegative")}</dt>
                     <dd>{selected.negative_prompt}</dd>
                   </>
                 )}
                 {selected.quantization != null && (
                   <>
-                    <dt>Quantization</dt>
+                    <dt>{t("gallery.fieldQuantization")}</dt>
                     <dd>{selected.quantization}-bit</dd>
                   </>
                 )}
-                <dt>Time</dt>
+                <dt>{t("gallery.fieldTime")}</dt>
                 <dd>{selected.generation_time}s</dd>
                 {selected.loras?.length > 0 && (
                   <>
-                    <dt>LoRAs</dt>
+                    <dt>{t("gallery.fieldLoras")}</dt>
                     <dd>
                       {selected.loras
                         .map((l) => {
@@ -499,35 +649,56 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                 <button
                   className="btn-accent"
                   onClick={() => copyImage(selected)}
-                  title="Copier l'image PNG originale dans le presse-papier macOS (Cmd+C / puis Cmd+V sur Civitai ou dans le chat)"
+                  title={t("gallery.copyImageFullTitle")}
                 >
-                  {imageCopied ? "Image Copiée ✓ (Cmd+V)" : "📋 Copier l'image"}
+                  {imageCopied ? t("gallery.copyImageDone") : t("gallery.copyImageBtn")}
                 </button>
                 <button
                   onClick={() => handleReveal(selected)}
-                  title="Ouvrir l'image originale dans le Finder macOS pour la glisser-déposer vers Civitai"
+                  title={t("gallery.revealFullTitle")}
                 >
-                  {revealed ? "Ouvert dans le Finder ✓" : "📂 Finder"}
+                  {revealed ? t("gallery.revealedDone") : t("gallery.revealBtn")}
                 </button>
                 <button onClick={copyPrompt}>
-                  {promptCopied ? "Prompt copied ✓" : "Copy prompt"}
+                  {promptCopied ? t("gallery.promptCopiedDone") : t("gallery.copyPromptBtn")}
                 </button>
-                <button onClick={copySeed}>
-                  {copied ? "Copied ✓" : "Copy seed"}
-                </button>
+<button onClick={copySeed}>
+                    {copied ? t("gallery.seedCopiedDone") : t("gallery.copySeedBtn")}
+                  </button>
+                  {/* A fill is a NEW image; the original is untouched and still in the
+                      gallery. Without this the lineage is invisible, so "undo" looks
+                      impossible even though reverting is just opening the parent. */}
+                  {selected.filled_from && (
+                    <button
+                      onClick={async () => {
+                        // Fetched rather than picked out of `items`: the parent is
+                        // often on another page of the gallery, and its sidecar is the
+                        // one authoritative source for it.
+                        try {
+                          const parent = await api(`/api/images/${selected.filled_from}`);
+                          if (parent?.id) setSelected(parent);
+                        } catch (err) {
+                          console.warn("[DiffusionBear] could not open the original:", err);
+                        }
+                      }}
+                      title={t("gallery.showOriginalTitle")}
+                    >
+                      {t("gallery.showOriginalBtn")}
+                    </button>
+                  )}
                 <button
                   onClick={() => handleUpscale(2)}
                   disabled={upscaling}
-                  title="2x Super-Resolution Upscale"
+                  title={t("gallery.upscale2xTitle")}
                 >
-                  {upscaling ? "Upscaling…" : "⚡ Upscale 2x"}
+                  {upscaling ? t("gallery.upscaling") : t("gallery.upscale2xBtn")}
                 </button>
                 <button
                   onClick={() => handleUpscale(4)}
                   disabled={upscaling}
-                  title="4x Super-Resolution Upscale"
+                  title={t("gallery.upscale4xTitle")}
                 >
-                  {upscaling ? "Upscaling…" : "⚡ Upscale 4x"}
+                  {upscaling ? t("gallery.upscaling") : t("gallery.upscale4xBtn")}
                 </button>
                 <button
                   onClick={() => {
@@ -535,20 +706,31 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
                     setSelected(null);
                   }}
                 >
-                  Reuse params
+                  {t("gallery.reuseParams")}
                 </button>
-                <a className="btn" href={imageUrl(selected.id)} download={selected.file || `${selected.id}.${selected.format || 'png'}`}>
-                  Download
-                </a>
+                {/* "Export…" opens a real save panel and writes the file at full resolution, which
+                    is the one dependable way out of the app: dragging a card to the
+                    Desktop writes a .webloc link stub instead of the image. The <a
+                    download> stays as the fallback for the dev server in a browser,
+                    where there is no native bridge. */}
+                {hasNativeBridge() ? (
+                  <button className="btn" onClick={() => exportImageNatively(selected)}>
+                    {t("gallery.exportBtn")}
+                  </button>
+                ) : (
+                  <a className="btn" href={imageUrl(selected.id)} download={selected.file || `${selected.id}.${selected.format || 'png'}`}>
+                    {t("gallery.download")}
+                  </a>
+                )}
                 <button
                   className="danger"
                   onClick={() =>
-                    confirm("Delete this image?") && deleteImage(selected.id)
+                    confirm(t("gallery.deleteConfirm")) && deleteImage(selected.id)
                   }
                 >
-                  Delete
+                  {t("gallery.deleteBtn")}
                 </button>
-                <button onClick={() => setSelected(null)}>Close</button>
+                <button onClick={() => setSelected(null)}>{t("gallery.closeBtn")}</button>
               </div>
             </div>
           </div>
@@ -559,14 +741,15 @@ export default function Gallery({ refreshKey, onReuse, activeTab = "browser", ne
 }
 
 function TagEditor({ item, onSave }) {
+  const { t } = useI18n();
   const [value, setValue] = useState((item.tags || []).join(", "));
   return (
     <div className="tag-editor">
       <label>
-        Tags
+        {t("gallery.tagsLabel")}
         <input value={value} onChange={(e) => setValue(e.target.value)} />
       </label>
-      <button onClick={() => onSave(value)}>Save tags</button>
+      <button onClick={() => onSave(value)}>{t("gallery.saveTags")}</button>
     </div>
   );
 }

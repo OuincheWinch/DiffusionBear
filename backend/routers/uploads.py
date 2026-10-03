@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from PIL import Image, ImageOps
 
 import civitai_service
@@ -244,3 +245,138 @@ def upload_lora(name: str, file: UploadFile):
     sync_lora_entry_with_civitai(entry)
     _upsert_lora_entries([entry])
     return entry
+
+
+# --- import by path ---------------------------------------------------------
+# WKWebView (the standalone app's window) cannot hand a web page a File: dropping a
+# file from Finder produces a text/plain path string, so dataTransfer.files comes
+# back empty and WebKit inserts the path into the focused text field instead of
+# firing a usable drop. Chromium in a normal browser does populate files, which is
+# why drag-and-drop works on localhost but not in the app.
+#
+# Letting the backend read a client-supplied path is a local-file-read primitive on
+# an otherwise loopback-only API, so it is fenced on every axis: absolute paths
+# only, resolved (so .. and symlinks cannot climb out), regular files only, inside
+# the user's home or a mounted volume, and the same extension and size limits as the
+# upload endpoints. It only ever copies into the app's own directories.
+_IMPORT_ROOTS = (Path.home(), Path("/Volumes"))
+_IMPORTABLE_SUFFIXES = SUPPORTED_REFERENCE_EXTENSIONS + (".safetensors",)
+
+
+def _resolve_import_path(raw) -> Path:
+    if not isinstance(raw, str):
+        raise HTTPException(400, "path must be a string")
+    text = raw.strip()
+    if not text or "\x00" in text or len(text) > 4096:
+        raise HTTPException(400, "invalid path")
+    candidate = Path(text).expanduser()
+    if not candidate.is_absolute():
+        raise HTTPException(400, "path must be absolute")
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise HTTPException(404, "file not found")
+    if not resolved.is_file():
+        raise HTTPException(400, "not a regular file")
+    roots = [root for root in _IMPORT_ROOTS if root.exists()]
+    if not any(resolved.is_relative_to(root) for root in roots):
+        raise HTTPException(403, "path is outside your home folder and mounted volumes")
+    if resolved.suffix.lower() not in _IMPORTABLE_SUFFIXES:
+        raise HTTPException(400, f"unsupported file type: {resolved.suffix or 'none'}")
+    return resolved
+
+
+def _import_image_from_path(source: Path):
+    size = source.stat().st_size
+    if size > MAX_REFERENCE_UPLOAD_BYTES:
+        raise HTTPException(413, "image file exceeds 50 MB limit")
+    prefix = uuid.uuid4().hex[:12]
+    destination = UPLOADS_DIR / f"{prefix}_{_safe_image_name(source.name)}"
+    try:
+        with open(source, "rb") as src, open(destination, "xb") as dst:
+            os.chmod(destination, 0o600)
+            written = 0
+            while chunk := src.read(8 * 1024 * 1024):
+                written += len(chunk)
+                if written > MAX_REFERENCE_UPLOAD_BYTES:
+                    raise HTTPException(413, "image file exceeds 50 MB limit")
+                dst.write(chunk)
+        _validate_image_file(destination)
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
+    return {"path": str(destination.resolve()), "url": f"/api/uploads/{destination.name}", "name": destination.name}
+
+
+def _import_lora_from_path(source: Path):
+    size = source.stat().st_size
+    if size > MAX_LORA_UPLOAD_BYTES:
+        raise HTTPException(413, "file too large (max 8 GB)")
+    if not civitai_service.is_valid_safetensors(source):
+        raise HTTPException(400, "not a valid .safetensors archive")
+    detected_base, detected_triggers = _inspect_safetensors(source)
+    if not detected_base:
+        raise HTTPException(400, "could not inspect LoRA architecture")
+    display_name = Path(source.name).stem[:80] or "imported-lora"
+    safe_name = _sanitize_component(source.name)
+    if not safe_name.lower().endswith(".safetensors") or len(safe_name) > 180:
+        raise HTTPException(400, "invalid filename")
+    target_dir = SDXL_LORA_DIR if detected_base == "sdxl" else LORA_FILES_DIR
+    dest = (target_dir.resolve() / f"{display_name}__{safe_name}").resolve()
+    if not dest.is_relative_to(target_dir.resolve()):
+        raise HTTPException(400, "invalid LoRA destination")
+    # Copy rather than link: the source may be on an external volume that is not
+    # there on the next launch, and a stale registry entry is worse than a copy.
+    fd, tmp_name = tempfile.mkstemp(dir=str(target_dir), prefix=".import-", suffix=".part")
+    try:
+        with os.fdopen(fd, "wb") as dst, open(source, "rb") as src:
+            written = 0
+            while chunk := src.read(8 * 1024 * 1024):
+                written += len(chunk)
+                if written > MAX_LORA_UPLOAD_BYTES:
+                    raise HTTPException(413, "file too large (max 8 GB)")
+                dst.write(chunk)
+            dst.flush()
+            os.fsync(dst.fileno())
+        os.replace(tmp_name, dest)
+        tmp_name = None
+    finally:
+        if tmp_name is not None:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+    try:
+        os.chmod(dest, 0o600)
+    except OSError:
+        pass
+    resolved_path = str(dest.resolve())
+    existing = next(
+        (entry for entry in _read_loras() if entry.get("path") == resolved_path or entry.get("name") == display_name),
+        {},
+    )
+    entry = {
+        **existing,
+        "name": display_name,
+        "path": resolved_path,
+        "scale": 1.0,
+        "base_model": detected_base,
+        "triggers": detected_triggers or existing.get("triggers", []),
+        "source": existing.get("source", "import-path"),
+    }
+    sync_lora_entry_with_civitai(entry)
+    _upsert_lora_entries([entry])
+    return entry
+
+
+class ImportPathRequest(BaseModel):
+    path: str
+
+
+@router.post("/api/import-path")
+def import_from_path(payload: ImportPathRequest):
+    """Import a dropped file that the web view could only give us as a path."""
+    source = _resolve_import_path(payload.path)
+    if source.suffix.lower() == ".safetensors":
+        return _import_lora_from_path(source)
+    return _import_image_from_path(source)

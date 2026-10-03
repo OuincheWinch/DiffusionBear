@@ -5,9 +5,13 @@ import uuid
 from pathlib import Path
 from PIL import Image
 
+import app_settings
 from image_meta import atomic_write_json, save_image_with_metadata, extract_image_metadata, _artist_fallback
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+# Derive from app_settings rather than re-deriving backend/data here: this was a
+# second hardcoded copy, so it ignored the configured data dir and would have written
+# upscaled images into the signed .app bundle instead of the user's store.
+DATA_DIR = app_settings.DATA_DIR
 GENERATED_DIR = DATA_DIR / "generated"
 MAX_UPSCALE_PIXELS = 64 * 1024 * 1024
 _UPSCALE_SLOTS = threading.BoundedSemaphore(1)
@@ -78,8 +82,8 @@ def _upscale_image(image_id: str, scale: int = 2) -> dict:
         "upscale_method": actual_method,
         "generation_time": elapsed,
         "created_at": time.time(),
-        "software": "MLX-DIFFUSION",
-        "generator": "MLX-DIFFUSION",
+        "software": "DiffusionBear",
+        "generator": "DiffusionBear",
         "artist": _artist_fallback(parent_meta.get("artist")),
         "file": dest_path.name,
         "format": fmt,

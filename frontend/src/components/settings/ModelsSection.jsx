@@ -2,14 +2,16 @@ import { useState } from "react";
 import { api } from "../../api";
 import ModelInstaller from "../ModelInstaller";
 import { formatBytes } from "../../utils/formatBytes";
+import { useI18n } from "../../i18n/I18nContext";
 
 export default function ModelsSection({ models, loading, onModelsChanged, onFeedback }) {
+  const { t } = useI18n();
   const [removing, setRemoving] = useState(null);
   const [err, setErr] = useState(null);
 
   async function removeModel(m) {
-    const action = m.local_path || m.local_path_configured ? "unlink the configured local path (files stay on disk)" : "remove the managed weights from disk";
-    if (!window.confirm(`${action} for "${m.label}"?\n\nYou can re-download it later from the Generate tab.`)) {
+    const action = m.local_path || m.local_path_configured ? t("settings.models.confirmUnlink", { model: m.label }) : t("settings.models.confirmRemove", { model: m.label });
+    if (!window.confirm(action)) {
       return;
     }
     setRemoving(m.id);
@@ -17,7 +19,7 @@ export default function ModelsSection({ models, loading, onModelsChanged, onFeed
     try {
       const result = await api(`/api/models/${m.id}`, { method: "DELETE" });
       await onModelsChanged?.();
-      onFeedback?.({ type: "success", text: result?.status === "unlinked" ? `${m.label} local path unlinked` : `${m.label} removed from disk` });
+      onFeedback?.({ type: "success", text: result?.status === "unlinked" ? t("settings.models.feedbackUnlinked", { model: m.label }) : t("settings.models.feedbackRemoved", { model: m.label }) });
     } catch (e) {
       setErr(e.message || String(e));
     } finally {
@@ -26,7 +28,7 @@ export default function ModelsSection({ models, loading, onModelsChanged, onFeed
   }
 
   if (loading) {
-    return <div className="settings-row"><span className="hint">Loading model registry…</span></div>;
+    return <div className="settings-row"><span className="hint">{t("settings.models.loading")}</span></div>;
   }
 
   return (
@@ -34,10 +36,10 @@ export default function ModelsSection({ models, loading, onModelsChanged, onFeed
       {err && <p className="error" role="alert">{err}</p>}
       <div className="models-table">
         <div className="models-table-head">
-          <span>Model</span>
-          <span>State</span>
-          <span>On disk</span>
-          <span>Actions</span>
+          <span>{t("settings.models.colModel")}</span>
+          <span>{t("settings.models.colState")}</span>
+          <span>{t("settings.models.colOnDisk")}</span>
+          <span>{t("settings.models.colActions")}</span>
         </div>
         {models.map((m) => {
           const installed = !!m.installed;
@@ -50,9 +52,9 @@ export default function ModelsSection({ models, loading, onModelsChanged, onFeed
               </span>
               <span className="models-state">
                 <span className={`settings-badge ${installed ? "ok" : "missing"}`}>
-                  {installed ? "✓ installed" : "not installed"}
+                  {installed ? t("settings.models.installed") : t("settings.models.notInstalled")}
                 </span>
-                {override && <span className="settings-badge">custom defaults</span>}
+                {override && <span className="settings-badge">{t("settings.models.customDefaults")}</span>}
               </span>
               <span className="models-size">{formatBytes(m.disk_usage_bytes || 0)}</span>
               <span className="models-actions">
@@ -61,11 +63,11 @@ export default function ModelsSection({ models, loading, onModelsChanged, onFeed
                      type="button"
                      className="btn-mini"
                      disabled={removing === m.id}
-                     onClick={() => removeModel(m)}
-                     title="Delete weights from disk (guard: refuses while generating/downloading)"
-                   >
-                     {removing === m.id ? "Deleting…" : m.local_path_configured ? "🔗 Unlink path" : "🗑 Remove"}
-                   </button>
+                      onClick={() => removeModel(m)}
+                      title={t("settings.models.removeTitle")}
+                    >
+                      {removing === m.id ? t("settings.models.deleting") : m.local_path_configured ? t("settings.models.unlinkPath") : t("settings.models.remove")}
+                    </button>
                  ) : (
                    <ModelInstaller modelInfo={m} onInstalled={onModelsChanged} />
                  )}
@@ -75,10 +77,9 @@ export default function ModelsSection({ models, loading, onModelsChanged, onFeed
         })}
       </div>
       <p className="params-hint">
-        Models are stored under <code>backend/data/models/</code> (SDXL),{" "}
-        <code>backend/data/models/krea2-turbo-q4/</code> and the local Hugging Face hub cache
-        (~/.cache/huggingface). Removing a model frees disk space; it is re-downloaded lazily on
-        first use.
+        {t("settings.models.storageHintLead")} <code>backend/data/models/</code> (SDXL),{" "}
+        <code>backend/data/models/krea2-turbo-q4/</code>{" "}
+        {t("settings.models.storageHintTail")}
       </p>
     </div>
   );
