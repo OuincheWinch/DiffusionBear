@@ -105,15 +105,30 @@ class TileSizeSettingTests(unittest.TestCase):
         self.assertRegex(block, r"if size <= 0:\s*\n\s*return")
 
 
+def _live_data_dir():
+    """This machine's live data directory, or None to skip the test.
+
+    Resolved from the environment rather than hardcoded. An absolute path copied
+    from one contributor's disk layout is meaningless everywhere else, and it also
+    published that layout. Set DIFFUSIONBEAR_DATA_DIR to exercise these locally.
+    """
+    for var in ("DIFFUSIONBEAR_DATA_DIR", "MLX_DIFFUSION_DATA_DIR"):
+        raw = os.environ.get(var, "").strip()
+        if raw:
+            return Path(raw).expanduser()
+    return None
+
+
 class MigrationRecordTests(unittest.TestCase):
     """The stale constants are gone from the live settings the app actually reads."""
 
     def test_the_running_settings_file_is_on_auto(self):
-        path = Path(
-            "/Volumes/Externe/IA/DiffusionBear/backend/data/settings.json"
-        )
+        data_dir = _live_data_dir()
+        if data_dir is None:
+            self.skipTest("DIFFUSIONBEAR_DATA_DIR not set; no live settings here")
+        path = data_dir / "settings.json"
         if not path.exists():
-            self.skipTest("live settings file not present on this machine")
+            self.skipTest("live settings file not present at %s" % path)
         import json
 
         data = json.loads(path.read_text())
@@ -124,12 +139,12 @@ class MigrationRecordTests(unittest.TestCase):
         self.assertIsNone(data.get("memory_krea_wired_limit_gb"))
 
     def test_a_backup_of_the_previous_values_exists(self):
-        path = Path(
-            "/Volumes/Externe/IA/DiffusionBear/backend/data/settings.json"
-            ".bak-before-auto-wired-limit"
-        )
+        data_dir = _live_data_dir()
+        if data_dir is None:
+            self.skipTest("DIFFUSIONBEAR_DATA_DIR not set; no backup here")
+        path = data_dir / "settings.json.bak-before-auto-wired-limit"
         if not path.exists():
-            self.skipTest("no backup on this machine")
+            self.skipTest("no backup at %s" % path)
         import json
 
         data = json.loads(path.read_text())

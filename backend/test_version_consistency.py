@@ -116,7 +116,7 @@ class VersionConsistencyTests(unittest.TestCase):
         script = BUILD_APP.read_text(encoding="utf-8")
         self.assertNotRegex(
             script,
-            r"/Volumes/Externe/[^/]+/venv/bin/python",
+            r"/Volumes/[^/]+/venv/bin/python",
             "build_app.sh must not hardcode an absolute interpreter path; "
             "use ${PYTHON:-python3}",
         )
