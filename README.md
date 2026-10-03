@@ -49,10 +49,23 @@ environments on your side.
 | **Your files** | Settings, gallery, LoRA registry and model store live in `~/Library/Application Support/DiffusionBear`, never inside the app bundle. To put the store on another volume, write an absolute path into `~/Library/Application Support/DiffusionBear/store_path`; a store path can be shared by several installs. |
 | **Model weights** | Not bundled. They are downloaded on first use from Hugging Face or [Civitai](https://civitai.red/?ref_code=88C8VEBA) into that store — a few GB for the first model. After that the app works fully offline. |
 
-**No prebuilt binary is attached to this repository's Releases page right now.**
-If you would rather not assemble one yourself, open an issue and say so; otherwise
-[build it from `packaging/`](#build-the-app-yourself) — it is three scripts and no
-decisions to make.
+<a href="https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.1/DiffusionBear-0.3.1-arm64.zip">
+  <img alt="Download DiffusionBear 0.3.1 for macOS (Apple Silicon)" src="https://img.shields.io/badge/download-DiffusionBear%200.3.1%20-beta-ff3b8f?style=for-the-badge">
+</a>
+
+**[⬇ Download DiffusionBear 0.3.1 for macOS (Apple Silicon)](https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.1/DiffusionBear-0.3.1-arm64.zip)** — 482 MB, from the [v0.3.1 release](https://github.com/OuincheWinch/DiffusionBear/releases/tag/v0.3.1).
+
+1. Unzip it and move `DiffusionBear.app` into `/Applications`.
+2. **First launch only:** the app is ad-hoc signed, not notarised with an Apple
+   Developer ID, so macOS refuses a plain double-click with *"Apple cannot check it for
+   malicious software"*. **Right-click the app → Open → Open.** It is not malware; it is
+   simply unsigned, and the warning does not return on later launches.
+3. To check the download: `shasum -a 256 DiffusionBear-0.3.1-arm64.zip`, compared
+   against the [`.SHA256SUMS`](https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.1/DiffusionBear-0.3.1-arm64.zip.SHA256SUMS)
+   published beside it.
+
+Prefer to build it yourself? [Build it from `packaging/`](#build-the-app-yourself) — it
+is three scripts and no decisions to make.
 
 ---
 
