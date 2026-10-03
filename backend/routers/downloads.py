@@ -1305,19 +1305,33 @@ def register_downloaded_model(req: ModelRegistrationRequest):
     """
     import app_settings
 
-    repo_id = hf_service._valid_repo_id(req.repo_id)
-    if repo_id is None:
-        raise HTTPException(400, "Invalid Hugging Face repository id")
     model_id = req.model_id.strip()
     if model_id not in generator.MODELS:
         raise HTTPException(404, f"Unknown engine: {model_id}")
-    expected = hf_browse.usable_as(repo_id, "diffusion")[0]
-    if expected != model_id:
-        raise HTTPException(400, f"{repo_id} is a {expected or 'non-runnable'} model, not {model_id}")
 
-    directory = _model_dir_for_repo(repo_id)
+    # Two kinds of source reach here: a Hugging Face repo id, and a LOCAL directory name --
+    # which is what a converted Civitai checkpoint is. Demanding an "org/repo" id made the
+    # converted model impossible to bind at all.
+    raw = (req.repo_id or "").strip()
+    repo_id = hf_service._valid_repo_id(raw)
+    if repo_id is not None:
+        expected = hf_browse.usable_as(repo_id, "diffusion")[0]
+        if expected != model_id:
+            raise HTTPException(400, f"{repo_id} is a {expected or 'non-runnable'} model, not {model_id}")
+        directory = _model_dir_for_repo(repo_id)
+    else:
+        name = hf_browse.safe_install_name(raw)
+        if name != raw:
+            raise HTTPException(400, "invalid local model name")
+        candidate = generator.ASSET_DIR / "models" / name
+        try:
+            candidate.resolve().relative_to(generator.ASSET_DIR.resolve())
+        except ValueError:
+            raise HTTPException(400, "path must stay inside the asset directory")
+        directory = candidate if candidate.is_dir() else None
+
     if directory is None:
-        raise HTTPException(404, f"{repo_id} has not been downloaded yet")
+        raise HTTPException(404, f"{raw} is not in the model store")
     if not _has_weights(directory):
         raise HTTPException(400, f"{directory.name} contains no weights")
 
@@ -1326,7 +1340,7 @@ def register_downloaded_model(req: ModelRegistrationRequest):
     return {
         "status": "registered",
         "model_id": model_id,
-        "repo_id": repo_id,
+        "repo_id": repo_id or str(directory),
         "local_path": str(directory),
         "model_paths": paths,
     }
@@ -1342,10 +1356,19 @@ def unregister_downloaded_model(model_id: str):
     settings_now = app_settings.get_settings()
     paths = dict(settings_now.get("model_paths") or {})
     if model_id not in paths:
-        return {"status": "not_registered", "model_id": model_id}
-    paths.pop(model_id, None)
-    updated = app_settings.update_settings({"model_paths": paths})
-    return {"status": "unregistered", "model_id": model_id, "model_paths": updated.get("model_paths") or {}}
+        return {"status": "not_registered", "model_id": model_id, "cleared": True}
+    # An empty string is how app_settings deletes a model_paths entry, same as clearing a
+    # model_defaults override. Passing the whole map minus the key does NOT delete it, which
+    # is why unregistering used to report success while leaving the override in place and
+    # silently hijacking that engine.
+    updated = app_settings.update_settings({"model_paths": {model_id: ""}})
+    remaining = updated.get("model_paths") or {}
+    return {
+        "status": "unregistered",
+        "model_id": model_id,
+        "model_paths": remaining,
+        "cleared": model_id not in remaining,
+    }
 
 
 @router.get("/api/hf/models/detected")

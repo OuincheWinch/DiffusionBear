@@ -3374,8 +3374,20 @@ def _generate_sdxl(prompt, width, height, steps, guidance, seed, loras,
             if result is None:
                 raise RuntimeError("SDXL engine returned no result")
             if result.get("error"):
+                # The daemon returns a bare error STRING and prints the traceback to
+                # stderr. The stderr reader has been capturing it all along, but only the
+                # EOF path used the tail -- so a normal error surfaced as
+                # "TypeError: expected str, bytes or os.PathLike object, not NoneType"
+                # with nothing to act on. The real cause (a CLIP tokenizer missing
+                # vocab.json) only ever appeared because the tail was read by hand out of
+                # the engine's own process. Attach it here, and log it either way.
+                tail = "".join(_sdxl_stderr_tail).strip()
+                message = str(result["error"])
+                if tail:
+                    print(f"[generator] SDXL engine traceback:\n{tail[-2000:]}", flush=True)
+                    message = f"{message}\n--- engine traceback ---\n{tail[-2000:]}"
                 _kill_sdxl_daemon()
-                raise RuntimeError(str(result["error"]))
+                raise RuntimeError(message)
             if phase_cb is not None:
                 phase_cb("saving", "Finalizing image and metadata...")
             actual_w = int(result.get("width", width))
