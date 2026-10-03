@@ -132,6 +132,42 @@ except Exception as exc:
     emit("fatal", error="could not write the diffusers directory: %s" % exc)
     sys.exit(6)
 
+# Normalise CLIP key naming. diffusers 0.40 serialises the two SDXL text encoders
+# inconsistently: text_encoder_2 (CLIPTextModelWithProjection) writes 516 of 517 keys
+# with a "text_model." prefix, while text_encoder (plain CLIPTextModel) writes none of its
+# 196. mlx_diffuser's converter expects the prefixed form, so the engine rejects the
+# directory with "missing 196 keys ... extra 196 keys" -- a pure naming mismatch, with the
+# weights themselves fine.
+#
+# Normalising toward the convention the OTHER file already uses, rather than a hardcoded
+# prefix, means the fix follows whichever convention the installed diffusers actually
+# writes instead of assuming one.
+def _normalise_clip_keys(target):
+    from safetensors.torch import load_file, save_file
+    import torch
+    te = target / "text_encoder" / "model.safetensors"
+    te2 = target / "text_encoder_2" / "model.safetensors"
+    if not te.is_file() or not te2.is_file():
+        return
+    with safe_open_keys(te) as k1, safe_open_keys(te2) as k2:
+        prefixed_elsewhere = any(x.startswith("text_model.") for x in k2)
+        needs = bool(k1) and not any(x.startswith("text_model.") for x in k1)
+    if not (prefixed_elsewhere and needs):
+        return
+    tensors = load_file(str(te))
+    renamed = {(k if k.startswith("text_model.") else "text_model." + k): v for k, v in tensors.items()}
+    save_file(renamed, str(te), metadata={"format": "pt"})
+    emit("stage", stage="normalised clip keys", progress=0.99)
+
+def safe_open_keys(path):
+    from safetensors import safe_open
+    class _Ctx:
+        def __enter__(self): self._h = safe_open(str(path), "pt"); return list(self._h.keys())
+        def __exit__(self, *a): return False
+    return _Ctx()
+
+_normalise_clip_keys(target)
+
 emit("stage", stage="done", progress=1.0)
 '''
 
