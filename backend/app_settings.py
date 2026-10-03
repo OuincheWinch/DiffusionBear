@@ -34,20 +34,15 @@ def _abs_from_env(name: str) -> Path | None:
 # bound and invalidating the bundle's own code signature on the next launch. The
 # shell therefore sets the data-dir variable alongside the asset-dir one.
 #
-# The variables were renamed MLX_DIFFUSION_* -> DIFFUSIONBEAR_* with the app. The old
-# names still win when set, so existing launchd units, run.sh callers and any script
-# a user already wrote keep working; nothing has to be updated in lockstep.
 DATA_DIR = (
-    _abs_from_env("DIFFUSIONBEAR_DATA_DIR")
-    or _abs_from_env("MLX_DIFFUSION_DATA_DIR")
-    or (Path(__file__).resolve().parent / "data")
-)
+        _abs_from_env("DIFFUSIONBEAR_DATA_DIR")
+        or (Path(__file__).resolve().parent / "data")
+    )
 
 
 def _resolve_asset_dir() -> Path:
     return (
         _abs_from_env("DIFFUSIONBEAR_ASSET_DIR")
-        or _abs_from_env("MLX_DIFFUSION_ASSET_DIR")
         or DATA_DIR
     )
 

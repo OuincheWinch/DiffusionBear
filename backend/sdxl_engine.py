@@ -170,7 +170,6 @@ except Exception as _e:
 
 _configured_asset_dir = (
     os.environ.get("DIFFUSIONBEAR_ASSET_DIR", "").strip()
-    or os.environ.get("MLX_DIFFUSION_ASSET_DIR", "").strip()
 )
 if _configured_asset_dir:
     _asset_dir = Path(_configured_asset_dir).expanduser()

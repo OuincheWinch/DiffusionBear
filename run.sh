@@ -26,7 +26,7 @@ FRONTEND_DIR="$PROJECT_DIR/frontend"
 
 # Private DEV convenience: reuse the sibling working copy's model/SDXL/LoRA store
 # so DEV never re-downloads weights. Never published to the public repo.
-if [ -z "${DIFFUSIONBEAR_ASSET_DIR:-}" ] && [ -z "${MLX_DIFFUSION_ASSET_DIR:-}" ]; then
+if [ -z "${DIFFUSIONBEAR_ASSET_DIR:-}" ]; then
     SHARED_ASSET_DIR="$PROJECT_DIR/../MLX-DIFFUSION OpenCode/backend/data"
     if [ -d "$SHARED_ASSET_DIR/models" ]; then
         export DIFFUSIONBEAR_ASSET_DIR="$SHARED_ASSET_DIR"
@@ -70,7 +70,7 @@ BACKEND_PID=""
 FRONTEND_PID=""
 EVENT_PID=""
 EVENT_LOG=""
-API_TOKEN_VALUE="${DIFFUSIONBEAR_API_TOKEN:-${MLX_DIFFUSION_API_TOKEN:-${MLX_API_TOKEN:-${LOCAL_API_TOKEN:-}}}}"
+API_TOKEN_VALUE="${DIFFUSIONBEAR_API_TOKEN:-${MLX_API_TOKEN:-${LOCAL_API_TOKEN:-}}}"
 if [ -n "$API_TOKEN_VALUE" ] && [ -z "${VITE_API_TOKEN:-}" ]; then
     export VITE_API_TOKEN="$API_TOKEN_VALUE"
 fi

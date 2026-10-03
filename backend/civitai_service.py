@@ -40,7 +40,7 @@ class DownloadCancelled(RuntimeError):
 def download_deadline_seconds() -> int:
     raw = os.environ.get(
         "DIFFUSIONBEAR_DOWNLOAD_TIMEOUT_S",
-        os.environ.get("MLX_DIFFUSION_DOWNLOAD_TIMEOUT_S", str(DEFAULT_DOWNLOAD_DEADLINE_SECONDS)),
+        os.environ.get("DIFFUSIONBEAR_DOWNLOAD_TIMEOUT_S", str(DEFAULT_DOWNLOAD_DEADLINE_SECONDS)),
     )
     try:
         return min(86400, max(60, int(raw)))

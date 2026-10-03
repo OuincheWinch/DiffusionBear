@@ -25,11 +25,8 @@ import app_version
 import threading
 
 
-# Renamed MLX_DIFFUSION_* -> DIFFUSIONBEAR_* with the app. The legacy names are kept
-# as fallbacks so an existing launchd unit or export in a shell still works.
 _LOCAL_API_TOKEN = (
     os.environ.get("DIFFUSIONBEAR_API_TOKEN")
-    or os.environ.get("MLX_DIFFUSION_API_TOKEN")
     or os.environ.get("MLX_API_TOKEN")
     or os.environ.get("LOCAL_API_TOKEN", "")
 )
@@ -38,8 +35,6 @@ _DEV_FALLBACK = any(
     for name in (
         "DIFFUSIONBEAR_API_DEV_FALLBACK",
         "DIFFUSIONBEAR_DEV_FALLBACK",
-        "MLX_DIFFUSION_API_DEV_FALLBACK",
-        "MLX_DIFFUSION_DEV_FALLBACK",
         "MLX_ALLOW_DEV_NO_TOKEN",
     )
 )

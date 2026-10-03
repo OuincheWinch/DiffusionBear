@@ -60,26 +60,41 @@ private struct Paths {
 
     /// External, user-owned store. Not bundled, never copied.
     ///
-    /// Renamed from "MLX-Diffusion" to "DiffusionBear", but the model store can be
-    /// tens of gigabytes and lives on an external volume, so it is never moved or
-    /// recreated. If the new directory does not exist but the old one does, use the
-    /// old one and say so in the log. Copying would waste the user 28 GB of disk to
-    /// rename an app.
-    static let supportNames = ["DiffusionBear", "MLX-Diffusion"]
+    /// Lives in Application Support by default so a fresh install works with no setup
+    /// at all. It can be relocated, because the model store runs to tens of gigabytes
+    /// and will not always fit on the boot volume: write the desired absolute path
+    /// into `store_path` next to this file and it is used instead. That is how a
+    /// library on an external volume keeps working without any pre-rename name being
+    /// consulted.
+    static let appSupportName = "DiffusionBear"
+
+    /// Where the store actually is. Relocation file wins, then the default location.
     static var support: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        for name in supportNames {
-            let candidate = base.appendingPathComponent(name, isDirectory: true)
-            if FileManager.default.fileExists(atPath: candidate.appendingPathComponent("data").path) {
-                if name != supportNames[0] {
-                    NSLog("DiffusionBear: reusing existing data at %@", candidate.path)
+        let defaultRoot = base.appendingPathComponent(appSupportName, isDirectory: true)
+        let pointer = defaultRoot.appendingPathComponent("store_path")
+        if let text = try? String(contentsOf: pointer, encoding: .utf8) {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                let relocated = URL(fileURLWithPath: trimmed, isDirectory: true)
+                if FileManager.default.fileExists(atPath: relocated.path) {
+                    NSLog("DiffusionBear: using relocated store at %@", relocated.path)
+                    return relocated
                 }
-                return candidate
+                NSLog("DiffusionBear: store_path points at %@ which does not exist; ignoring",
+                      relocated.path)
             }
         }
-        return base.appendingPathComponent(supportNames[0], isDirectory: true)
+        return defaultRoot
     }
-    static var assetDir: URL { support.appendingPathComponent("data", isDirectory: true) }
+    /// The store root is the directory that *contains* `data`. A relocation file may
+    /// point either at that root or directly at a `data` directory, because both are
+    /// things a person would reasonably type.
+    static var assetDir: URL {
+        let root = support
+        if root.lastPathComponent == "data" { return root }
+        return root.appendingPathComponent("data", isDirectory: true)
+    }
     /// Backend stdout/stderr. Deliberately NOT under `support`: that path can fall back
     /// to the pre-rename "MLX-Diffusion" directory, so a fill bug would have been
     /// reported to a log path that does not mention the app you are running. The log

@@ -63,16 +63,17 @@ mistake and a token in a signed app.
 This is the single most confusing thing about working on this project, and it has cost
 real time.
 
-- The **running app** writes to `~/Library/Application Support/DiffusionBear/data` —
-  **and that is a symlink into `MLX-DIFFUSION OpenCode/backend/data`**, not a separate
-  store. `Path.resolve()` canonicalises it, so a backend started with
-  `MLX_DIFFUSION_ASSET_DIR` pointed at Application Support will report a path under the
-  other tree. That is correct. Do not "fix" it.
-- There is a second checkout, `MLX-DIFFUSION OpenCode`, at an older commit. Its gallery,
-  `settings.json`, LoRA registry and model store are the live ones. It is a **separate git
-  repo** — committing there does not reach private DEV.
-- `MLX_DIFFUSION_ASSET_DIR` moves only the model store; `MLX_DIFFUSION_DATA_DIR` moves the
-  gallery and settings. Old `MLX_DIFFUSION_*` names still win over `DIFFUSIONBEAR_*`.
+- The **running app** reads its store from `~/Library/Application Support/DiffusionBear`.
+  By default that resolves to `DiffusionBear/data`, which is what a fresh install uses and
+  needs no setup. The store can be relocated when the model store is too large for the boot
+  volume: put an absolute path in `~/Library/Application Support/DiffusionBear/store_path` and
+  the launcher uses that instead (the path may name the root or the `data` directory itself).
+  On this machine it points at `/Volumes/Externe/IA/DiffusionBear/backend/data`, because the
+  model store is ~93 GB and the boot volume does not have room for it.
+- `DIFFUSIONBEAR_ASSET_DIR` moves only the model store; `DIFFUSIONBEAR_DATA_DIR` moves the
+  gallery and settings too. There are no legacy spellings any more: the pre-rename
+  `MLX_DIFFUSION_*` variables and the `MLX-Diffusion` Application Support directory were
+  removed, so a script or launchd unit still using one has to be updated.
 - **Only one process may hold port 8001.** A stray manual backend will not fail loudly; the
   app shows a "Port 8001 is already in use" dialog and serves nothing. Check with
   `lsof -nP -iTCP:8001 -sTCP:LISTEN` before concluding the app is broken.

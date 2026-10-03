@@ -567,7 +567,7 @@ _init_queue_recovery_on_startup()
 def _emit_generation_event(message: str):
     event_log = (
         os.environ.get("DIFFUSIONBEAR_EVENT_LOG", "").strip()
-        or os.environ.get("MLX_DIFFUSION_EVENT_LOG", "").strip()
+        or os.environ.get("DIFFUSIONBEAR_EVENT_LOG", "").strip()
     )
     if not event_log:
         return
