@@ -906,6 +906,24 @@ export const settingsStrings = {
     de: "Nicht zugeordnet: {names}",
     it: "Non conteggiati: {names}",
   },
+  "settings.storage.adoptTitle": {
+    fr: "Pointer ce modèle vers {label} dans le magasin. Rien n'est copié.",
+    en: "Point {label} at this directory in the store. Nothing is copied.",
+    de: "{label} auf dieses Verzeichnis im Speicher zeigen. Es wird nichts kopiert.",
+    it: "Indica {label} su questa directory nell'archivio. Non viene copiato nulla.",
+  },
+  "settings.storage.adoptAs": {
+    fr: "Utiliser comme {label}",
+    en: "Use as {label}",
+    de: "Als {label} verwenden",
+    it: "Usa come {label}",
+  },
+  "settings.storage.adopting": {
+    fr: "Association…",
+    en: "Adopting…",
+    de: "Wird übernommen…",
+    it: "Associazione…",
+  },
   "settings.storage.configCreds": {
     fr: "Configuration et identifiants",
     en: "Configuration and credentials",

@@ -124,5 +124,12 @@
     "ja": "ローカルからインストール",
     "pt": "Instalar a partir do local",
     "ko": "로컬에서 설치"
+  },
+  "installer.retryBtn": {
+    "es": "Reintentar",
+    "zh": "重试",
+    "ja": "再試行",
+    "pt": "Tentar novamente",
+    "ko": "다시 시도"
   }
 }

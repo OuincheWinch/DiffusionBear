@@ -144,6 +144,27 @@ def _model_is_fully_cached_uncached(model_id: str, minfo: dict | None = None, lo
     return "/" in repo and _complete_hf_snapshot(repo)
 
 
+def _sort_models_for_picker(items: list[dict]) -> list[dict]:
+    """Installed models first, then alphabetical by label.
+
+    Sorted here rather than in each view because one list feeds the Generate
+    dropdown, the Models tab and the defaults section, and sorting per view is
+    how they drift apart.
+
+    Installed before not-installed because the list is long and the model you
+    can actually run is nearly always the one you want. Alphabetical within
+    each group so the order does not jump around when a download starts.
+    Adopted local models sort by their display name like any other, so a hand
+    installed checkpoint appears in its natural place rather than at the end.
+    """
+    def key(entry: dict) -> tuple:
+        label = str(entry.get("label") or entry.get("id") or "")
+        return (0 if entry.get("installed") else 1, label.casefold(), label)
+
+    return sorted(items, key=key)
+
+
+
 @router.get("/api/models")
 def list_models():
     items = []
@@ -157,7 +178,7 @@ def list_models():
         entry["download_repo"] = generator.model_download_repo(model["id"], model)
         entry["disk_usage_bytes"] = generator.model_disk_usage(model["id"], model)
         items.append(entry)
-    return items
+    return _sort_models_for_picker(items)
 
 
 @router.delete("/api/models/{model_id}")

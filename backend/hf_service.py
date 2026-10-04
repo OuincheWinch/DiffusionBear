@@ -9,6 +9,7 @@ from urllib.parse import quote, unquote, urlsplit
 from huggingface_hub import HfApi
 
 import civitai_service
+import app_settings
 
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 DiffusionBear/0.1.2"
@@ -40,7 +41,16 @@ def get_hf_token(token: str | None = None) -> str | None:
     resolved = _valid_token(env_token)
     if resolved:
         return resolved
-    token_file = Path(__file__).resolve().parent / "data" / "hf_token.txt"
+    # Must be the same file the token route writes to. This resolved
+    # Path(__file__).parent / "data", which inside the standalone app is the signed
+    # bundle, while POST /api/tokens wrote DATA_DIR -- so the token was saved to
+    # Application Support and read from a path nothing had ever written. The UI then
+    # reported it unset after every relaunch. civitai_service already resolves this
+    # via app_settings; this now matches it.
+    try:
+        token_file = app_settings.DATA_DIR / "hf_token.txt"
+    except Exception:
+        token_file = Path(__file__).resolve().parent / "data" / "hf_token.txt"
     if token_file.is_file():
         try:
             resolved = _valid_token(token_file.read_text("utf-8"))

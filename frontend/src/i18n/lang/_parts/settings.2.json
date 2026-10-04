@@ -852,5 +852,26 @@
     "ja": "これらのプロンプトはローカルのプロンプト強化エンジン（Qwen2.5-0.5B-Instruct、MLX）を駆動します。生成される各モデルは次の4エンジンのいずれかに割り当てられます: FLUX.2 Klein / SDXL / Krea 2 / Z-Image Turbo。",
     "pt": "Estes prompts orientam o aprimorador local de prompts (Qwen2.5-0.5B-Instruct, MLX). Cada modelo gerado é mapeado para um destes quatro motores: FLUX.2 Klein / SDXL / Krea 2 / Z-Image Turbo.",
     "ko": "이 프롬프트는 로컬 프롬프트 개선기(Qwen2.5-0.5B-Instruct, MLX)를 구동합니다. 생성되는 각 모델은 다음 네 엔진 중 하나로 매핑됩니다: FLUX.2 Klein / SDXL / Krea 2 / Z-Image Turbo."
+  },
+  "settings.storage.adoptTitle": {
+    "es": "Apuntar {label} a este directorio del almacén. No se copia nada.",
+    "zh": "让 {label} 指向存储中的此目录。不会复制任何内容。",
+    "ja": "{label} をストア内のこのディレクトリに割り当てます。コピーは行いません。",
+    "pt": "Apontar {label} para este diretório no armazém. Nada é copiado.",
+    "ko": "{label}을(를) 저장소의 이 디렉터리로 연결합니다. 아무것도 복사하지 않습니다."
+  },
+  "settings.storage.adoptAs": {
+    "es": "Usar como {label}",
+    "zh": "用作 {label}",
+    "ja": "{label} として使う",
+    "pt": "Usar como {label}",
+    "ko": "{label}(으)로 사용"
+  },
+  "settings.storage.adopting": {
+    "es": "Adoptando…",
+    "zh": "正在关联…",
+    "ja": "割り当て中…",
+    "pt": "Associando…",
+    "ko": "연결 중…"
   }
 }

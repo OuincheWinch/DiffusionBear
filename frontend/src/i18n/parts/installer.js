@@ -48,6 +48,12 @@ export const installerStrings = {
     de: "Herunterladen",
     it: "Scarica",
   },
+  "installer.retryBtn": {
+    fr: "Reprendre",
+    en: "Retry",
+    de: "Erneut versuchen",
+    it: "Riprova",
+  },
   "installer.localBtn": {
     fr: "📁 Local…",
     en: "📁 Local…",

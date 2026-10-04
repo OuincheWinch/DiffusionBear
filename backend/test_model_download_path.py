@@ -277,3 +277,188 @@ class DownloadStallWatchdogTests(unittest.TestCase):
 
         src = inspect.getsource(self.downloads.get_model_downloads)
         self.assertIn('"_last_progress_at"', src)
+
+
+class TokenPersistenceTests(unittest.TestCase):
+    """A saved token must be readable after a relaunch.
+
+    POST /api/tokens writes DATA_DIR/hf_token.txt. hf_service.get_hf_token read
+    Path(__file__).parent / "data" / "hf_token.txt", which inside the standalone
+    app resolves inside the signed bundle -- a path nothing writes. So the token
+    was stored correctly and never read back: the UI reported it unset after
+    every relaunch and gated downloads had nothing to authenticate with.
+
+    civitai_service resolves its token through app_settings.DATA_DIR; this pins
+    the same contract for Hugging Face so the two cannot drift again.
+    """
+
+    def _write_and_read(self, tmp: Path):
+        import sys
+
+        sys.path.insert(0, str(BACKEND))
+        saved = sys.modules.get("app_settings")
+        try:
+            import app_settings
+            import hf_service
+            app_settings.DATA_DIR = tmp
+            hf_service.app_settings = app_settings
+            # neutralise the env and the HF cache fallback so only the file matters
+            for var in ("HF_TOKEN", "HUGGINGFACE_HUB_TOKEN", "HUGGING_FACE_HUB_TOKEN"):
+                import os
+
+                os.environ.pop(var, None)
+            hf_service.Path.home = staticmethod(lambda: tmp / "nohome")
+            (tmp / "hf_token.txt").write_text("hf_" + "a" * 34, encoding="utf-8")
+            return hf_service.get_hf_token()
+        finally:
+            if saved is not None:
+                sys.modules["app_settings"] = saved
+
+    def test_a_token_written_to_the_data_dir_is_found(self):
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as d:
+            self.assertEqual(self._write_and_read(Path(d)), "hf_" + "a" * 34)
+
+    def test_the_reader_does_not_hardcode_a_bundle_relative_path(self):
+        src = (BACKEND / "hf_service.py").read_text(encoding="utf-8")
+        self.assertNotIn(
+            'Path(__file__).resolve().parent / "data" / "hf_token.txt"',
+            src.replace(
+                'token_file = Path(__file__).resolve().parent / "data" / "hf_token.txt"',
+                "", 1  # the fallback arm is allowed; the bare read is not
+            ),
+            "the token must be read through app_settings.DATA_DIR, the same place "
+            "the token route writes it",
+        )
+
+
+class ModelPickerOrderingTests(unittest.TestCase):
+    """Installed models first, then alphabetical.
+
+    One list feeds the Generate dropdown, the Models tab and the defaults
+    section. Sorting in each view is how they drift apart, so it is asserted
+    here on the shared endpoint.
+    """
+
+    def _items(self):
+        return [
+            {"id": "z-model", "label": "Zeta Turbo", "installed": True},
+            {"id": "a-off", "label": "Alpha Offline", "installed": False},
+            {"id": "m-adopted", "label": "My Adopted SDXL", "installed": True},
+            {"id": "b-model", "label": "beta Image", "installed": False},
+            {"id": "c-model", "label": "Civet Krea", "installed": True},
+        ]
+
+    def test_installed_come_first(self):
+        import sys
+
+        sys.path.insert(0, str(BACKEND))
+        try:
+            from routers.loras import _sort_models_for_picker
+        finally:
+            sys.path.remove(str(BACKEND))
+        order = [e["id"] for e in _sort_models_for_picker(self._items())]
+        installed_flags = [
+            e["installed"] for e in _sort_models_for_picker(self._items())
+        ]
+        # True sorts before False only by intent, not by Python's bool ordering,
+        # so compare against reverse-sorted explicitly.
+        self.assertEqual(installed_flags, sorted(installed_flags, reverse=True))
+        self.assertEqual(order[:3], ["c-model", "m-adopted", "z-model"])
+
+    def test_alphabetical_within_each_group_and_case_insensitive(self):
+        import sys
+
+        sys.path.insert(0, str(BACKEND))
+        try:
+            from routers.loras import _sort_models_for_picker
+        finally:
+            sys.path.remove(str(BACKEND))
+        labels = [e["label"] for e in _sort_models_for_picker(self._items())]
+        installed = sorted(
+            [e["label"] for e in self._items() if e["installed"]], key=str.casefold
+        )
+        offline = sorted(
+            [e["label"] for e in self._items() if not e["installed"]], key=str.casefold
+        )
+        self.assertEqual(labels, installed + offline)
+
+    def test_an_adopted_model_is_not_pushed_to_the_end(self):
+        """A hand-installed checkpoint must sort by name, not by being 'extra'."""
+        import sys
+
+        sys.path.insert(0, str(BACKEND))
+        try:
+            from routers.loras import _sort_models_for_picker
+        finally:
+            sys.path.remove(str(BACKEND))
+        items = [
+            {"id": "z", "label": "Zeta", "installed": True},
+            {"id": "adopted", "label": "Adopted One", "installed": True},
+        ]
+        order = [e["id"] for e in _sort_models_for_picker(items)]
+        self.assertEqual(order, ["adopted", "z"])
+
+
+class StorageAdoptionTests(unittest.TestCase):
+    """A directory nothing references should be adoptable, not merely reported.
+
+    The storage panel has always flagged unrecognised model directories -- a model
+    downloaded or unpacked by hand. Reporting them without offering anything left the
+    user to work out that the fix was the same model_paths override the downloader
+    already writes.
+    """
+
+    def _entry(self, name):
+        import sys
+
+        sys.path.insert(0, str(BACKEND))
+        try:
+            import storage
+        finally:
+            sys.path.remove(str(BACKEND))
+        return storage.Entry(
+            name=name, path="/tmp/x", bytes=1024, files=4,
+            detail={"status": "unrecognised"},
+        )
+
+    def test_a_klein_variant_is_suggested_for_the_klein_model(self):
+        import sys
+
+        sys.path.insert(0, str(BACKEND))
+        try:
+            import storage
+        finally:
+            sys.path.remove(str(BACKEND))
+        for name in ("FLUX.2-Klein-4B-6bit", "flux2-klein-4b-8bit"):
+            suggestion = storage._suggest_adoption(self._entry(name))
+            self.assertIsNotNone(suggestion, f"{name} should get a suggestion")
+            self.assertEqual(suggestion["model_id"], "flux2-klein-4b")
+
+    def test_nothing_is_suggested_for_an_unrelated_directory(self):
+        """A confident wrong guess is worse than no guess at all."""
+        import sys
+
+        sys.path.insert(0, str(BACKEND))
+        try:
+            import storage
+        finally:
+            sys.path.remove(str(BACKEND))
+        self.assertIsNone(storage._suggest_adoption(self._entry("my-photos-backup")))
+
+    def test_adopt_rejects_a_path_outside_the_model_store(self):
+        import sys
+
+        sys.path.insert(0, str(BACKEND))
+        try:
+            from routers import storage as rs
+        finally:
+            sys.path.remove(str(BACKEND))
+        self.assertTrue(
+            any(getattr(r, "path", "") == "/api/storage/adopt" for r in rs.router.routes),
+            "the adopt endpoint must exist",
+        )
+        source = (BACKEND / "routers" / "storage.py").read_text(encoding="utf-8")
+        self.assertIn("relative_to(models_root)", source)
+        self.assertIn("contains no weights", source)

@@ -49,6 +49,26 @@ export default function StorageSection({ onFeedback }) {
     refresh();
   }, [refresh]);
 
+  // Adopting points a registry model at a directory already on disk. It copies
+  // nothing, so it is safe to offer directly, and unregistering the model undoes it.
+  const [adopting, setAdopting] = useState(null);
+  const [adoptError, setAdoptError] = useState(null);
+  const adopt = useCallback(async (name, modelId) => {
+    setAdopting(name);
+    setAdoptError(null);
+    try {
+      await api("/api/storage/adopt", {
+        method: "POST",
+        body: JSON.stringify({ name, model_id: modelId }),
+      });
+      await refresh(true);
+    } catch (err) {
+      setAdoptError(err?.message || String(err));
+    } finally {
+      setAdopting(null);
+    }
+  }, [refresh]);
+
   if (loading && !report) return <p className="muted">{t("settings.storage.scanning")}</p>;
   if (err) return <p className="error">{t("settings.storage.scanFailed", { error: err })}</p>;
   if (!report) return null;
@@ -191,6 +211,28 @@ export default function StorageSection({ onFeedback }) {
           <p className="muted small">
             {t("settings.storage.unaccountedFor", { names: unrecognised.map((m) => `${m.name} (${formatBytes(m.bytes)})`).join(", ") })}
           </p>
+        )}
+        {adoptError && <p className="muted small error-text">{adoptError}</p>}
+        {unrecognised.some((m) => m.suggestion) && (
+          <ul className="storage-adopt-list">
+            {unrecognised.filter((m) => m.suggestion).map((m) => (
+              <li key={m.name}>
+                <span>{m.name}</span>
+                <span className="muted small">{formatBytes(m.bytes)}</span>
+                <button
+                  type="button"
+                  className="btn-mini"
+                  disabled={adopting === m.name}
+                  onClick={() => adopt(m.name, m.suggestion.model_id)}
+                  title={t("settings.storage.adoptTitle", { label: m.suggestion.label })}
+                >
+                  {adopting === m.name
+                    ? t("settings.storage.adopting")
+                    : t("settings.storage.adoptAs", { label: m.suggestion.label })}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </details>
 

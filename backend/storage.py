@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -437,6 +438,14 @@ def build_report() -> dict:
     uploads_bytes, uploads_files, _, _ = _dir_stats(UPLOADS_DIR)
     secrets = _scan_secrets()
 
+    # Offer a proposal for each directory nothing points at, so a model that was
+    # downloaded or unpacked by hand can be adopted from here instead of being
+    # reported and then ignored. The suggestion is only a proposal.
+    for entry in unrecognised:
+        suggestion = _suggest_adoption(entry)
+        if suggestion:
+            entry.detail["suggestion"] = suggestion
+
     unrecognised_bytes = sum(e.bytes for e in unrecognised)
     category_bytes = {
         "models": sum(e.bytes for e in models),
@@ -505,3 +514,35 @@ def get_report(force: bool = False) -> dict:
     report = dict(report)
     report["scanning"] = scanning
     return report
+
+
+def _suggest_adoption(entry: Entry) -> dict | None:
+    """Which registry model, if any, an unrecognised directory looks like.
+
+    A directory nothing points at is usually a model the app does support, that
+    was downloaded or unpacked by hand rather than through the installer. Guessing
+    is safe here because the suggestion is only a proposal: adopting it writes the
+    ordinary model_paths override, which the user can undo from the same panel.
+
+    Matching is deliberately conservative -- a normalised token overlap between the
+    directory name and the model's label or download repo. A confident wrong
+    suggestion is worse than none, because it invites the user to point a model id
+    at weights that are not it.
+    """
+    def norm(value: str) -> set[str]:
+        return {t for t in re.split(r"[^a-z0-9]+", str(value).casefold()) if t}
+
+    name_tokens = norm(entry.name)
+    if not name_tokens:
+        return None
+    best: tuple[int, dict] | None = None
+    for model_id, minfo in generator.MODELS.items():
+        repo = str(generator.model_download_repo(model_id, minfo) or "")
+        candidates = norm(minfo.get("label", "")) | norm(model_id) | norm(repo.split("/")[-1])
+        overlap = name_tokens & candidates
+        if not overlap:
+            continue
+        score = len(overlap)
+        if best is None or score > best[0]:
+            best = (score, {"model_id": model_id, "label": minfo.get("label", model_id)})
+    return best[1] if best else None
