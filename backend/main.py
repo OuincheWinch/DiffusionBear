@@ -2,6 +2,13 @@ from contextlib import asynccontextmanager
 import hmac
 import ipaddress
 import os
+
+# Hugging Face's Xet storage backend stalls indefinitely on large LFS files: a fresh
+# flux2-klein-4b install hung with one 2 GB shard at 575 MB and zero bytes of progress,
+# holding its blob lock, with no error and no timeout. The classic HTTP path is slower
+# per request but resumable and reliable. This must be set before huggingface_hub is
+# imported anywhere, because it reads the variable at import time to choose a backend.
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request

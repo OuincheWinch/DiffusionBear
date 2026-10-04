@@ -613,7 +613,7 @@ def download_lora_unified(req: UnifiedDownloadRequest):
 
 @router.get("/api/loras/downloads")
 def get_lora_downloads():
-    hidden_keys = {"cancel_event", "worker_active", "identity", "url", "repo_id", "filename", "revision", "resolved_revision"}
+    hidden_keys = {"cancel_event", "worker_active", "identity", "url", "repo_id", "filename", "revision", "resolved_revision", "_last_progress_at", "_speed_t", "_speed_b"}
     with _DOWNLOAD_LOCK:
         now = time.time()
         for task_id in [
@@ -700,6 +700,9 @@ class _ReportingTqdm:
                 bumped = task.get("downloaded_bytes", 0) + int(n)
                 task["downloaded_bytes"] = min(bumped, total) if total else bumped
                 task["progress"] = min(0.99, task["downloaded_bytes"] / total) if total else 0.5
+                # Heartbeat for the stall watchdog. huggingface_hub can stop writing
+                # without raising, so liveness has to be inferred from byte movement.
+                task["_last_progress_at"] = time.monotonic()
                 now = time.monotonic()
                 elapsed = now - task.get("_speed_t", now)
                 if elapsed >= 0.4:
@@ -710,6 +713,52 @@ class _ReportingTqdm:
                     task["status_text"] = f"Downloading {task['downloaded_bytes'] >> 20}/{total >> 20} MB ({task['progress'] * 100:.0f}%)"
         return self._base.update(n)
 
+
+# huggingface_hub gives up on nothing: a stalled transfer leaves the task in
+# "downloading" for ever, which is what a fresh flux2-klein-4b install did -- one
+# 2 GB shard sat at 575 MB with zero bytes of progress while the UI read "99%".
+# No timeout means no error, so the user gets a bar that never moves and no
+# explanation. This bounds the silence: past the limit the task fails with a
+# message that says what happened and what to do.
+_DOWNLOAD_STALL_LIMIT_S = float(os.environ.get("DIFFUSIONBEAR_DOWNLOAD_STALL_SECONDS", "180"))
+
+
+def _stalled_model_task_ids() -> list[str]:
+    """Download tasks whose byte counter has not moved within the limit."""
+    now = time.monotonic()
+    out = []
+    with _MODEL_DOWNLOAD_LOCK:
+        for task_id, task in MODEL_DOWNLOAD_TASKS.items():
+            if task.get("status") != "downloading" or not task.get("worker_active"):
+                continue
+            last = task.get("_last_progress_at")
+            if last is None:
+                continue
+            total = task.get("total_bytes") or 0
+            done = task.get("downloaded_bytes") or 0
+            # Only meaningful once some bytes exist: a slow start on a big repo is
+            # not a stall, and the very first file can take a while to appear.
+            if done <= 0:
+                continue
+            if now - last > _DOWNLOAD_STALL_LIMIT_S and (total == 0 or done < total):
+                out.append(task_id)
+    return out
+
+
+def _enforce_download_stall_watchdog() -> None:
+    for task_id in _stalled_model_task_ids():
+        with _MODEL_DOWNLOAD_LOCK:
+            task = MODEL_DOWNLOAD_TASKS.get(task_id, {})
+            label = task.get("model_name") or task.get("model_id") or "model"
+            got = (task.get("downloaded_bytes") or 0) >> 20
+            total = (task.get("total_bytes") or 0) >> 20
+        _fail_model_task(
+            task_id,
+            f"stalled: no data received for {_DOWNLOAD_STALL_LIMIT_S:.0f}s while "
+            f"downloading {label} ({got} MB of {total} MB). The transfer hung rather "
+            f"than failed. Check the network, then start the download again -- it "
+            f"resumes from what already arrived.",
+        )
 
 def _fail_model_task(task_id: str, error: Exception | str):
     with _MODEL_DOWNLOAD_LOCK:
@@ -934,6 +983,7 @@ def download_model(req: ModelDownloadRequest):
                 "speed_mb_s": 0.0,
                 "status_text": f"Preparing download of {minfo.get('label', model_id)}...",
                 "started_at": time.time(),
+                "_last_progress_at": time.monotonic(),
                 "finished_at": None,
                 "error": None,
                 "result": None,
@@ -1421,7 +1471,14 @@ def list_detected_downloads(include_registered: bool = False):
 
 @router.get("/api/models/downloads")
 def get_model_downloads():
-    hidden_keys = {"cancel_event", "worker_active", "_speed_t", "_speed_b"}
+    # Also the heartbeat for the stall watchdog: the download worker can be blocked
+    # inside hf_hub_download indefinitely, so this poller is the only place that
+    # still gets to run and notice.
+    try:
+        _enforce_download_stall_watchdog()
+    except Exception:
+        pass
+    hidden_keys = {"cancel_event", "worker_active", "_speed_t", "_speed_b", "_last_progress_at"}
     with _MODEL_DOWNLOAD_LOCK:
         now = time.time()
         for task_id in [

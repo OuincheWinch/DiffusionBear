@@ -960,16 +960,22 @@ def model_download_repo(model_id: str, minfo: dict) -> str | None:
     """Resolve the Hugging Face repo whose weights are fetched when (re)installing a model.
 
     Returns None for models with no remote source (e.g. ``local:`` krea2 checkpoints).
+
+    This must be the repo the pipeline actually loads. It used to special-case
+    flux2-klein-4b onto black-forest-labs/FLUX.2-klein-4B on the belief that
+    mflux falls back to its own default when model_path is absent. It does not:
+    the 4B branch passes model_path=local_arg, and when that resolves the
+    configured repo the pipeline reads mlx-community/flux2-klein-4b-4bit. So a
+    fresh install downloaded 22.1 GB of upstream BFL weights -- a duplicate
+    transformer, a 7.4 GB single-file checkpoint and a pile of demo JPEGs --
+    none of which the app ever loads, while the 4.3 GB it does need arrived
+    separately on first use.
     """
     if minfo.get("engine") == "sdxl":
         # diffusers-format HF repos; snapshot_download(local_dir=<model_dir>) installs them.
         return minfo.get("repo")
     if model_id == "krea2-turbo":
         return None  # local checkpoint bundle, no remote source
-    if model_id == "flux2-klein-4b":
-        # mflux's Flux2Klein is instantiated WITHOUT model_path, so the weights come from the
-        # config default repo (black-forest-labs/FLUX.2-klein-4B), not the MODELS "repo" alias.
-        return "black-forest-labs/FLUX.2-klein-4B"
     return minfo.get("repo")
 
 
