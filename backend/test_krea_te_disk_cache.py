@@ -39,6 +39,23 @@ class DiskPathTests(unittest.TestCase):
         self.assertEqual(p.suffix, ".safetensors")
 
 
+def _mlx_available() -> bool:
+    """These tests patch mlx.core, so the module has to be importable.
+
+    MLX only exists on Apple silicon. A Linux CI runner has no Metal device,
+    so without this the tests error on the missing import instead of skipping,
+    which reads as a product fault rather than an absent platform.
+    """
+    try:
+        import mlx.core  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+_MLX = _mlx_available()
+requires_mlx = unittest.skipUnless(_MLX, "MLX is Apple-silicon only; this runner has no Metal device")
+@requires_mlx
 class SaveAndLoadTests(unittest.TestCase):
     def test_save_is_atomic_and_uses_no_partial_suffix(self):
         """A crash mid-write must never leave a file the loader would accept."""
