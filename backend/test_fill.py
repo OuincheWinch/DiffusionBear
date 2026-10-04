@@ -786,6 +786,15 @@ class SeamTests(unittest.TestCase):
                 for x in range(img.size[0] - 1)
             )
 
+        # Without OpenCV, _seamless_composite falls back to composite_fill, so
+        # "poisson" and "alpha" would be the same function and the assertion
+        # below would compare a result with itself. That is what CI hit: the
+        # step was identical (178 == 178) while asserting nothing real.
+        try:
+            import cv2  # noqa: F401
+        except Exception:
+            self.skipTest("OpenCV is absent; the seam falls back to alpha compositing")
+
         alpha = fill.composite_fill(original, generated, mask, feather_px=12)
         poisson = fill._seamless_composite(original, generated, mask)
         self.assertLess(
