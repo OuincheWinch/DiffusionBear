@@ -5,4 +5,4 @@
 // badge said 0.1.2.
 export const APP_VERSION = "0.3.4";
 export const APP_VERSION_LABEL = "v0.3.4 (beta)";
-export const APP_TITLE = `DiffusionBear ${APP_VERSION_LABEL}`;
+export const APP_TITLE = `DiffusionBear · ${APP_VERSION_LABEL}`;

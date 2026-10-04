@@ -103,13 +103,14 @@ export default function ModelInstaller({ modelInfo, onInstalled }) {
   };
 
   const canDownload = Boolean(modelInfo.download_repo);
+  const pct = task && task.total_bytes > 0 ? Math.min(99, Math.round((task.downloaded_bytes / task.total_bytes) * 100)) : 0;
+  const showBar = task && (task.status === "downloading" || task.status === "pending");
+
   // A finished-but-unsuccessful task (cancelled, failed, stalled) must not remove the
   // download button. It used to render actions only when NO task had ever existed, so
   // the one interruption left the row with a status and no way to start again.
   const canStart = canDownload && !showBar && !modelInfo.installed;
   const isRetry = Boolean(task) && (task.status === "error" || task.status === "cancelled");
-  const pct = task && task.total_bytes > 0 ? Math.min(99, Math.round((task.downloaded_bytes / task.total_bytes) * 100)) : 0;
-  const showBar = task && (task.status === "downloading" || task.status === "pending");
 
   return (
     <div className="model-installer">
