@@ -2,6 +2,33 @@
 
 All notable changes to **DiffusionBear** are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.3.3] — beta — 2026-10-04
+
+### Fixed
+- **A fresh install could not finish downloading a model.** Two independent faults,
+  both reproduced on a clean machine with an empty store and no Hugging Face cache:
+
+  - `flux2-klein-4b` downloaded `black-forest-labs/FLUX.2-klein-4B` — 22.1 GB of
+    upstream weights the app never loads, including a duplicate 7.4 GB checkpoint and
+    demo JPEGs — while the pipeline reads `mlx-community/flux2-klein-4b-4bit` at
+    4.3 GB. The special case was justified by a comment claiming mflux falls back to
+    its own default repo when `model_path` is absent; the code passes `model_path`,
+    so the comment was wrong. **17.8 GB saved per install.**
+  - The transfer then **stalled rather than failed**. Hugging Face's Xet storage
+    backend stopped writing part-way through a 2 GB shard — 575 MB, zero bytes of
+    progress, blob lock still held — and raised nothing, so the task sat at 99% for
+    ever. Xet is now disabled, which restores the resumable HTTP path, and a stall
+    watchdog fails the task after 180s of silence with a message that says what
+    happened and that a retry resumes.
+
+  After both: 4.3 GB, 14 files, `installed successfully!` in about 14 minutes,
+  detected as installed, no incomplete blobs.
+
+### Note
+- The progress bar saturates at 99% by design while files are still moving, because
+  the byte counter is clamped to the total and tqdm can over-report across files. The
+  file counter in the status line is the honest one.
+
 ## [0.3.2] — beta — 2026-10-04
 
 ### Fixed
