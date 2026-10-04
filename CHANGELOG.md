@@ -2,6 +2,20 @@
 
 All notable changes to **DiffusionBear** are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.3.2] — beta — 2026-10-04
+
+### Fixed
+- **Model downloads failed for every mflux model.** The download worker called
+  `_hf_repo_cache_dir(repo)`, which lives in `generator.py`, without qualifying it
+  or importing it, so the task failed immediately with `name
+  '_hf_repo_cache_dir' is not defined`. A fresh install could not obtain any
+  model. SDXL downloads were unaffected, which made the failure look
+  model-specific rather than total.
+
+  Four tests now cover the download path — including a static check that every
+  bare name `routers/downloads.py` calls is defined or imported in that module —
+  so the next unqualified cross-module call fails in CI rather than on a click.
+
 ## [0.3.1] — beta — 2026-10-03
 
 ### Added

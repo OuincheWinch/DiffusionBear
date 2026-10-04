@@ -830,7 +830,7 @@ def _run_model_download(
                 os.chmod(target_dir, 0o700)
             except OSError:
                 pass
-        cleanup_root = target_dir if target_dir is not None else _hf_repo_cache_dir(repo)
+        cleanup_root = target_dir if target_dir is not None else generator._hf_repo_cache_dir(repo)
         before_files = _snapshot_files(cleanup_root)
         before_incomplete = _incomplete_paths(target_dir, repo)
         token = hf_service.get_hf_token()
