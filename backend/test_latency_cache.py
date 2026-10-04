@@ -941,10 +941,56 @@ class WiredBudgetTests(unittest.TestCase):
         self.assertEqual(generator._krea_wired_limit_bytes(), derived)
 
     def test_the_derivation_tracks_the_machine_not_a_constant(self):
-        """A 64GB machine must not be handed the same ceiling as a 16GB one."""
-        derived_gb = generator._derived_wired_budget_bytes() / (1 << 30)
-        self.assertNotAlmostEqual(derived_gb, 9.0, places=1)
-        # 68% of this machine's RAM, capped by Apple's recommendation.
+        """The budget must be derived, not hardcoded to one machine's number.
+
+        This used to assert the result was NOT 9.0, which fails on any machine
+        whose derivation genuinely lands on 9 -- including CI, which has no Metal
+        device and therefore takes the documented 9 GB fallback. Asserting the
+        absence of a number says nothing about where the number came from.
+
+        What matters is the arithmetic: with device info the result is
+        min(memory x fraction, Apple's recommended working set); without it, the
+        only defensible answer is the historical constant rather than unbounded.
+        """
+        derived_bytes = generator._derived_wired_budget_bytes()
+        derived_gb = derived_bytes / (1 << 30)
+        self.assertGreater(derived_bytes, 0, "the budget must never vanish")
+
+        info = {}
+        try:
+            import mlx.core as mx
+
+            info = (mx.device_info() or {}) if hasattr(mx, "device_info") else {}
+        except Exception:
+            info = {}
+
+        memory = int(info.get("memory_size") or 0)
+        cap = int(
+            info.get("max_recommended_working_set_size")
+            or info.get("recommended_max_working_set_size")
+            or 0
+        )
+        fraction = generator._WIRED_MEMORY_FRACTION
+
+        if memory <= 0 and cap <= 0:
+            self.assertEqual(
+                derived_bytes,
+                9 * (1 << 30),
+                "with no device info the budget must be the historical constant",
+            )
+            return
+
+        if memory > 0 and cap > 0:
+            expected = min(int(memory * fraction), int(cap))
+        elif memory > 0:
+            expected = int(memory * fraction)
+        else:
+            expected = int(cap * fraction)
+        self.assertEqual(
+            derived_bytes,
+            expected,
+            "the budget must be the documented formula applied to this machine",
+        )
         self.assertGreater(derived_gb, 0)
         self.assertLessEqual(derived_gb, 11.9)
 
