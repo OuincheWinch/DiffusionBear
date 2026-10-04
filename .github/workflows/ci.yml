@@ -28,7 +28,8 @@ jobs:
                 "numpy>=1.26" \
                 "safetensors>=0.4" \
                 "tqdm>=4.66" \
-                "pillow-heif>=0.18" \
+                "pillow-heif>=0.18" \ \
+                "python-multipart>=0.0.9"
       - name: Compile-check backend packages
         run: |
           python -m compileall -q backend

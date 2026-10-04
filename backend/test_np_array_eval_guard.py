@@ -20,6 +20,23 @@ from unittest import mock
 import numpy as np
 
 
+def _mlx_available() -> bool:
+    """These tests patch mlx.core, so the module has to be importable.
+
+    MLX only exists on Apple silicon. A Linux CI runner has no Metal device,
+    so without this the tests error on the missing import instead of skipping,
+    which reads as a product fault rather than an absent platform.
+    """
+    try:
+        import mlx.core  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+_MLX = _mlx_available()
+requires_mlx = unittest.skipUnless(_MLX, "MLX is Apple-silicon only; this runner has no Metal device")
+@requires_mlx
 class NpArrayEvalGuardTests(unittest.TestCase):
     def _guard(self):
         import generator
