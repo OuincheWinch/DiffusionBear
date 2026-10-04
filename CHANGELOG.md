@@ -2,6 +2,37 @@
 
 All notable changes to **DiffusionBear** are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.3.4] — beta — 2026-10-04
+
+### Fixed
+- **The Hugging Face token was saved to one path and read from another.**
+  `POST /api/tokens` writes `DATA_DIR/hf_token.txt`; `hf_service.get_hf_token`
+  resolved `Path(__file__).parent / "data"`, which inside the app is the signed
+  bundle. The token was stored correctly and never read back, so the UI reported
+  it unset after every relaunch and gated downloads had nothing to authenticate
+  with. Now resolved through `app_settings.DATA_DIR`, matching Civitai.
+
+- **An interrupted download could not be restarted.** The installer rendered its
+  actions only when no task had ever existed, so a cancelled or failed download
+  left the row with a status and no button. The download button now returns
+  whenever nothing is in flight, labelled **Retry**, and `hf_hub_download`
+  resumes from the bytes that arrived. Fixed on both the Generate page and the
+  Models page, which share the component.
+
+### Added
+- **Unrecognised model directories can be adopted.** The storage panel already
+  flagged directories nothing referenced; it now proposes which registry model each
+  one resembles and can point that model at it, using the same `model_paths`
+  override the downloader writes. The directory becomes selectable, stops being
+  reported, and nothing is copied — adoption is a pointer, costs no disk, and
+  unregistering undoes it.
+
+### Changed
+- **The model list is ordered installed-first, then alphabetically** by label, with
+  adopted local models sorting by name among the others instead of at the end.
+  Sorted in `/api/models` so the Generate dropdown, Models tab and defaults section
+  cannot drift apart.
+
 ## [0.3.3] — beta — 2026-10-04
 
 ### Fixed
