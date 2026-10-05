@@ -39,6 +39,13 @@ _ALLOWED_DANGEROUS = {
     # marshal, ctypes or eval. It is size-capped before decode and
     # dimension-checked after, because a mask is untrusted input either way.
     ("backend/fill.py", "base64 decode"): 1,
+    # test_taesd_path.py extracts _default_taesd_path() from taesd_mlx.py and runs
+    # it, because that module imports mlx.core at module scope and CI is Linux
+    # where mlx does not exist -- importing it turned the guard into an ERROR there,
+    # which is how the weakness was found. The executed text is this repository's own
+    # source, read from disk, never input, and the function is two lines that return
+    # a path. Importing it properly was not possible without an Apple runner.
+    ("backend/test_taesd_path.py", "dynamic exec"): 1,
 }
 # Prose and lockfiles are scanned for secrets only; documentation may link anywhere.
 TEXT_SUFFIXES = CODE_AND_CONFIG | {".json", ".md", ".txt"}
