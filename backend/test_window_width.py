@@ -55,12 +55,32 @@ class WindowWidthTests(unittest.TestCase):
         """Resizing down must still work; it degrades to a wrapped row, not a broken one."""
         self.assertIn(".resizable", self.swift)
 
-    def test_the_ratio_row_can_wrap_when_it_has_to(self):
-        """Narrow windows are legitimate. The row must degrade gracefully rather than
-        overflow, so flex-wrap stays on the row."""
-        # Selector order is base-then-ratio in the stylesheet, so match either way round.
-        rule = re.search(
-            r"\.size-(?:base|ratio)-row,\s*\.size-(?:base|ratio)-row\s*\{([^}]*)\}", self.css
-        )
-        self.assertIsNotNone(rule)
-        self.assertIn("flex-wrap: wrap", rule.group(1))
+    def test_the_preset_grid_wraps_instead_of_overflowing(self):
+        """Narrow windows are legitimate; the control must degrade, not overflow.
+
+        The row this used to guard (.size-base-row/.size-ratio-row) is gone: the
+        control is now four orientation tabs over an auto-fit preset grid. The
+        same failure mode survives in a new shape -- four tab labels sharing a
+        450-570px parameter column -- so the invariant is asserted against what
+        is actually in the stylesheet now.
+        """
+        # auto-fit + minmax wraps by construction: a preset drops to the next row
+        # rather than pushing the container wider.
+        grid = re.search(r"\.size-presets\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(grid, ".size-presets rule is missing")
+        self.assertIn("repeat(auto-fit, minmax(", grid.group(1))
+        self.assertIn("1fr", grid.group(1))
+
+        # A long tab label must ellipsize, not stretch the row.
+        tab = re.search(r"\.size-selector-tab\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(tab, ".size-selector-tab rule is missing")
+        for prop in ("min-width: 0", "overflow: hidden", "text-overflow: ellipsis"):
+            self.assertIn(prop, tab.group(1), f"tab must degrade gracefully: {prop}")
+
+        # The tabs are a 4-column grid matching the four orientation options.
+        tabs = re.search(r"\.size-selector-tabs\s*\{([^}]*)\}", self.css)
+        self.assertIn("repeat(4, 1fr)", tabs.group(1))
+        self.assertIn('grid-template-columns: repeat(4', tabs.group(1))
+
+        # And the component really does render exactly those four tabs.
+        self.assertIn("ORIENTATIONS.map", self.component)

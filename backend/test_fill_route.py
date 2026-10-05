@@ -256,7 +256,7 @@ class FillRouteTests(unittest.TestCase):
         import generator
 
         def boom(**kwargs):
-            raise RuntimeError("sensitive internal detail /Users/admin/secret")
+            raise RuntimeError("sensitive internal detail /home/someone/secret")
 
         generator.generate = boom
         r = self.client.post(

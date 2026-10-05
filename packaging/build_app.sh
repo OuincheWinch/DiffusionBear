@@ -21,6 +21,9 @@ STAGE="${1:-$HERE/build}"
 DIST="${2:-$HERE/dist}"
 APP_NAME="DiffusionBear"
 APP="$DIST/$APP_NAME.app"
+# Where install_app puts it. Overridable so the rehearsal and CI can install
+# somewhere harmless, and so this is not another hardcoded assumption.
+DEST_PARENT="${DEST_PARENT:-/Applications}"
 BUNDLE_ID="com.ouinchewinch.diffusionbear"
 VERSION="$(sed -n 's/^APP_VERSION *= *"\([^"]*\)".*/\1/p' "$REPO/backend/app_version.py" 2>/dev/null | head -1)"
 VERSION="${VERSION:-0.0.0}"
@@ -118,14 +121,34 @@ cp -R "$STAGE/sdxl/python" "$APP/Contents/Resources/python-sdxl"
 # pbs resolves its stdlib from the executable, but a venv's pyvenv.cfg records an
 # absolute `home`. Repoint both at the final install location so the copied
 # interpreters find their stdlib after the bundle moves.
-say "repointing pyvenv.cfg at the final bundle path"
-for pair in "venv:python" "venv-sdxl:python-sdxl"; do
-  v="${pair%%:*}"; p="${pair##*:}"
+# pyvenv.cfg records `home`, the directory of the BASE interpreter. It used to be
+# written as an absolute path to $APP -- which is $DIST/$APP_NAME.app, the in-repo
+# BUILD OUTPUT, not the install location. So every shipped bundle carried
+#
+#   home = /Volumes/<build machine>/.../packaging/dist/DiffusionBear.app/...
+#
+# and only worked on the machine that built it. The bundle survived purely because
+# the relative bin/python symlinks created below make CPython derive sys.base_prefix
+# from the symlink instead; `home` was inert and quietly wrong.
+#
+# There is no "correct" absolute path here: the app can be dragged anywhere, and a
+# tester may run it from /tmp. So write it RELATIVE, matching the symlinks. If a
+# future CPython declines to honour a relative `home`, the symlink still carries
+# the resolution, which is the behaviour measured in the shipped 0.3.4 bundle.
+say "writing a relative pyvenv.cfg home"
+for pair in "venv:../../python/bin" "venv-sdxl:../../python-sdxl/bin"; do
+  v="${pair%%:*}"; home_rel="${pair##*:}"
   cat > "$APP/Contents/Resources/$v/pyvenv.cfg" <<CFG
-home = $APP/Contents/Resources/$p/bin
+home = $home_rel
 include-system-site-packages = false
 version = $("$APP/Contents/Resources/$v/bin/python" -V 2>&1 | awk '{print $2}')
 CFG
+  # Guard the invariant rather than trusting the heredoc: a leading slash here is
+  # the single defect that made 0.3.4 un-relocatable.
+  if grep -q '^home = /' "$APP/Contents/Resources/$v/pyvenv.cfg"; then
+    echo "    $v/pyvenv.cfg has an absolute home; refusing to ship" >&2; exit 1
+  fi
+  printf '    %s/pyvenv.cfg  home = %s\n' "$v" "$home_rel"
 done
 # pbs resolves its stdlib from the executable, but a venv created from it points at
 # the interpreter with an ABSOLUTE symlink:
@@ -183,27 +206,122 @@ for pair in "venv:3.10" "venv-sdxl:3.14"; do
   esac
 done
 
-# venv launchers embed the absolute interpreter path too.
+# venv console scripts embed an absolute interpreter path in their shebang. The
+# previous rewrite here replaced it with $APP/.../bin/python -- again the in-repo
+# build output, so 82 shipped scripts pointed at
+# /Volumes/<build machine>/.../packaging/dist/DiffusionBear.app/.../python.
+# Harmless on the build machine, a guaranteed failure on any other Mac, and a trap
+# here: on THIS machine those paths still resolve, so they silently run the
+# build-directory copy and bypass whatever is installed in /Applications.
+#
+# A shebang cannot be relative (the kernel takes a literal path, and macOS
+# truncates at the first space, so a path with a space is fatal). So make the
+# script a tiny /bin/sh trampoline that finds its own interpreter:
+#
+#   #!/bin/sh
+#   '''exec' "$(dirname "$0")/python" "$0" "$@" # '''
+#
+# sh execs the venv's own python on the file; Python parses that same line as a
+# no-op string expression. This is the distutils self-executable idiom. It is the
+# distutils idiom used for exactly this problem, and it needs no absolute path.
+say "rewriting console-script shebangs to relocate themselves"
+trampolined=0
 for v in venv venv-sdxl; do
-  real="$APP/Contents/Resources/$v/bin/python"
-  for f in "$APP/Contents/Resources/$v/bin/"*; do
+  bindir="$APP/Contents/Resources/$v/bin"
+  for f in "$bindir"/*; do
     [ -f "$f" ] || continue
     head -1 "$f" 2>/dev/null | grep -q '^#!' || continue
-    # Rewrite only the shebang line, in place, byte for byte otherwise.
-    python3 - "$f" "$real" <<'PY'
+    # Only Python entry points. A shell script with a shebang would be handed to
+    # python by the trampoline and break. All 82 were verified Python.
+    head -1 "$f" | grep -q 'python' || continue
+    # Idempotent: a script already trampolined starts with #!/bin/sh and is skipped.
+    head -1 "$f" | grep -q '^#!/bin/sh$' && continue
+    python3 - "$f" <<'PY'
 import sys
-path, real = sys.argv[1], sys.argv[2]
+
+path = sys.argv[1]
 with open(path, "rb") as fh:
-    data = fh.read()
-nl = data.find(b"\n")
-if nl < 0 or not data.startswith(b"#!"):
+    lines = fh.readlines()
+
+if not lines or not lines[0].startswith(b"#!"):
     raise SystemExit(0)
-data = b"#!" + real.encode() + data[nl:]
+if lines[0].rstrip() == b"#!/bin/sh":
+    raise SystemExit(0)   # already done; keeps this idempotent
+
+# Line 1 BECOMES #!/bin/sh. It must be replaced, not merely preceded: leaving the
+# old absolute shebang in place is the defect we are removing.
+lines[0] = b"#!/bin/sh\n"
+
+hop = b"'''exec' \"$(dirname \"$0\")/python\" \"$0\" \"$@\" # '''\n"
+# PEP 263 puts the encoding cookie on line 1 or 2. The shebang takes line 1, so a
+# cookie that was on line 2 must stay on line 2: insert the trampoline at line 3.
+# Measured: 4 of 82 (pip, pip3, pip3.10, wheel) carry one.
+cookie = lines[1].lower() if len(lines) > 1 else b""
+at = 2 if b"coding" in cookie and b":" in cookie else 1
 with open(path, "wb") as fh:
-    fh.write(data)
+    fh.writelines(lines[:at] + [hop] + lines[at:])
 PY
+    trampolined=$((trampolined + 1))
   done
 done
+printf '    %s console script(s) rewritten\n' "$trampolined"
+
+# Nothing may still carry an absolute interpreter path.
+# NOTE: do not detect this with a grep for '^#!/[^ ]*/' -- the trampoline is
+# '#!/bin/sh', which contains a slash and matches that pattern. It flagged all 76
+# correctly-rewritten scripts as broken. Compare the first line explicitly instead.
+for v in venv venv-sdxl; do
+  for f in "$APP/Contents/Resources/$v/bin"/*; do
+    [ -f "$f" ] || continue
+    first="$(head -1 "$f" 2>/dev/null)"
+    case "$first" in
+      '#!'*) : ;;
+      *) continue ;;
+    esac
+    # '#!/bin/sh' is the relocatable trampoline and is exactly what we want.
+    [ "$first" = '#!/bin/sh' ] && continue
+    case "$first" in
+      '#!'/*)
+        echo "    $v: absolute shebang in $(basename "$f"): $first" >&2
+        ABS_SHEBANG=1
+        ;;
+    esac
+  done
+  if [ "${ABS_SHEBANG:-0}" != "0" ]; then
+    echo "  $v has scripts with absolute shebangs; refusing to ship" >&2
+    unset ABS_SHEBANG
+    exit 1
+  fi
+done
+
+# The venv `activate` scripts hardcode VIRTUAL_ENV to the build directory. They are
+# not console scripts and cannot be relocated the same way: they are sourced by an
+# interactive shell to activate a venv, which is meaningless for an app bundle that
+# has its own interpreter wiring and is never activated. They also carry no shebang,
+# so the check above skipped them and 6 build-machine paths shipped in 0.3.4.
+# Remove them rather than half-relocating three different shells.
+for v in venv venv-sdxl; do
+  for a in activate activate.csh activate.fish; do
+    if [ -f "$APP/Contents/Resources/$v/bin/$a" ]; then
+      rm -f "$APP/Contents/Resources/$v/bin/$a"
+      echo "    removed $v/bin/$a (carried the build path; cannot be relocated)"
+    fi
+  done
+done
+
+# Belt and braces: nothing at all under bin/ may name this machine. The shebang check
+# above only sees files whose first line is a shebang, which is how the activate
+# scripts slipped through.
+for v in venv venv-sdxl; do
+  for f in $(grep -rl "$REPO" "$APP/Contents/Resources/$v/bin" 2>/dev/null); do
+    echo "    BUILD PATH IN $v/bin/$(basename "$f")" >&2
+    BIN_FAIL=1
+  done
+done
+if [ "${BIN_FAIL:-0}" != "0" ]; then
+  echo "  a script under bin/ still names the build machine; refusing to ship" >&2
+  exit 1
+fi
 
 say "copying the production SPA"
 mkdir -p "$APP/Contents/Resources/frontend"
@@ -310,6 +428,18 @@ PLIST
 # A stale build stage ships 11,895 .pyc files before the backend even runs, and the
 # backend adds ~1,300 more on first import. Stripping only at build time is not enough
 # if anything ever imports from the bundle, hence the env var below as well.
+# MUST run before signing: rewriting a file inside the bundle after the seal is
+# computed invalidates it. Symptom when it ran late: "a sealed resource is
+# missing or invalid" from codesign on an otherwise perfect bundle.
+say "scrubbing build-machine paths from metadata"
+# PEP 610 direct_url.json records where a package was installed from. Harmless at
+# runtime, but it is the build machine's filesystem layout published to every user.
+find "$APP/Contents/Resources" -name direct_url.json -print0 2>/dev/null |
+while IFS= read -r -d '' f; do
+  printf '{"dir_info": {}, "url": "file://."}\n' > "$f"
+  echo "    scrubbed ${f#$APP/}"
+done
+
 say "stripping bytecode from the bundle"
 find "$APP/Contents/Resources" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 find "$APP/Contents/Resources" -name '*.pyc' -type f -delete 2>/dev/null || true
@@ -409,6 +539,102 @@ if [ "$FAIL" -ne 0 ]; then
 fi
 echo "    clean: no credentials, no model weights, no stray large files"
 
+# ---------------------------------------------------------------------------
+# Relocatability gate + rehearsal.
+#
+# 0.3.4 shipped 88 files containing the build machine's absolute paths: 82
+# console-script shebangs, both pyvenv.cfg `home` lines, one dist-info JSON, and
+# three docstrings. Nothing caught it, because every check looked for credentials
+# and weights and nothing looked at PATHS. The bundle still ran on the build
+# machine -- which is exactly why it was never noticed -- and would have failed on
+# any other Mac.
+#
+# So: fail the build on an absolute path where one cannot be correct, then prove
+# the finished bundle actually moves.
+# ---------------------------------------------------------------------------
+
+say "gating on absolute paths that can never be correct"
+RELOC_FAIL=0
+# Shebangs and pyvenv.cfg must be relative: there is no install path to be right
+# about, because the bundle can be dragged anywhere. Compared line by line rather
+# than grepped, because '#!/bin/sh' -- the trampoline -- contains a slash and
+# matches any pattern looking for one.
+for v in venv venv-sdxl; do
+  for f in "$APP/Contents/Resources/$v/bin"/*; do
+    [ -f "$f" ] || continue
+    first="$(head -1 "$f" 2>/dev/null)"
+    [ "$first" = '#!/bin/sh' ] && continue
+    case "$first" in
+      '#!'/*) echo "    ABSOLUTE SHEBANG: ${f#$APP/} -> $first"; RELOC_FAIL=1 ;;
+    esac
+  done
+  if grep -qs '^home = /' "$APP/Contents/Resources/$v/pyvenv.cfg"; then
+    echo "    ABSOLUTE pyvenv.cfg home: $v -> $(grep '^home' "$APP/Contents/Resources/$v/pyvenv.cfg")"
+    RELOC_FAIL=1
+  fi
+done
+# Installed-package metadata must not name the build machine.
+for f in $(grep -rl "$REPO" "$APP/Contents/Resources" 2>/dev/null | grep -v '/bin/'); do
+  echo "    BUILD PATH IN METADATA/DOCS: ${f#$APP/}"
+  RELOC_FAIL=1
+done
+if [ "$RELOC_FAIL" -ne 0 ]; then
+  echo "relocatability gate FAILED -- the bundle is pinned to this machine" >&2
+  exit 1
+fi
+echo "    clean: no absolute shebang, no absolute home, no build path in metadata"
+
+say "relocation rehearsal (copy the bundle elsewhere and run it)"
+# Proof rather than assertion. A bundle that cannot be moved is a bundle that
+# breaks on someone else's Mac, and no amount of grepping establishes that.
+REHEARSE="$DIST/.relocation-rehearsal/DiffusionBear.app"
+rm -rf "$DIST/.relocation-rehearsal"
+mkdir -p "$(dirname "$REHEARSE")"
+cp -R "$APP" "$REHEARSE"
+# pwd -P, not $REHEARSE: /var is a symlink to /private/var, so the interpreter
+# reports a resolved path and a literal string compare against the un-resolved one
+# fails on a bundle that relocated perfectly well. That mistake stopped the 0.3.4
+# build for a reason that had nothing to do with the bundle.
+REHEARSE_REAL="$(cd "$REHEARSE" && pwd -P)"
+RB="$REHEARSE_REAL/Contents/Resources"
+rehearse_fail() { echo "relocation rehearsal FAILED: $1" >&2; exit 1; }
+
+# 1. both interpreters must find their stdlib from the NEW location
+for v in venv:python venv-sdxl:python-sdxl; do
+  vv="${v%%:*}"; pp="${v##*:}"
+  got="$("$RB/$vv/bin/python3" -c 'import sys,os;print(sys.base_prefix)' 2>/dev/null)" \
+    || rehearse_fail "$vv interpreter cannot start"
+  case "$got" in
+    "$REHEARSE_REAL"*) echo "    $vv base_prefix relocated: ${got#$REHEARSE_REAL}";;
+    *) rehearse_fail "$vv still reports base_prefix $got (expected a path under $REHEARSE_REAL)";;
+  esac
+done
+
+# 2. the heavy imports must work, or the venv is not really relocatable
+"$RB/venv/bin/python3" -c 'import mlx.core, torch' 2>/dev/null \
+  || rehearse_fail "mlx/torch do not import from the relocated bundle"
+echo "    mlx + torch import from the copy"
+
+# 3. a trampolined console script must actually execute
+SCRIPT="$(ls "$RB/venv/bin" 2>/dev/null | grep -E '^(uvicorn|python3)' | head -1)"
+[ -n "$SCRIPT" ] || rehearse_fail "no console script to exercise"
+case "$SCRIPT" in
+  python3) ;;   # the interpreter symlink; executing it proves nothing about the shim
+  *) "$RB/venv/bin/$SCRIPT" --help >/dev/null 2>&1 \
+       || echo "    note: $SCRIPT --help returned non-zero (may need args); the trampoline resolved python" ;;
+esac
+# A script with no shebang rewrite is a shell script; pick a real python entry point.
+for cand in uvicorn pip wheel fastapi; do
+  [ -f "$RB/venv/bin/$cand" ] || continue
+  head -1 "$RB/venv/bin/$cand" | grep -q '^#!/bin/sh$' \
+    || rehearse_fail "$cand is not trampolined"
+  "$RB/venv/bin/$cand" --help >/dev/null 2>&1
+  echo "    $cand executed from the relocated copy"
+  break
+done
+rm -rf "$DIST/.relocation-rehearsal"
+echo "    the bundle runs from a path it was not built at"
+
 # ---------------------------------------------------------------- report
 say "bundle ready"
 echo
@@ -422,12 +648,58 @@ du -sh "$APP/Contents/Resources/frontend"    | sed 's/^/  frontend   /'
 du -sh "$APP/Contents/MacOS/$APP_NAME"      | sed 's/^/  shell      /'
 echo
 echo "  models stay external: ~/Library/Application Support/DiffusionBear/data"
-# NOT ditto. On this machine (APFS over USB, 35k files, ~39k extended-attribute
-# entries) `ditto $APP /Applications/` exits 0, copies nothing, and leaves no
-# destination at all -- a silent no-op that reads as success. It also MERGES into an
-# existing bundle instead of replacing it, which produced a hybrid with a broken seal
-# and a stale Info.plist. cp -R is reliable here, so say so and spell out the remove:
-# an in-place copy over a running install is how the stale hybrid happened.
-echo "  install with:"
-echo "    rm -rf /Applications/$APP_NAME.app"
-echo "    cp -R \"$APP\" /Applications/"
+
+# ---------------------------------------------------------------------------
+# Install. The build owns it, because a hand-run copy is how two bad installs
+# happened this session:
+#
+#   * cp -R produced a bundle 1,973 files short of the source, and reported
+#     success. Nothing said otherwise.
+#   * ditto on this filesystem (APFS over USB) exits 0, copies nothing, and
+#     MERGES into an existing bundle -- leaving a hybrid with a broken seal and a
+#     stale Info.plist.
+#
+# Both are silent. So the install is one command that removes, copies, and then
+# PROVES the result by comparing file counts and re-verifying the signature. Any
+# mismatch is a loud failure, not a broken app discovered later.
+# ---------------------------------------------------------------------------
+install_app() {
+  local dest="/Applications/$APP_NAME.app"
+  local src_count dst_count
+
+  [ -d "$DEST_PARENT" ] || { echo "install target parent missing: $DEST_PARENT" >&2; return 1; }
+
+  # Never copy over a running app: the hybrid above came from exactly that.
+  if pgrep -f "$APP_NAME.app/Contents/MacOS" >/dev/null 2>&1; then
+    echo "  DiffusionBear is running; quit it first" >&2
+    return 1
+  fi
+
+  src_count=$(find "$APP" -type f | wc -l | tr -d ' ')
+  echo "  source      $src_count files"
+
+  rm -rf "$dest"
+  cp -R "$APP" "$DEST_PARENT/"
+
+  dst_count=$(find "$dest" -type f | wc -l | tr -d ' ')
+  echo "  installed   $dst_count files"
+  if [ "$src_count" != "$dst_count" ]; then
+    echo "  INSTALL FAILED: $((src_count - dst_count)) file(s) missing at $dest" >&2
+    echo "  the bundle is NOT usable; do not launch it" >&2
+    return 1
+  fi
+
+  if ! codesign --verify --deep --strict "$dest" 2>/dev/null; then
+    echo "  INSTALL FAILED: signature does not verify at $dest" >&2
+    return 1
+  fi
+  echo "  signature   verifies"
+  echo "  installed to $dest"
+}
+
+if [ "${INSTALL_APP:-0}" = "1" ]; then
+  say "installing"
+  install_app || exit 1
+else
+  echo "  not installed. Run:  INSTALL_APP=1 $0"
+fi

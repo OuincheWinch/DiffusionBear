@@ -413,7 +413,7 @@ class QwenDaemonLifecycleTests(unittest.TestCase):
 class TransientStatTests(unittest.TestCase):
     """A failed filesystem probe must not be read as a fact about the disk.
 
-    The model store is on the external volume /Volumes/Externe, which returned a
+    The model store is on an external volume, which returned a
     transient ENOENT from stat() during a benchmark. Each consumer used to treat
     that as truth, at three very different prices.
     """

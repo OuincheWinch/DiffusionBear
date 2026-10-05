@@ -1336,6 +1336,69 @@ def _model_dir_for_repo(repo_id: str) -> Path | None:
     return target
 
 
+# Parts a diffusers SDXL directory must have before sdxl_engine.py can load it.
+# StableDiffusionXLPipeline.from_diffusers() needs model_index.json to resolve the
+# pipeline and a populated unet/ to build the UNet2DConditionModel.
+SDXL_REQUIRED = ("model_index.json",)
+SDXL_WEIGHT_DIR = "unet"
+
+
+def sdxl_layout_report(directory: Path) -> tuple[bool, str]:
+    """Is this directory a diffusers SDXL model the engine can actually load?
+
+    Returns (ok, reason). The reason names the missing part, because the failure
+    this exists to prevent surfaced as a bare
+
+        FileNotFoundError: No .safetensors files in .../unet
+
+    after a forty-line traceback, with nothing pointing at the actual problem.
+
+    Deliberately stricter than _has_weights(), which searches recursively and is
+    therefore satisfied by a single-file checkpoint -- the format almost every
+    SDXL checkpoint on Hugging Face is published in.
+    """
+    directory = Path(directory)
+    if not directory.is_dir():
+        return False, f"{directory.name} is not a directory"
+
+    for required in SDXL_REQUIRED:
+        if not (directory / required).is_file():
+            return False, (
+                f"{directory.name} has no {required}, so it is not a diffusers "
+                f"directory. SDXL needs the folder layout (model_index.json plus "
+                f"unet/), not a single .safetensors checkpoint."
+            )
+
+    weight_dir = directory / SDXL_WEIGHT_DIR
+    if not weight_dir.is_dir():
+        return False, (
+            f"{directory.name} has no {SDXL_WEIGHT_DIR}/ directory, so it is not "
+            f"a diffusers SDXL model."
+        )
+
+    if not any(weight_dir.glob("*.safetensors")):
+        has_bin = any(weight_dir.glob("*.bin"))
+        detail = (
+            "it contains .bin files, but this engine reads safetensors"
+            if has_bin
+            else "it is empty"
+        )
+        return False, (
+            f"{directory.name}/{SDXL_WEIGHT_DIR}/ has no .safetensors files -- "
+            f"{detail}. The download may be incomplete."
+        )
+
+    return True, ""
+
+
+def is_sdxl_engine(model_id: str) -> bool:
+    """SDXL runs through venv-sdxl/mlx_diffuser and needs the layout above."""
+    import generator
+
+    info = generator.MODELS.get(model_id) or {}
+    return info.get("ecosystem") == "SDXL" or info.get("lora_format") == "SDXL"
+
+
 def _has_weights(directory: Path) -> bool:
     return any(
         p.suffix in (".safetensors", ".npz", ".gguf") or p.name.endswith(".index.json")
@@ -1384,6 +1447,17 @@ def register_downloaded_model(req: ModelRegistrationRequest):
         raise HTTPException(404, f"{raw} is not in the model store")
     if not _has_weights(directory):
         raise HTTPException(400, f"{directory.name} contains no weights")
+
+    # _has_weights searches recursively, so it is satisfied by a single-file
+    # checkpoint -- which is how almost every SDXL checkpoint is published on
+    # Hugging Face. An SDXL engine needs the diffusers folder layout, and finding
+    # that out at generation time surfaced as a forty-line traceback in the UI
+    # ending in "No .safetensors files in .../unet". Refuse here, and name the
+    # missing part instead.
+    if is_sdxl_engine(model_id):
+        ok, reason = sdxl_layout_report(directory)
+        if not ok:
+            raise HTTPException(400, reason)
 
     updated = app_settings.update_settings({"model_paths": {model_id: str(directory)}})
     paths = updated.get("model_paths") or {}

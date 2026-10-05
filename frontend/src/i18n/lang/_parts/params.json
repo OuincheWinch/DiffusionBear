@@ -1,161 +1,583 @@
 {
-  "params.size.label": { "es": "Tamaño", "zh": "尺寸", "ja": "サイズ", "pt": "Tamanho", "ko": "크기" },
-  "params.size.baseLabel": { "es": "Resolución base", "zh": "基础分辨率", "ja": "基本解像度", "pt": "Resolução base", "ko": "기본 해상도" },
-  "params.size.baseTitle": { "es": "Base {base} px", "zh": "基础 {base} 像素", "ja": "基本 {base} px", "pt": "Base {base} px", "ko": "기본 {base} px" },
-  "params.size.ratioLabel": { "es": "Proporción de aspecto", "zh": "宽高比", "ja": "アスペクト比", "pt": "Proporção da tela", "ko": "화면 비율" },
-  "params.size.ratioTitle": { "es": "Proporción de aspecto {ratio}", "zh": "宽高比 {ratio}", "ja": "アスペクト比 {ratio}", "pt": "Proporção da tela {ratio}", "ko": "화면 비율 {ratio}" },
-  "params.size.customShort": { "es": "Personalizado", "zh": "自定义", "ja": "カスタム", "pt": "Personalizado", "ko": "사용자 지정" },
-  "params.size.customTitle": { "es": "Introduce el ancho y la altura exactos", "zh": "输入精确的宽度和高度", "ja": "幅と高さを正確に入力してください", "pt": "Informe a largura e a altura exatas", "ko": "정확한 너비와 높이를 입력하세요" },
-  "params.size.widthLabel": { "es": "Ancho", "zh": "宽度", "ja": "幅", "pt": "Largura", "ko": "너비" },
-  "params.size.heightLabel": { "es": "Altura", "zh": "高度", "ja": "高さ", "pt": "Altura", "ko": "높이" },
-  "params.size.backToGrid": { "es": "Cuadrícula", "zh": "网格", "ja": "グリッド", "pt": "Grade", "ko": "그리드" },
-  "params.size.backToGridTitle": { "es": "Volver a elegir por resolución y proporción", "zh": "返回按分辨率和宽高比选择", "ja": "解像度とアスペクト比での選択に戻る", "pt": "Voltar a escolher por resolução e proporção", "ko": "해상도와 비율로 선택하기" },
-  "params.size.budgetWarning": {
-    "es": "Supera {max} px: la generación puede fallar. Usa un tamaño menor o aumenta el límite en Ajustes avanzados.",
-    "zh": "超过 {max} 像素 —— 生成可能失败。请使用更小的尺寸，或在“高级设置”中提高上限。",
-    "ja": "{max} px 超過：生成に失敗する可能性があります。小さいサイズを使うか、詳細設定で上限を上げてください。",
-    "pt": "Acima de {max} px — a geração pode falhar. Use um tamanho menor ou aumente o limite em Configurações avançadas.",
-    "ko": "{max} px 초과 — 생성이 실패할 수 있습니다. 더 작은 크기를 사용하거나 고급 설정에서 상한을 올리세요."
-  },
-  "params.size.budgetHint": {
-    "es": "Las dimensiones se ajustan al múltiplo de 16 más cercano, con un mínimo de 256.",
-    "zh": "尺寸会取整到最接近的 16 的倍数，最小为 256。",
-    "ja": "寸法は最も近い 16 の倍数に丸められ、最小は 256 です。",
-    "pt": "As dimensões são ajustadas ao múltiplo de 16 mais próximo, com mínimo de 256.",
-    "ko": "크기는 가장 가까운 16의 배수로 조정되며 최소값은 256입니다."
-  },
-  "params.size.lockRatio": { "es": "Mantener proporción", "zh": "保持比例", "ja": "比率を固定", "pt": "Manter proporção", "ko": "비율 유지" },
-  "params.size.lockRatioTitle": {
-    "es": "Al editar un lado, el otro se ajusta para conservar las proporciones",
-    "zh": "编辑一侧时会调整另一侧以保持比例",
-    "ja": "一方を編集すると、比率を保つように他方が調整されます",
-    "pt": "Editar um lado ajusta o outro para preservar as proporções",
-    "ko": "한쪽을 편집하면 비율을 유지하도록 다른 쪽이 조정됩니다"
-  },
-  "params.size.unlockRatioTitle": {
-    "es": "Ambas dimensiones son independientes",
-    "zh": "两个尺寸相互独立",
-    "ja": "両方の寸法は独立しています",
-    "pt": "Ambas as dimensões são independentes",
-    "ko": "두 크기는 서로 독립적입니다"
-  },
-  "params.size.lockRatioHint": {
-    "es": "Proporción bloqueada. Desmarca para editar ambas dimensiones libremente.",
-    "zh": "比例已锁定。取消勾选可自由编辑两个尺寸。",
-    "ja": "比率を固定しています。両方の寸法を自由に編集するにはチェックを外してください。",
-    "pt": "Proporção bloqueada. Desmarque para editar as duas dimensões livremente.",
-    "ko": "비율이 잠겨 있습니다. 두 크기를 자유롭게 편집하려면 체크를 해제하세요."
-  },
-  "params.advanced.label": { "es": "Ajustes avanzados", "zh": "高级设置", "ja": "詳細設定", "pt": "Configurações avançadas", "ko": "고급 설정" },
-  "params.size.customOption": {
-    "es": "✦ {width} × {height} (preajuste)",
-    "zh": "✦ {width} × {height}（预设）",
-    "ja": "✦ {width} × {height}（プリセット）",
-    "pt": "✦ {width} × {height} (predefinição)",
-    "ko": "✦ {width} × {height}(프리셋)"
-  },
-  "params.size.shapePreviewTitle": { "es": "{width} × {height}", "zh": "{width} × {height}", "ja": "{width} × {height}", "pt": "{width} × {height}", "ko": "{width} × {height}" },
-  "params.maxPixels.label": { "es": "Píxeles máximos (límite estricto)", "zh": "最大像素数（硬性上限）", "ja": "最大ピクセル数（上限）", "pt": "Máx. de pixels (limite rígido)", "ko": "최대 픽셀(강제 상한)" },
-  "params.maxPixels.oomGuardTitle": {
-    "es": "Límite estricto que el backend aplica a este modelo.",
-    "zh": "后端为此模型强制执行的上限。",
-    "ja": "このモデルに対してバックエンドが強制する上限です。",
-    "pt": "Limite rígido aplicado pelo backend a este modelo.",
-    "ko": "이 모델에 대해 백엔드가 강제하는 상한입니다."
-  },
-  "params.maxPixels.oomGuardTag": { "es": "⚙ Protección de OOM", "zh": "⚙ OOM 保护", "ja": "⚙ OOM ガード", "pt": "⚙ Proteção de OOM", "ko": "⚙ OOM 보호" },
-  "params.steps.label": { "es": "Pasos ({steps})", "zh": "步数（{steps}）", "ja": "ステップ（{steps}）", "pt": "Passos ({steps})", "ko": "스텝({steps})" },
-  "params.steps.distillTitle": {
-    "es": "LoRA de destilación de 4 pasos activada automáticamente en los parámetros",
-    "zh": "4 步蒸馏 LoRA 已在参数中自动启用",
-    "ja": "4ステップ蒸留用の LoRA がパラメータで自動的に有効になります",
-    "pt": "LoRA de destilação de 4 passos ativada automaticamente nos parâmetros",
-    "ko": "4단계 증류 LoRA가 매개변수에서 자동으로 활성화됩니다"
-  },
-  "params.steps.distillTag": { "es": "⚡ Destilación de 4 pasos", "zh": "⚡ 4 步蒸馏", "ja": "⚡ 4ステップ蒸留", "pt": "⚡ Destilação de 4 passos", "ko": "⚡ 4단계 증류" },
-  "params.guidance.label": { "es": "Guía", "zh": "引导强度", "ja": "ガイダンス", "pt": "Orientação", "ko": "가이던스" },
-  "params.seed.label": { "es": "Semilla", "zh": "种子", "ja": "シード", "pt": "Semente", "ko": "시드" },
-  "params.seed.randomTitle": {
-    "es": "Aleatorizar (semilla vacía)",
-    "zh": "随机（种子留空）",
-    "ja": "ランダム化（シードを空にする）",
-    "pt": "Aleatorizar (semente vazia)",
-    "ko": "무작위 설정(시드 비우기)"
-  },
-  "params.seed.nextTitle": { "es": "Siguiente semilla (+1)", "zh": "下一个种子（+1）", "ja": "次のシード（+1）", "pt": "Próxima semente (+1)", "ko": "다음 시드(+1)" },
-  "params.seed.nextBatchTitle": { "es": "Semilla del siguiente lote (+1024)", "zh": "下一批种子（+1024）", "ja": "次のバッチのシード（+1024）", "pt": "Semente do próximo lote (+1024)", "ko": "다음 배치 시드(+1024)" },
-  "params.seed.placeholder": { "es": "aleatoria", "zh": "随机", "ja": "ランダム", "pt": "aleatória", "ko": "무작위" },
-  "params.batch.label": { "es": "Lote", "zh": "批量", "ja": "バッチ", "pt": "Lote", "ko": "배치" },
-  "params.batch.optionOne": { "es": "{n} imagen", "zh": "{n} 张图像", "ja": "{n} 枚", "pt": "{n} imagem", "ko": "이미지 {n}장" },
-  "params.batch.optionMany": { "es": "{n} imágenes", "zh": "{n} 张图像", "ja": "{n} 枚", "pt": "{n} imagens", "ko": "이미지 {n}장" },
-  "params.batch.optionSeedSuffix": { "es": " (semilla +1024)", "zh": "（种子 +1024）", "ja": "（シード +1024）", "pt": " (semente +1024)", "ko": "(시드 +1024)" },
-  "params.negative.label": { "es": "Indicación negativa", "zh": "负面提示词", "ja": "ネガティブプロンプト", "pt": "Prompt negativo", "ko": "네거티브 프롬프트" },
-  "params.negative.placeholder": {
-    "es": "Qué evitar: borroso, baja calidad…",
-    "zh": "需要避免：模糊、低质量……",
-    "ja": "避けたいもの：ぼやけた、低品質…",
-    "pt": "O que evitar: borrado, baixa qualidade…",
-    "ko": "피할 것: 흐릿함, 낮은 품질…"
-  },
-  "params.sampler.label": { "es": "Muestreador", "zh": "采样器", "ja": "サンプラー", "pt": "Amostrador", "ko": "샘플러" },
-  "params.deepCache.label": { "es": "DeepCache", "zh": "DeepCache", "ja": "DeepCache", "pt": "DeepCache", "ko": "DeepCache" },
-  "params.deepCache.off": { "es": "Desactivado (UNet exacto)", "zh": "关闭（精确 UNet）", "ja": "オフ（厳密な UNet）", "pt": "Desativado (UNet exato)", "ko": "꺼짐(정확한 UNet)" },
-  "params.deepCache.level2": { "es": "⚡ DeepCache 2 (~1,6x más rápido)", "zh": "⚡ DeepCache 2（约快 1.6 倍）", "ja": "⚡ DeepCache 2（約1.6倍高速）", "pt": "⚡ DeepCache 2 (~1,6x mais rápido)", "ko": "⚡ DeepCache 2(약 1.6배 빠름)" },
-  "params.deepCache.level3": { "es": "⚡⚡ DeepCache 3 (~2x más rápido)", "zh": "⚡⚡ DeepCache 3（约快 2 倍）", "ja": "⚡⚡ DeepCache 3（約2倍高速）", "pt": "⚡⚡ DeepCache 3 (~2x mais rápido)", "ko": "⚡⚡ DeepCache 3(약 2배 빠름)" },
-  "params.ref.legend": { "es": "Imágenes de referencia ({count}/{max})", "zh": "参考图像（{count}/{max}）", "ja": "参照画像（{count}/{max}）", "pt": "Imagens de referência ({count}/{max})", "ko": "참조 이미지({count}/{max})" },
-  "params.ref.inContextBadge": { "es": "FLUX.2 In-Context", "zh": "FLUX.2 In-Context", "ja": "FLUX.2 In-Context", "pt": "FLUX.2 In-Context", "ko": "FLUX.2 In-Context" },
-  "params.ref.thumbAlt": { "es": "Referencia {n}", "zh": "参考图 {n}", "ja": "参照 {n}", "pt": "Referência {n}", "ko": "참조 {n}" },
-  "params.ref.previewUnavailable": {
-    "es": "No hay vista previa de la referencia {n}",
-    "zh": "无法预览参考图 {n}",
-    "ja": "参照 {n} のプレビューを表示できません",
-    "pt": "Pré-visualização da referência {n} indisponível",
-    "ko": "참조 {n} 미리보기를 사용할 수 없음"
-  },
-  "params.ref.indexBadge": { "es": "Imagen {n}", "zh": "图像 {n}", "ja": "画像 {n}", "pt": "Imagem {n}", "ko": "이미지 {n}" },
-  "params.ref.removeTitle": { "es": "Quitar imagen de referencia", "zh": "移除参考图像", "ja": "参照画像を削除", "pt": "Remover imagem de referência", "ko": "참조 이미지 제거" },
-  "params.ref.insertTitle": {
-    "es": "Insertar «Imagen {n}» en la indicación",
-    "zh": "在提示词中插入“图像 {n}”",
-    "ja": "プロンプトに「画像 {n}」を挿入",
-    "pt": "Inserir \"Imagem {n}\" no prompt",
-    "ko": "프롬프트에 \"이미지 {n}\" 삽입"
-  },
-  "params.ref.promptTagBtn": { "es": "+ Etiqueta de indicación", "zh": "+ 提示词标记", "ja": "+ プロンプトタグ", "pt": "+ Etiqueta de prompt", "ko": "+ 프롬프트 태그" },
-  "params.ref.addCardTitle": {
-    "es": "Añadir una imagen de referencia (hasta 10 para FLUX.2)",
-    "zh": "添加参考图像（FLUX.2 最多 10 张）",
-    "ja": "参照画像を追加（FLUX.2 では最大10枚）",
-    "pt": "Adicionar uma imagem de referência (até 10 para FLUX.2)",
-    "ko": "참조 이미지 추가 (FLUX.2는 최대 10장)"
-  },
-  "params.ref.addTextFirst": { "es": "Añadir imagen", "zh": "添加图像", "ja": "画像を追加", "pt": "Adicionar imagem", "ko": "이미지 추가" },
-  "params.ref.addTextNext": { "es": "Añadir ({n})", "zh": "添加（{n}）", "ja": "追加（{n}）", "pt": "Adicionar ({n})", "ko": "추가({n})" },
-  "params.ref.strengthLabel": {
-    "es": "Intensidad de la referencia de imagen de KREA",
-    "zh": "KREA 图像参考强度",
-    "ja": "KREA 画像参照の強さ",
-    "pt": "Intensidade da referência de imagem do KREA",
-    "ko": "KREA 이미지 참조 강도"
-  },
-  "params.ref.decrease01Title": { "es": "Disminuir en 0.1", "zh": "减少 0.1", "ja": "0.1 減らす", "pt": "Diminuir em 0.1", "ko": "0.1 감소" },
-  "params.ref.decrease001Title": { "es": "Disminuir en 0.01", "zh": "减少 0.01", "ja": "0.01 減らす", "pt": "Diminuir em 0.01", "ko": "0.01 감소" },
-  "params.ref.increase001Title": { "es": "Aumentar en 0.01", "zh": "增加 0.01", "ja": "0.01 増やす", "pt": "Aumentar em 0.01", "ko": "0.01 증가" },
-  "params.ref.increase01Title": { "es": "Aumentar en 0.1", "zh": "增加 0.1", "ja": "0.1 増やす", "pt": "Aumentar em 0.1", "ko": "0.1 증가" },
-  "params.ref.multiRefHintLead": {
-    "es": "Condicionamiento FLUX.2 In-Context:",
-    "zh": "FLUX.2 In-Context 条件控制：",
-    "ja": "FLUX.2 In-Context 条件付け：",
-    "pt": "Condicionamento FLUX.2 In-Context:",
-    "ko": "FLUX.2 In-Context 조건 지정:"
-  },
-  "params.ref.multiRefHintBody": {
-    "es": "Hasta 10 imágenes de referencia. El transformer inyecta tokens de imagen directamente en la atención cruzada. Referéncialas de forma natural en tu indicación como Imagen 1, Imagen 2, etc. (p. ej. «un retrato del personaje de la Imagen 1 en el estilo artístico de la Imagen 2»).",
-    "zh": "最多 10 张参考图像。transformer 会将图像 token 直接注入交叉注意力。在提示词中自然地引用它们，例如“图像 1 中角色的肖像，采用图像 2 的艺术风格”。",
-    "ja": "参照画像は最大10枚です。トランスフォーマーは画像トークンをクロスアテンションに直接注入します。プロンプトでは「画像1」「画像2」のように自然に参照してください（例：「画像1のキャラクターの肖像を画像2のアートスタイルで」）。",
-    "pt": "Até 10 imagens de referência. O transformer injeta tokens de imagem diretamente na atenção cruzada. Referencie-as de forma natural no prompt como Imagem 1, Imagem 2 etc. (ex.: \"um retrato do personagem da Imagem 1 no estilo artístico da Imagem 2\").",
-    "ko": "최대 10장의 참조 이미지. 트랜스포머가 이미지 토큰을 교차 어텐션에 직접 주입합니다. 프롬프트에서 \"이미지 1\", \"이미지 2\" 등으로 자연스럽게 참조하세요(예: \"이미지 1의 캐릭터 초상화를 이미지 2의 예술 스타일로\")."
-  },
-  "params.duration.minutesSeconds": { "es": "{m} min {s} s", "zh": "{m} 分 {s} 秒", "ja": "{m}分 {s}秒", "pt": "{m}min {s}s", "ko": "{m}분 {s}초" },
-  "params.duration.secondsOnly": { "es": "{s} s", "zh": "{s} 秒", "ja": "{s}秒", "pt": "{s}s", "ko": "{s}초" }
+    "params.size.label": {
+        "es": "Tamaño",
+        "zh": "尺寸",
+        "ja": "サイズ",
+        "pt": "Tamanho",
+        "ko": "크기"
+    },
+    "params.size.baseLabel": {
+        "es": "Resolución base",
+        "zh": "基础分辨率",
+        "ja": "基本解像度",
+        "pt": "Resolução base",
+        "ko": "기본 해상도"
+    },
+    "params.size.baseTitle": {
+        "es": "Base {base} px",
+        "zh": "基础 {base} 像素",
+        "ja": "基本 {base} px",
+        "pt": "Base {base} px",
+        "ko": "기본 {base} px"
+    },
+    "params.size.ratioLabel": {
+        "es": "Proporción de aspecto",
+        "zh": "宽高比",
+        "ja": "アスペクト比",
+        "pt": "Proporção da tela",
+        "ko": "화면 비율"
+    },
+    "params.size.ratioTitle": {
+        "es": "Proporción de aspecto {ratio}",
+        "zh": "宽高比 {ratio}",
+        "ja": "アスペクト比 {ratio}",
+        "pt": "Proporção da tela {ratio}",
+        "ko": "화면 비율 {ratio}"
+    },
+    "params.size.customShort": {
+        "es": "Personalizado",
+        "zh": "自定义",
+        "ja": "カスタム",
+        "pt": "Personalizado",
+        "ko": "사용자 지정"
+    },
+    "params.size.customTitle": {
+        "es": "Introduce el ancho y la altura exactos",
+        "zh": "输入精确的宽度和高度",
+        "ja": "幅と高さを正確に入力してください",
+        "pt": "Informe a largura e a altura exatas",
+        "ko": "정확한 너비와 높이를 입력하세요"
+    },
+    "params.size.widthLabel": {
+        "es": "Ancho",
+        "zh": "宽度",
+        "ja": "幅",
+        "pt": "Largura",
+        "ko": "너비"
+    },
+    "params.size.heightLabel": {
+        "es": "Altura",
+        "zh": "高度",
+        "ja": "高さ",
+        "pt": "Altura",
+        "ko": "높이"
+    },
+    "params.size.backToGrid": {
+        "es": "Cuadrícula",
+        "zh": "网格",
+        "ja": "グリッド",
+        "pt": "Grade",
+        "ko": "그리드"
+    },
+    "params.size.backToGridTitle": {
+        "es": "Volver a elegir por resolución y proporción",
+        "zh": "返回按分辨率和宽高比选择",
+        "ja": "解像度とアスペクト比での選択に戻る",
+        "pt": "Voltar a escolher por resolução e proporção",
+        "ko": "해상도와 비율로 선택하기"
+    },
+    "params.size.budgetWarning": {
+        "es": "Supera {max} px: la generación puede fallar. Usa un tamaño menor o aumenta el límite en Ajustes avanzados.",
+        "zh": "超过 {max} 像素 —— 生成可能失败。请使用更小的尺寸，或在“高级设置”中提高上限。",
+        "ja": "{max} px 超過：生成に失敗する可能性があります。小さいサイズを使うか、詳細設定で上限を上げてください。",
+        "pt": "Acima de {max} px — a geração pode falhar. Use um tamanho menor ou aumente o limite em Configurações avançadas.",
+        "ko": "{max} px 초과 — 생성이 실패할 수 있습니다. 더 작은 크기를 사용하거나 고급 설정에서 상한을 올리세요."
+    },
+    "params.size.budgetHint": {
+        "es": "Las dimensiones se ajustan al múltiplo de 16 más cercano, con un mínimo de 256.",
+        "zh": "尺寸会取整到最接近的 16 的倍数，最小为 256。",
+        "ja": "寸法は最も近い 16 の倍数に丸められ、最小は 256 です。",
+        "pt": "As dimensões são ajustadas ao múltiplo de 16 mais próximo, com mínimo de 256.",
+        "ko": "크기는 가장 가까운 16의 배수로 조정되며 최소값은 256입니다."
+    },
+    "params.size.lockRatio": {
+        "es": "Mantener proporción",
+        "zh": "保持比例",
+        "ja": "比率を固定",
+        "pt": "Manter proporção",
+        "ko": "비율 유지"
+    },
+    "params.size.lockRatioTitle": {
+        "es": "Al editar un lado, el otro se ajusta para conservar las proporciones",
+        "zh": "编辑一侧时会调整另一侧以保持比例",
+        "ja": "一方を編集すると、比率を保つように他方が調整されます",
+        "pt": "Editar um lado ajusta o outro para preservar as proporções",
+        "ko": "한쪽을 편집하면 비율을 유지하도록 다른 쪽이 조정됩니다"
+    },
+    "params.size.unlockRatioTitle": {
+        "es": "Ambas dimensiones son independientes",
+        "zh": "两个尺寸相互独立",
+        "ja": "両方の寸法は独立しています",
+        "pt": "Ambas as dimensões são independentes",
+        "ko": "두 크기는 서로 독립적입니다"
+    },
+    "params.size.lockRatioHint": {
+        "es": "Proporción bloqueada. Desmarca para editar ambas dimensiones libremente.",
+        "zh": "比例已锁定。取消勾选可自由编辑两个尺寸。",
+        "ja": "比率を固定しています。両方の寸法を自由に編集するにはチェックを外してください。",
+        "pt": "Proporção bloqueada. Desmarque para editar as duas dimensões livremente.",
+        "ko": "비율이 잠겨 있습니다. 두 크기를 자유롭게 편집하려면 체크를 해제하세요."
+    },
+    "params.advanced.label": {
+        "es": "Ajustes avanzados",
+        "zh": "高级设置",
+        "ja": "詳細設定",
+        "pt": "Configurações avançadas",
+        "ko": "고급 설정"
+    },
+    "params.size.customOption": {
+        "es": "✦ {width} × {height} (preajuste)",
+        "zh": "✦ {width} × {height}（预设）",
+        "ja": "✦ {width} × {height}（プリセット）",
+        "pt": "✦ {width} × {height} (predefinição)",
+        "ko": "✦ {width} × {height}(프리셋)"
+    },
+    "params.size.shapePreviewTitle": {
+        "es": "{width} × {height}",
+        "zh": "{width} × {height}",
+        "ja": "{width} × {height}",
+        "pt": "{width} × {height}",
+        "ko": "{width} × {height}"
+    },
+    "params.maxPixels.label": {
+        "es": "Píxeles máximos (límite estricto)",
+        "zh": "最大像素数（硬性上限）",
+        "ja": "最大ピクセル数（上限）",
+        "pt": "Máx. de pixels (limite rígido)",
+        "ko": "최대 픽셀(강제 상한)"
+    },
+    "params.maxPixels.oomGuardTitle": {
+        "es": "Límite estricto que el backend aplica a este modelo.",
+        "zh": "后端为此模型强制执行的上限。",
+        "ja": "このモデルに対してバックエンドが強制する上限です。",
+        "pt": "Limite rígido aplicado pelo backend a este modelo.",
+        "ko": "이 모델에 대해 백엔드가 강제하는 상한입니다."
+    },
+    "params.maxPixels.oomGuardTag": {
+        "es": "⚙ Protección de OOM",
+        "zh": "⚙ OOM 保护",
+        "ja": "⚙ OOM ガード",
+        "pt": "⚙ Proteção de OOM",
+        "ko": "⚙ OOM 보호"
+    },
+    "params.steps.label": {
+        "es": "Pasos ({steps})",
+        "zh": "步数（{steps}）",
+        "ja": "ステップ（{steps}）",
+        "pt": "Passos ({steps})",
+        "ko": "스텝({steps})"
+    },
+    "params.steps.distillTitle": {
+        "es": "LoRA de destilación de 4 pasos activada automáticamente en los parámetros",
+        "zh": "4 步蒸馏 LoRA 已在参数中自动启用",
+        "ja": "4ステップ蒸留用の LoRA がパラメータで自動的に有効になります",
+        "pt": "LoRA de destilação de 4 passos ativada automaticamente nos parâmetros",
+        "ko": "4단계 증류 LoRA가 매개변수에서 자동으로 활성화됩니다"
+    },
+    "params.steps.distillTag": {
+        "es": "⚡ Destilación de 4 pasos",
+        "zh": "⚡ 4 步蒸馏",
+        "ja": "⚡ 4ステップ蒸留",
+        "pt": "⚡ Destilação de 4 passos",
+        "ko": "⚡ 4단계 증류"
+    },
+    "params.guidance.label": {
+        "es": "Guía",
+        "zh": "引导强度",
+        "ja": "ガイダンス",
+        "pt": "Orientação",
+        "ko": "가이던스"
+    },
+    "params.seed.label": {
+        "es": "Semilla",
+        "zh": "种子",
+        "ja": "シード",
+        "pt": "Semente",
+        "ko": "시드"
+    },
+    "params.seed.randomTitle": {
+        "es": "Aleatorizar (semilla vacía)",
+        "zh": "随机（种子留空）",
+        "ja": "ランダム化（シードを空にする）",
+        "pt": "Aleatorizar (semente vazia)",
+        "ko": "무작위 설정(시드 비우기)"
+    },
+    "params.seed.nextTitle": {
+        "es": "Siguiente semilla (+1)",
+        "zh": "下一个种子（+1）",
+        "ja": "次のシード（+1）",
+        "pt": "Próxima semente (+1)",
+        "ko": "다음 시드(+1)"
+    },
+    "params.seed.nextBatchTitle": {
+        "es": "Semilla del siguiente lote (+1024)",
+        "zh": "下一批种子（+1024）",
+        "ja": "次のバッチのシード（+1024）",
+        "pt": "Semente do próximo lote (+1024)",
+        "ko": "다음 배치 시드(+1024)"
+    },
+    "params.seed.placeholder": {
+        "es": "aleatoria",
+        "zh": "随机",
+        "ja": "ランダム",
+        "pt": "aleatória",
+        "ko": "무작위"
+    },
+    "params.batch.label": {
+        "es": "Lote",
+        "zh": "批量",
+        "ja": "バッチ",
+        "pt": "Lote",
+        "ko": "배치"
+    },
+    "params.batch.optionOne": {
+        "es": "{n} imagen",
+        "zh": "{n} 张图像",
+        "ja": "{n} 枚",
+        "pt": "{n} imagem",
+        "ko": "이미지 {n}장"
+    },
+    "params.batch.optionMany": {
+        "es": "{n} imágenes",
+        "zh": "{n} 张图像",
+        "ja": "{n} 枚",
+        "pt": "{n} imagens",
+        "ko": "이미지 {n}장"
+    },
+    "params.batch.optionSeedSuffix": {
+        "es": " (semilla +1024)",
+        "zh": "（种子 +1024）",
+        "ja": "（シード +1024）",
+        "pt": " (semente +1024)",
+        "ko": "(시드 +1024)"
+    },
+    "params.negative.label": {
+        "es": "Indicación negativa",
+        "zh": "负面提示词",
+        "ja": "ネガティブプロンプト",
+        "pt": "Prompt negativo",
+        "ko": "네거티브 프롬프트"
+    },
+    "params.negative.placeholder": {
+        "es": "Qué evitar: borroso, baja calidad…",
+        "zh": "需要避免：模糊、低质量……",
+        "ja": "避けたいもの：ぼやけた、低品質…",
+        "pt": "O que evitar: borrado, baixa qualidade…",
+        "ko": "피할 것: 흐릿함, 낮은 품질…"
+    },
+    "params.sampler.label": {
+        "es": "Muestreador",
+        "zh": "采样器",
+        "ja": "サンプラー",
+        "pt": "Amostrador",
+        "ko": "샘플러"
+    },
+    "params.deepCache.label": {
+        "es": "DeepCache",
+        "zh": "DeepCache",
+        "ja": "DeepCache",
+        "pt": "DeepCache",
+        "ko": "DeepCache"
+    },
+    "params.deepCache.off": {
+        "es": "Desactivado (UNet exacto)",
+        "zh": "关闭（精确 UNet）",
+        "ja": "オフ（厳密な UNet）",
+        "pt": "Desativado (UNet exato)",
+        "ko": "꺼짐(정확한 UNet)"
+    },
+    "params.deepCache.level2": {
+        "es": "⚡ DeepCache 2 (~1,6x más rápido)",
+        "zh": "⚡ DeepCache 2（约快 1.6 倍）",
+        "ja": "⚡ DeepCache 2（約1.6倍高速）",
+        "pt": "⚡ DeepCache 2 (~1,6x mais rápido)",
+        "ko": "⚡ DeepCache 2(약 1.6배 빠름)"
+    },
+    "params.deepCache.level3": {
+        "es": "⚡⚡ DeepCache 3 (~2x más rápido)",
+        "zh": "⚡⚡ DeepCache 3（约快 2 倍）",
+        "ja": "⚡⚡ DeepCache 3（約2倍高速）",
+        "pt": "⚡⚡ DeepCache 3 (~2x mais rápido)",
+        "ko": "⚡⚡ DeepCache 3(약 2배 빠름)"
+    },
+    "params.ref.legend": {
+        "es": "Imágenes de referencia ({count}/{max})",
+        "zh": "参考图像（{count}/{max}）",
+        "ja": "参照画像（{count}/{max}）",
+        "pt": "Imagens de referência ({count}/{max})",
+        "ko": "참조 이미지({count}/{max})"
+    },
+    "params.ref.inContextBadge": {
+        "es": "FLUX.2 In-Context",
+        "zh": "FLUX.2 In-Context",
+        "ja": "FLUX.2 In-Context",
+        "pt": "FLUX.2 In-Context",
+        "ko": "FLUX.2 In-Context"
+    },
+    "params.ref.thumbAlt": {
+        "es": "Referencia {n}",
+        "zh": "参考图 {n}",
+        "ja": "参照 {n}",
+        "pt": "Referência {n}",
+        "ko": "참조 {n}"
+    },
+    "params.ref.previewUnavailable": {
+        "es": "No hay vista previa de la referencia {n}",
+        "zh": "无法预览参考图 {n}",
+        "ja": "参照 {n} のプレビューを表示できません",
+        "pt": "Pré-visualização da referência {n} indisponível",
+        "ko": "참조 {n} 미리보기를 사용할 수 없음"
+    },
+    "params.ref.indexBadge": {
+        "es": "Imagen {n}",
+        "zh": "图像 {n}",
+        "ja": "画像 {n}",
+        "pt": "Imagem {n}",
+        "ko": "이미지 {n}"
+    },
+    "params.ref.removeTitle": {
+        "es": "Quitar imagen de referencia",
+        "zh": "移除参考图像",
+        "ja": "参照画像を削除",
+        "pt": "Remover imagem de referência",
+        "ko": "참조 이미지 제거"
+    },
+    "params.ref.insertTitle": {
+        "es": "Insertar «Imagen {n}» en la indicación",
+        "zh": "在提示词中插入“图像 {n}”",
+        "ja": "プロンプトに「画像 {n}」を挿入",
+        "pt": "Inserir \"Imagem {n}\" no prompt",
+        "ko": "프롬프트에 \"이미지 {n}\" 삽입"
+    },
+    "params.ref.promptTagBtn": {
+        "es": "+ Etiqueta de indicación",
+        "zh": "+ 提示词标记",
+        "ja": "+ プロンプトタグ",
+        "pt": "+ Etiqueta de prompt",
+        "ko": "+ 프롬프트 태그"
+    },
+    "params.ref.addCardTitle": {
+        "es": "Añadir una imagen de referencia (hasta 10 para FLUX.2)",
+        "zh": "添加参考图像（FLUX.2 最多 10 张）",
+        "ja": "参照画像を追加（FLUX.2 では最大10枚）",
+        "pt": "Adicionar uma imagem de referência (até 10 para FLUX.2)",
+        "ko": "참조 이미지 추가 (FLUX.2는 최대 10장)"
+    },
+    "params.ref.addTextFirst": {
+        "es": "Añadir imagen",
+        "zh": "添加图像",
+        "ja": "画像を追加",
+        "pt": "Adicionar imagem",
+        "ko": "이미지 추가"
+    },
+    "params.ref.addTextNext": {
+        "es": "Añadir ({n})",
+        "zh": "添加（{n}）",
+        "ja": "追加（{n}）",
+        "pt": "Adicionar ({n})",
+        "ko": "추가({n})"
+    },
+    "params.ref.strengthLabel": {
+        "es": "Intensidad de la referencia de imagen de KREA",
+        "zh": "KREA 图像参考强度",
+        "ja": "KREA 画像参照の強さ",
+        "pt": "Intensidade da referência de imagem do KREA",
+        "ko": "KREA 이미지 참조 강도"
+    },
+    "params.ref.decrease01Title": {
+        "es": "Disminuir en 0.1",
+        "zh": "减少 0.1",
+        "ja": "0.1 減らす",
+        "pt": "Diminuir em 0.1",
+        "ko": "0.1 감소"
+    },
+    "params.ref.decrease001Title": {
+        "es": "Disminuir en 0.01",
+        "zh": "减少 0.01",
+        "ja": "0.01 減らす",
+        "pt": "Diminuir em 0.01",
+        "ko": "0.01 감소"
+    },
+    "params.ref.increase001Title": {
+        "es": "Aumentar en 0.01",
+        "zh": "增加 0.01",
+        "ja": "0.01 増やす",
+        "pt": "Aumentar em 0.01",
+        "ko": "0.01 증가"
+    },
+    "params.ref.increase01Title": {
+        "es": "Aumentar en 0.1",
+        "zh": "增加 0.1",
+        "ja": "0.1 増やす",
+        "pt": "Aumentar em 0.1",
+        "ko": "0.1 증가"
+    },
+    "params.ref.multiRefHintLead": {
+        "es": "Condicionamiento FLUX.2 In-Context:",
+        "zh": "FLUX.2 In-Context 条件控制：",
+        "ja": "FLUX.2 In-Context 条件付け：",
+        "pt": "Condicionamento FLUX.2 In-Context:",
+        "ko": "FLUX.2 In-Context 조건 지정:"
+    },
+    "params.ref.multiRefHintBody": {
+        "es": "Hasta 10 imágenes de referencia. El transformer inyecta tokens de imagen directamente en la atención cruzada. Referéncialas de forma natural en tu indicación como Imagen 1, Imagen 2, etc. (p. ej. «un retrato del personaje de la Imagen 1 en el estilo artístico de la Imagen 2»).",
+        "zh": "最多 10 张参考图像。transformer 会将图像 token 直接注入交叉注意力。在提示词中自然地引用它们，例如“图像 1 中角色的肖像，采用图像 2 的艺术风格”。",
+        "ja": "参照画像は最大10枚です。トランスフォーマーは画像トークンをクロスアテンションに直接注入します。プロンプトでは「画像1」「画像2」のように自然に参照してください（例：「画像1のキャラクターの肖像を画像2のアートスタイルで」）。",
+        "pt": "Até 10 imagens de referência. O transformer injeta tokens de imagem diretamente na atenção cruzada. Referencie-as de forma natural no prompt como Imagem 1, Imagem 2 etc. (ex.: \"um retrato do personagem da Imagem 1 no estilo artístico da Imagem 2\").",
+        "ko": "최대 10장의 참조 이미지. 트랜스포머가 이미지 토큰을 교차 어텐션에 직접 주입합니다. 프롬프트에서 \"이미지 1\", \"이미지 2\" 등으로 자연스럽게 참조하세요(예: \"이미지 1의 캐릭터 초상화를 이미지 2의 예술 스타일로\")."
+    },
+    "params.duration.minutesSeconds": {
+        "es": "{m} min {s} s",
+        "zh": "{m} 分 {s} 秒",
+        "ja": "{m}分 {s}秒",
+        "pt": "{m}min {s}s",
+        "ko": "{m}분 {s}초"
+    },
+    "params.duration.secondsOnly": {
+        "es": "{s} s",
+        "zh": "{s} 秒",
+        "ja": "{s}秒",
+        "pt": "{s}s",
+        "ko": "{s}초"
+    },
+    "params.size.orientation.square": {
+        "es": "Cuadrado",
+        "ja": "正方形",
+        "ko": "정사각형",
+        "pt": "Quadrado",
+        "zh": "正方形"
+    },
+    "params.size.orientation.landscape": {
+        "es": "Horizontal",
+        "ja": "横長",
+        "ko": "가로",
+        "pt": "Horizontal",
+        "zh": "横向"
+    },
+    "params.size.orientation.portrait": {
+        "es": "Vertical",
+        "ja": "縦長",
+        "ko": "세로",
+        "pt": "Vertical",
+        "zh": "纵向"
+    },
+    "params.size.orientation.custom": {
+        "es": "Personalizado",
+        "ja": "カスタム",
+        "ko": "사용자 지정",
+        "pt": "Personalizado",
+        "zh": "自定义"
+    },
+    "params.size.name.standard": {
+        "es": "Estándar",
+        "ja": "標準",
+        "ko": "표준",
+        "pt": "Padrão",
+        "zh": "标准"
+    },
+    "params.size.name.large": {
+        "es": "Grande",
+        "ja": "大サイズ",
+        "ko": "대형",
+        "pt": "Grande",
+        "zh": "大"
+    },
+    "params.size.name.wide": {
+        "es": "Panorámico",
+        "ja": "ワイド",
+        "ko": "와이드",
+        "pt": "Panorâmico",
+        "zh": "宽幅"
+    },
+    "params.size.name.photo": {
+        "es": "Foto",
+        "ja": "写真",
+        "ko": "사진",
+        "pt": "Foto",
+        "zh": "照片"
+    },
+    "params.size.name.cinematic": {
+        "es": "Cinemático",
+        "ja": "シネマティック",
+        "ko": "시네마틱",
+        "pt": "Cinemático",
+        "zh": "电影宽幅"
+    },
+    "params.size.name.social": {
+        "es": "Social",
+        "ja": "ソーシャル",
+        "ko": "소셜",
+        "pt": "Social",
+        "zh": "社交"
+    },
+    "params.size.name.tall": {
+        "es": "Alto",
+        "ja": "縦長",
+        "ko": "세로 긴",
+        "pt": "Alto",
+        "zh": "竖长"
+    },
+    "params.size.name.photoPortrait": {
+        "es": "Foto vertical",
+        "ja": "縦位置の写真",
+        "ko": "세로 사진",
+        "pt": "Foto vertical",
+        "zh": "竖版照片"
+    },
+    "params.size.name.legacy512": {
+        "es": "Antiguo 512",
+        "ja": "レガシー 512",
+        "ko": "레거시 512",
+        "pt": "Legado 512",
+        "zh": "旧版 512"
+    },
+    "params.size.name.legacy256": {
+        "es": "Antiguo 256",
+        "ja": "レガシー 256",
+        "ko": "레거시 256",
+        "pt": "Legado 256",
+        "zh": "旧版 256"
+    },
+    "params.size.step": {
+        "es": "Paso",
+        "ja": "ステップ",
+        "ko": "단계",
+        "pt": "Passo",
+        "zh": "步长"
+    },
+    "params.size.trueRatio": {
+        "es": "Proporción real",
+        "ja": "実際のアスペクト比",
+        "ko": "실제 비율",
+        "pt": "Proporção real",
+        "zh": "真实比例"
+    },
+    "params.size.noPresets": {
+        "es": "No hay resoluciones nativas para este modelo.",
+        "ja": "このモデルに対応するネイティブ解像度がありません。",
+        "ko": "이 모델에 사용할 수 있는 기본 해상도가 없습니다.",
+        "pt": "Não há resoluções nativas para este modelo.",
+        "zh": "该模型没有可用的原生分辨率。"
+    },
+    "params.size.pixelAdvisory": {
+        "es": "Por encima del límite confirmado de este modelo",
+        "ja": "このモデルの確認済み上限を超えています",
+        "ko": "이 모델의 확인된 한도를 초과했습니다",
+        "pt": "Acima do limite confirmado para este modelo",
+        "zh": "超出该模型已确认的上限"
+    },
+    "params.size.pixelAdvisoryCap": {
+        "es": "límite",
+        "ja": "上限",
+        "ko": "한도",
+        "pt": "limite",
+        "zh": "上限"
+    },
+    "params.size.name.compact": {
+        "es": "Compacto",
+        "ja": "コンパクト",
+        "ko": "간결",
+        "pt": "Compacto",
+        "zh": "紧凑"
+    }
 }

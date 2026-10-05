@@ -25,7 +25,13 @@ LANGS = ("fr", "en", "de", "it")
 # (`  "key": { fr: "...", en: "..." },`) and half span several. The first version of
 # this parser only handled the multi-line form and silently "verified" 449 of 674
 # keys, which is worse than no check at all.
-_KEY_RE = re.compile(r'^\s{2}"(?P<key>[^"]+)":\s*\{', re.M)
+# 2-or-more spaces, not exactly 2. params.js and fill.js are internally
+# inconsistent: some entries are indented 4 and some 2, while every other part
+# file is uniformly 2. The old `\s{2}` silently matched only the 2-space ones,
+# which is where the long-standing "23 missed keys" bound came from -- those 23
+# entries were never translation-checked at all. `[ \t]` rather than `\s` so a
+# match cannot run across a newline.
+_KEY_RE = re.compile(r'^[ \t]{2,}"(?P<key>[^"]+)":\s*\{', re.M)
 # The trailing lookahead accepts end-of-body as well as a comma or brace: entry
 # bodies are sliced to exclude the closing '}', so the LAST language of every entry
 # ends the string. Without `$` that language was never matched, and the test failed
@@ -580,20 +586,28 @@ class TranslationIntegrityTests(unittest.TestCase):
     def _source(self, key):
         return self.english.get(key, self.catalog.get(key, {}).get("en", ""))
 
-    def test_the_english_baseline_gap_does_not_grow(self):
-        """The regex parser in this file does not see every key -- 23 as of this commit.
+    def test_the_regex_parser_sees_every_key(self):
+        """The regex parser in this file once missed 23 keys, so every regex-based
+        check here silently under-verified 23 translations.
 
-        That is a pre-existing limitation, not something to assert away, but it means
-        every regex-based check here under-verifies. The translation checks therefore
-        read the real catalogue through node instead, and this test pins the remaining
-        gap so it cannot silently widen. Close it and delete this bound.
+        The cause was `_KEY_RE` demanding exactly two leading spaces while
+        params.js and fill.js are internally inconsistent and indent some entries
+        four -- and one entry zero. The bound was documented rather than fixed,
+        which is how 23 entries went unchecked for this long.
+
+        The parser now accepts two-or-more, and fill.errorFailed was reindented to
+        match its siblings. The bound is gone rather than raised: it should be
+        impossible to indent an entry in a way that removes it from the checks, and
+        a non-zero allowance is exactly what let this hide. The overlay languages
+        are additionally verified through node by the tests below, so this is a
+        backstop for the regex path, not the only coverage.
         """
         if not _node_available():
             self.skipTest("node not installed")
         self.assertIsNotNone(self.english, "could not read STRINGS via node")
-        gap = len(set(self.english) - set(self.catalog))
-        self.assertLessEqual(
-            gap, 23, f"the regex parser now misses {gap} keys; raise the bound deliberately"
+        gap = set(self.english) - set(self.catalog)
+        self.assertEqual(
+            gap, set(), f"the regex parser misses {len(gap)} keys: {sorted(gap)[:5]}"
         )
 
     def test_every_overlay_is_readable(self):

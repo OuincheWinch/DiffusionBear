@@ -1548,7 +1548,7 @@ _STAT_RETRY_DELAY_S = 0.05
 def _probe_fs(fn):
     """Run a filesystem probe, retrying transient OSError. Returns (ok, value).
 
-    The model store lives on the external volume /Volumes/Externe, which was
+    The model store lives on an external volume, which was
     observed returning a transient ENOENT from stat() in the middle of a
     benchmark. Every consumer used to read a single failed probe as a fact
     about the filesystem, and each of those readings was expensive:

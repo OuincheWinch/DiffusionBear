@@ -291,18 +291,7 @@ label {
   color: var(--muted);
 }
 
-.size-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
 
-.size-row select {
-  flex: 1;
-  min-width: 0;
-  padding: 0.45rem 0.5rem;
-  font-size: 0.82rem;
-}
 
 .shape-preview {
   display: flex;
@@ -4302,139 +4291,185 @@ body.native-shell * {
   -webkit-user-draggable: no-drag;
 }
 
-/* ============================================================================
-   SizeSelector — base resolution and aspect ratio chosen independently.
+/* ===============================================================
+   SizeSelector -- orientation tab, then native resolution presets.
 
-   Replaces a 25-entry dropdown of fused "1024 × 1024 (1:1)" strings plus
-   per-model preset buttons. Two orthogonal decisions (how much detail, what
-   shape) read far faster as two short rows of buttons than as one long menu.
+   Replaces a base-resolution row crossed with an aspect-ratio row.
+   Multiplying the two produced sizes no model was trained on -- 16:9 at
+   base 1024 is 1024x576, and it looks it. The ratio is now a property of
+   the resolution: the tab narrows the field, the preset states the size.
    ========================================================================== */
 
 .size-selector {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-}
-
-.size-selector-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   gap: 0.5rem;
 }
 
-.size-selector-label {
-  font-size: 0.8rem;
-  color: var(--muted);
+.size-selector-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
 }
 
-/* The resolved pixel size is the outcome of two button presses, so it is shown
-   explicitly rather than left for the user to infer. */
-.size-selector-readout {
+.size-selector-tab {
+  padding: 0.35rem 0.25rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
   font-size: 0.78rem;
-  color: var(--text-dim, var(--muted));
+  font-weight: 500;
+  /* Four tabs share the parameter column, which is 450-570px once the
+     two-column layout engages. A long label ("Hochformat", "Personnalisé")
+     must ellipsize rather than force the row wider and overflow. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.size-selector-tab:hover {
+  color: var(--text);
+}
+
+.size-selector-tab.is-active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.size-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 0.4rem;
+}
+
+.size-preset {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.size-preset:hover {
+  border-color: var(--muted);
+}
+
+.size-preset.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.size-preset-dims {
+  font-size: 0.86rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.size-base-row,
-.size-ratio-row {
-  display: flex;
-  gap: 0.3rem;
-  flex-wrap: wrap;
+.size-preset-meta {
+  color: var(--muted);
+  font-size: 0.68rem;
 }
 
-.size-base-btn,
-.size-ratio-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  min-height: 1.9rem;
-  padding: 0.25rem 0.6rem;
+.size-selector-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.size-selector-fields {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.size-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.size-field-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.size-field input {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: transparent;
   color: var(--text);
-  font: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease;
-}
-
-.size-base-btn:hover,
-.size-ratio-btn:hover {
-  border-color: var(--accent-text);
-  background: rgba(124, 92, 255, 0.12);
-}
-
-.size-base-btn.active,
-.size-ratio-btn.active {
-  border-color: var(--accent);
-  background: rgba(124, 92, 255, 0.2);
-  color: var(--text);
-  font-weight: 600;
-}
-
-.size-base-btn:focus-visible,
-.size-ratio-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
-}
-
-.size-custom-btn {
-  border-style: dashed;
-  color: var(--muted);
-}
-
-/* The ratio glyph is the actual shape, so the buttons are scannable without
-   reading "16:9" and mentally dividing. */
-.size-ratio-glyph {
-  display: block;
-  height: 0.85rem;
-  max-width: 1.6rem;
-  background: currentColor;
-  border-radius: 1.5px;
-  opacity: 0.75;
-}
-
-.size-ratio-btn.active .size-ratio-glyph {
-  opacity: 1;
-}
-
-.size-ratio-text {
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
 }
 
-.size-custom-row {
+.size-lock {
+  margin-bottom: 0.15rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.size-lock.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.size-selector-steps {
   display: flex;
-  align-items: flex-end;
-  gap: 0.45rem;
+  align-items: center;
+  gap: 0.35rem;
   flex-wrap: wrap;
 }
 
-.size-custom-field {
-  flex: 1 1 6rem;
-  min-width: 0;
+.size-step {
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
-.size-custom-field input {
-  width: 100%;
+.size-step.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.size-selector-hint {
+  color: var(--muted);
+  font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
 }
 
-.size-budget-warning {
+.size-selector-empty {
   margin: 0;
-  font-size: 0.74rem;
-  color: var(--danger);
-}
-
-.size-budget-hint {
-  margin: 0;
-  font-size: 0.72rem;
   color: var(--muted);
+  font-size: 0.75rem;
 }
-
 /* ============================================================================
    Progressive disclosure for the rarely-touched controls.
 
@@ -4552,16 +4587,7 @@ body.native-shell * {
 }
 
 /* Keep-ratio toggle inside the Custom size row. */
-.size-lock-btn.active {
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
 
-.size-lock-hint {
-  margin: 0;
-  font-size: 0.72rem;
-  color: var(--muted);
-}
 
 /* The LoRA panel is its own disclosure: it is large (registry chips, hub, import
    form) and only relevant when tuning style, so it must not compete with the
@@ -4597,16 +4623,7 @@ body.native-shell * {
    "active green, calculated grey". That was dropped: it made the ratio row the only
    purple-free control in the form, and green here read as "warning" rather than
    "selected". */
-.size-ratio-btn.active-muted {
-  border-color: var(--border);
-  background: transparent;
-  color: var(--muted);
-  font-weight: 400;
-}
 
-.size-ratio-btn.active-muted .size-ratio-glyph {
-  opacity: 0.45;
-}
 
 
 /* A language whose catalogue is still empty. It stays selectable -- the point is that
@@ -5094,4 +5111,18 @@ body.native-shell * {
 }
 .error-text {
   color: #ff6b6b;
+}
+
+.size-advisory {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.size-preset.is-compact .size-preset-dims {
+  font-weight: 500;
 }

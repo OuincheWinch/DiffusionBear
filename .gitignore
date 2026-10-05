@@ -82,3 +82,6 @@ packaging/dist/
 packaging/vendor/*/build/
 packaging/vendor/*/*.egg-info/
 packaging/dist/.metadata_never_index
+
+# transient output of tools/run-size-selector-render.mjs
+frontend/tools/.render-smoke/

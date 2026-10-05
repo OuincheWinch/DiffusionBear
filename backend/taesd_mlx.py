@@ -95,11 +95,30 @@ _TAESD_PT_TO_MLX_MAP = {
 }
 
 
+def _default_taesd_path() -> Path:
+    """Where the TAESD weights live.
+
+    This used to be `Path(__file__).parent / "data" / "models" / "taesdxl"`, which
+    is correct in the repo checkout and WRONG in the installed app: inside the signed
+    bundle `__file__` is Contents/Resources/backend, so the path resolved to
+    Contents/Resources/backend/data/models/taesdxl -- inside the signature. The
+    weights are in the model store, so the lookup missed and every SDXL run with
+    fast_vae fell back to the full VAE inside an `except` that only printed to
+    stderr. The ~0.5s decode was dead in the shipped app and nothing said so.
+
+    ASSET_DIR is the store, and it already honours the `store_path` relocation, so
+    this follows the weights wherever the owner put them.
+    """
+    import app_settings
+
+    return Path(app_settings.ASSET_DIR) / "models" / "taesdxl" / "diffusion_pytorch_model.safetensors"
+
+
 def get_taesd_decoder(model_path: str | Path | None = None) -> callable:
     global _CACHED_TAESD, _COMPILED_TAESD, _CACHED_TAESD_PATH
     with _TAESD_LOCK:
         if model_path is None:
-            model_path = Path(__file__).parent / "data" / "models" / "taesdxl" / "diffusion_pytorch_model.safetensors"
+            model_path = _default_taesd_path()
         model_path = Path(model_path).expanduser().resolve()
         if _COMPILED_TAESD is not None and _CACHED_TAESD_PATH == model_path:
             return _COMPILED_TAESD

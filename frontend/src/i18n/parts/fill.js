@@ -67,7 +67,7 @@ export const fillStrings = {
     de: "Die Engine-Liste konnte nicht geladen werden. Erneut versuchen.",
     it: "Impossibile caricare l\'elenco dei motori. Riprova.",
   },
-"fill.errorFailed": {
+    "fill.errorFailed": {
       fr: "Le remplissage a échoué. Réessayez.",
       en: "The fill failed. Try again.",
       de: "Das Füllen ist fehlgeschlagen. Erneut versuchen.",
