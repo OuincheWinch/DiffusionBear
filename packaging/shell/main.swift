@@ -114,7 +114,7 @@ private func portURL(_ port: Int) -> URL { URL(string: "http://127.0.0.1:\(port)
 ///
 /// This matters more than it looks. macOS gates access to removable and external
 /// volumes behind a TCC consent prompt. If DiffusionBear is launched from
-/// /Volumes/Externe and nobody is at the machine to click Allow, the backend's
+/// an external volume and nobody is at the machine to click Allow, the backend's
 /// very first open() of its own bundled stdlib blocks forever at 0% CPU -- the app
 /// appears to hang with an empty log. That is exactly what was measured, and it is
 /// why the app belongs in /Applications.
