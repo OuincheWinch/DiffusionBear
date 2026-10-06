@@ -40,14 +40,20 @@ EXCLUDES=(
 
 say() { printf '\033[1m==> %s\033[0m\n' "$1"; }
 
-# The two identifiers that leaked. Override to audit a different machine.
-# The VOLUME, not the repo. Naming only the repo missed the sibling path that also
-# shipped -- the model store, /Volumes/Externe/IA/DiffusionBear/... -- and a gate
-# that only catches the one string you happened to test is not a gate. Capital E
-# keeps it distinct from upstream mflux docstrings, which write lowercase
-# /Volumes/flux2-klein-9b-experiments.
-REPO_LEAK_PATH="${REPO_LEAK_PATH:-/Volumes/Externe}"
-HOME_LEAK_PATH="${HOME_LEAK_PATH:-/Users/admin}"
+# What counts as "a local path", DERIVED at run time rather than written down.
+#
+# Hardcoding the build machine's volume and username here meant this file could not
+# be published without republishing them -- the exact leak that shipped in 0.3.4
+# and that had to be scrubbed from main.swift and a test canary. So the defaults
+# are computed: the volume the repo lives on, and the current home directory. The
+# volume, not the repo path, because naming only the repo missed the sibling store
+# path that also shipped.
+#
+# Override both to audit a different machine:
+#   REPO_LEAK_PATH=/Volumes/Other HOME_LEAK_PATH=/Users/someone ./export_public.sh
+_repo_volume="$(cd "$REPO/../.." 2>/dev/null && pwd -P || echo "")"
+REPO_LEAK_PATH="${REPO_LEAK_PATH:-$_repo_volume}"
+HOME_LEAK_PATH="${HOME_LEAK_PATH:-$HOME}"
 
 say "cleaning $WORK"
 rm -rf "$WORK"
@@ -75,6 +81,10 @@ rmdir "$WORK/design-system/diffusionbear" "$WORK/design-system" 2>/dev/null || t
 # ---------------------------------------------------------------------------
 say "auditing the export"
 fail=0
+if [ -z "$REPO_LEAK_PATH" ] || [ -z "$HOME_LEAK_PATH" ]; then
+  echo "  could not derive the local-path patterns; refusing to audit" >&2
+  exit 1
+fi
 
 # This machine's own paths, by name. Deliberately NOT a bare '/Volumes/' or
 # '/Users/' search: the launcher legitimately does hasPrefix("/Volumes/"), build_app.sh
@@ -82,9 +92,10 @@ fail=0
 # /Volumes/flux2-klein-9b-experiments, and a test fixture uses /Users/alice. A gate
 # that flags those trains you to ignore it. What actually leaked was THIS machine's
 # identifiers, so those are what is forbidden.
-# This script is excluded from its own check, for the same reason a secret scanner
-# excludes its rule file: it has to spell out the forbidden string to search for it.
-leaks=$(grep -rlI --exclude-dir=.git --exclude=export_public.sh \
+# No self-exclusion is needed any more: the patterns are derived at run time, so
+# this script contains no literal path to trip over. An earlier version spelled them
+# out and had to exclude itself, which is how the exception became a hole.
+leaks=$(grep -rlI --exclude-dir=.git \
         -e "$REPO_LEAK_PATH" -e "$HOME_LEAK_PATH" "$WORK" 2>/dev/null || true)
 if [ -n "$leaks" ]; then
   echo "    these files name a local path and must not be published:" >&2
