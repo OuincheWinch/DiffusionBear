@@ -194,6 +194,14 @@ class NoEmbeddedFontsTests(unittest.TestCase):
         )
 
 
+# The stylesheet source is what gets screened: the bundle ships frontend/dist, not
+# frontend/src, so this cannot run from an installed app. Skipping there rather than
+# erroring keeps the copy that does ship in the bundle from looking broken.
+@unittest.skipUnless(
+    CSS.is_file(),
+    "frontend/src/App.css is not present (running against an installed bundle, "
+    "which ships frontend/dist rather than the source stylesheet)",
+)
 class FontFamilyLicensingTests(unittest.TestCase):
     def setUp(self):
         self.names = family_names(CSS.read_text(encoding="utf-8"))
