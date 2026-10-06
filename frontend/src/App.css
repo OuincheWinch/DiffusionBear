@@ -472,7 +472,8 @@ option.model-option-offline {
 }
 
 .model-installer-path {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, "DejaVu Sans Mono",
+    "Liberation Mono", monospace;
 }
 
 
@@ -3693,7 +3694,8 @@ dd {
   color: #e5e7eb;
   font-size: 0.78rem;
   line-height: 1.5;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, "DejaVu Sans Mono",
+    "Liberation Mono", monospace;
   resize: vertical;
 }
 

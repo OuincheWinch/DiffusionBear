@@ -4,13 +4,14 @@
 
 <h1 align="center">DiffusionBear</h1>
 
-<p align="center"><strong>Beta — v0.3.4</strong> &nbsp;·&nbsp; a local-first image generation studio for Apple Silicon</p>
+<p align="center"><strong>Beta — v0.3.5</strong> &nbsp;·&nbsp; a local-first image generation studio for Apple Silicon</p>
 
 ---
 
 **DiffusionBear** runs open-weight diffusion models on your own Mac. Generation,
 prompt enhancement, LoRA management and the gallery all happen on the machine in
-front of you: the API listens on `127.0.0.1:8001`, model weights are fetched once
+front of you: the API listens on `127.0.0.1` (8001, stepping up by 1024 if
+something else already owns it), model weights are fetched once
 into a local store, and nothing is uploaded anywhere. No account, no cloud, no
 per-image billing.
 
@@ -21,7 +22,7 @@ one — MLX is macOS/Metal exclusive.
 *Formerly called **MLX-Diffusion**; renamed in October 2026. The old repository URL
 still redirects, and old search traffic still lands here.*
 
-> **Beta, honestly.** 0.3.1 is the public beta of a one-person project. The core
+> **Beta, honestly.** This is the public beta of a one-person project. The core
 > path — FLUX.2-klein and the SDXL engines — is the most used and the most tested.
 > Engines marked *experimental* in the app (Qwen-Image 2.1) are unsupported
 > previews: they can be slow, and Qwen needs roughly 5 GB of free memory before it
@@ -37,7 +38,7 @@ Made by **[Ouinche](https://www.ouinche.com)** — heavily coded by AI (Gemini,
 The compiled macOS app is the main thing this project produces. `DiffusionBear.app`
 is self-contained: it bundles the FastAPI backend, two relocatable Python runtimes
 and the compiled single-page UI, and serves both the API and the interface from
-`127.0.0.1:8001`. **There is nothing to install** — no Python, no Node, no virtual
+`127.0.0.1`. **There is nothing to install** — no Python, no Node, no virtual
 environments on your side.
 
 ![DiffusionBear](docs/screenshots/main-page.png)
@@ -49,19 +50,19 @@ environments on your side.
 | **Your files** | Settings, gallery, LoRA registry and model store live in `~/Library/Application Support/DiffusionBear`, never inside the app bundle. To put the store on another volume, write an absolute path into `~/Library/Application Support/DiffusionBear/store_path`; a store path can be shared by several installs. |
 | **Model weights** | Not bundled. They are downloaded on first use from Hugging Face or [Civitai](https://civitai.red/?ref_code=88C8VEBA) into that store — a few GB for the first model. After that the app works fully offline. |
 
-<a href="https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.4/DiffusionBear-0.3.4-arm64.zip">
-  <img alt="Download DiffusionBear 0.3.4 for macOS (Apple Silicon)" src="https://img.shields.io/badge/download-DiffusionBear%200.3.4%20-beta-ff3b8f?style=for-the-badge">
+<a href="https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.5/DiffusionBear-0.3.5-arm64.zip">
+  <img alt="Download DiffusionBear 0.3.5 for macOS (Apple Silicon)" src="https://img.shields.io/badge/download-DiffusionBear%200.3.5%20-beta-ff3b8f?style=for-the-badge">
 </a>
 
-**[⬇ Download DiffusionBear 0.3.4 for macOS (Apple Silicon)](https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.4/DiffusionBear-0.3.4-arm64.zip)** — 482 MB, from the [v0.3.4 release](https://github.com/OuincheWinch/DiffusionBear/releases/tag/v0.3.4).
+**[⬇ Download DiffusionBear 0.3.5 for macOS (Apple Silicon)](https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.5/DiffusionBear-0.3.5-arm64.zip)** — 482 MB, from the [v0.3.5 release](https://github.com/OuincheWinch/DiffusionBear/releases/tag/v0.3.5).
 
 1. Unzip it and move `DiffusionBear.app` into `/Applications`.
 2. **First launch only:** the app is ad-hoc signed, not notarised with an Apple
    Developer ID, so macOS refuses a plain double-click with *"Apple cannot check it for
    malicious software"*. **Right-click the app → Open → Open.** It is not malware; it is
    simply unsigned, and the warning does not return on later launches.
-3. To check the download: `shasum -a 256 DiffusionBear-0.3.4-arm64.zip`, compared
-   against the [`.SHA256SUMS`](https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.4/DiffusionBear-0.3.4-arm64.zip.SHA256SUMS)
+3. To check the download: `shasum -a 256 DiffusionBear-0.3.5-arm64.zip`, compared
+   against the [`ALL_SHA256SUMS`](https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.5/ALL_SHA256SUMS)
    published beside it.
 
 Prefer to build it yourself? [Build it from `packaging/`](#build-the-app-yourself) — it
@@ -204,7 +205,7 @@ Measured on a **2021 MacBook Pro M1 (16 GB)** — the reference machine this pro
 tuned for. This table is a **September 2026 snapshot** (293 timed studio
 generations plus an 18-run repeatability suite). Defaults have moved since — Z-Image
 Turbo in particular now starts at 6 steps instead of 8 — so read it as a record of
-that build, not as a promise about 0.3.1.
+that build, not as a promise about the current one.
 
 **Methodology — removing load spikes:** within each model × resolution bucket the
 **5% fastest and 5% slowest times are excluded** before computing mean and median
@@ -456,6 +457,34 @@ Please **do not open a public issue** for a security problem. Use GitHub's
 or email the author with the subject `[DiffusionBear security]`. Acknowledgement
 within 3 working days; treat proof-of-concepts as embargoed until the issue is
 fixed or declined. Scope and the privacy posture are in [SECURITY.md](SECURITY.md).
+
+## Fonts and licensing
+
+The app **embeds no fonts.** There is no `@font-face` anywhere in the frontend and
+no web font in the bundle, so there is no font for anyone to redistribute and
+nothing to license.
+
+What the interface does is *name* fonts, which is what a native Mac app does:
+
+| Kind | Examples | Why it is fine |
+|---|---|---|
+**CSS keyword** | `system-ui`, `ui-monospace`, `sans-serif`, `monospace` | Resolved by the browser. No font is named or shipped. |
+**macOS system font** | `-apple-system`, `Menlo`, `SFMono-Regular` | macOS provides these. The app ships no copy — naming one is not redistribution. |
+**Open font** | `DejaVu Sans Mono`, `Liberation Mono` | Free and open (Bitstream Vera / SIL OFL 1.1), named only as fallbacks. |
+
+38 TTF files do appear inside `venv/` — DejaVu, STIX and Computer Modern, all
+arriving with `matplotlib`, which is a transitive dependency and is not imported by
+any backend module. All three are free (DejaVu: Bitstream Vera plus public-domain
+changes; STIX: SIL OFL 1.1; Computer Modern: Knuth, public-domain lineage) and
+`LICENSE_DEJAVU` and `LICENSE_STIX` ship beside them so the claim is checkable
+rather than asserted.
+
+This is enforced by a test rather than by good intentions.
+`backend/test_font_licensing.py` fails on **any** font-family name that is not a
+CSS keyword, a macOS system font, or a known open font — it is default-deny, so a
+font nobody has classified yet stops the build rather than passing unnoticed. It
+found `Consolas` in the stylesheet: a Microsoft font, and one that could only ever
+resolve on a Mac that already had Office installed. It was removed.
 
 ## License
 

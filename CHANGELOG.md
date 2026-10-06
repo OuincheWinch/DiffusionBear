@@ -2,6 +2,53 @@
 
 All notable changes to **DiffusionBear** are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.3.5] — beta — 2026-10-05
+
+### Fixed
+- **Every SDXL model was reported as "Not runnable here".** The table that decides
+  which architectures the app can execute covered FLUX.2, Z-Image, Krea and Qwen and
+  had no SDXL entry at all — including the registry's own repository, which showed an
+  INSTALLED badge beside the claim that it could not run. Four SDXL engines are now
+  recognised, and ControlNets, LoRAs, VAEs and upscalers are rejected up front:
+  `juggernaut-xl-lightning-4step-controlnet-coreml-6b` matches every required token
+  and is not a checkpoint.
+- **A failed SDXL load now says what to do** instead of ending in a forty-line
+  traceback with `No .safetensors files in .../unet`. Interrupted download,
+  single-file checkpoint, empty `unet/` and never-installed each have their own
+  message, because they need different fixes.
+- **A download was marked installed without being checked.** The task was declared
+  successful when the transfer loop finished, without looking at what had been
+  written, so an interrupted 9.5 GB shard left an empty `unet/` behind an
+  INSTALLED badge.
+- **The fast TAESD decode was dead in every shipped build.** It resolved its
+  weights from `__file__/data`, which inside the signed bundle is inside the
+  signature, so every SDXL render with fast VAE silently fell back to the full VAE.
+- **The bundle named the build machine in 88 files** — 82 console-script shebangs,
+  both `pyvenv.cfg` homes, six `activate` scripts, a `direct_url.json` and three
+  docstrings. Fixed by construction: relative `pyvenv.cfg` homes and `/bin/sh`
+  trampolines, so there is no absolute path left to get wrong.
+- **23 translations were never actually checked.** The catalogue parser demanded
+  exactly two leading spaces while two files indent some entries four and one zero.
+  The bound is now exact zero.
+- **`Consolas`, a Microsoft font**, was named in two stylesheets and could only ever
+  resolve on a Mac with Office installed. Removed.
+
+### Added
+- **The app moves port instead of refusing to start.** If something else owns
+  8001, it tries 9025, 10049, 11073 … 17217 (ten rungs of +1024). A rung already
+  serving a DiffusionBear backend is reused rather than stepped over. Telling our
+  backend from someone else's needs the JSON to name DiffusionBear — a 404 from an
+  unrelated server looks identical to a healthy answer otherwise.
+- **A native-resolution size picker**, replacing a base × ratio control that
+  produced sizes no model was trained on.
+- `backend/sdxl_layout.py`, `backend/test_font_licensing.py`,
+  `backend/test_sdxl_discovery.py`, and a relocation rehearsal that copies the built
+  bundle elsewhere and runs it.
+
+### Changed
+- The production bundle contains **zero web fonts**, and font licensing is now
+  enforced by a default-deny test rather than by inspection.
+
 ## [0.3.4] — beta — 2026-10-04
 
 ### Fixed
