@@ -82,7 +82,9 @@ fail=0
 # /Volumes/flux2-klein-9b-experiments, and a test fixture uses /Users/alice. A gate
 # that flags those trains you to ignore it. What actually leaked was THIS machine's
 # identifiers, so those are what is forbidden.
-leaks=$(grep -rlI --exclude-dir=.git \
+# This script is excluded from its own check, for the same reason a secret scanner
+# excludes its rule file: it has to spell out the forbidden string to search for it.
+leaks=$(grep -rlI --exclude-dir=.git --exclude=export_public.sh \
         -e "$REPO_LEAK_PATH" -e "$HOME_LEAK_PATH" "$WORK" 2>/dev/null || true)
 if [ -n "$leaks" ]; then
   echo "    these files name a local path and must not be published:" >&2
