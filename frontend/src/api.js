@@ -1,4 +1,16 @@
-export const API_BASE = (import.meta.env?.VITE_API_BASE ?? "http://localhost:8001").replace(/\/+$/, "");
+// In the packaged app the backend serves this SPA from the SAME port it serves the
+// API on, so a relative base is both correct and port-agnostic -- which matters
+// because the launcher may move the backend to 9001, 10049 and so on when 8001 is
+// held by something else. An absolute base baked the port into the bundle and would
+// have talked to the wrong process, or nothing at all.
+//
+// Only the vite dev server is a different origin (5173), and there the backend is
+// on 8001. VITE_API_BASE still wins, for anyone who needs to point it elsewhere.
+const DEV_API_BASE = "http://localhost:8001";
+export const API_BASE = (
+  import.meta.env?.VITE_API_BASE
+  ?? (import.meta.env?.DEV ? DEV_API_BASE : "")
+).replace(/\/+$/, "");
 export const API_TOKEN = import.meta.env?.VITE_API_TOKEN || "";
 export const API_TOKEN_HEADER = import.meta.env?.VITE_API_TOKEN_HEADER || "Authorization";
 export const API_TOKEN_SCHEME = import.meta.env?.VITE_API_TOKEN_SCHEME ?? "Bearer";

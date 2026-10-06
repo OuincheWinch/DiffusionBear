@@ -335,12 +335,16 @@ say "compiling the Swift shell"
 # rather than a build error. Only a binary that exists and is a real Mach-O gets
 # installed into the bundle.
 SHELL_SRC="$HERE/shell/main.swift"
+# PortProbe.swift holds the port ladder and the coherence check, deliberately a
+# separate file so packaging/tests/run_port_probe_test.sh can compile and exercise it
+# against real sockets rather than testing a copy of the logic.
+SHELL_PORT="$HERE/shell/PortProbe.swift"
 SHELL_TMP="$(mktemp -d)/$APP_NAME"
 swiftc -O -wmo \
   -target arm64-apple-macos15.0 \
   -framework AppKit -framework WebKit \
   -o "$SHELL_TMP" \
-  "$SHELL_SRC"
+  "$SHELL_SRC" "$SHELL_PORT"
 if [ ! -x "$SHELL_TMP" ]; then
   echo "the shell did not produce an executable; refusing to assemble a bundle that cannot launch" >&2
   exit 1

@@ -23,7 +23,11 @@ import WebKit
 
 // MARK: - Configuration
 
-private let backendPort = 8001
+/// The port actually in use. Chosen at launch by `chooseBackendPort()` and read by
+/// the web view, the backend child and the failure messages, so it has to be a var:
+/// the SPA is served by the backend on this same port, and the frontend calls the
+/// API same-origin, so once the port moves the whole app follows it.
+private var backendPort = PortProbe.preferredPort
 // Generous on purpose. A cold start imports mflux, MLX and torch from inside a
 // 1.8 GB bundle, and on a busy 16 GB machine that measured ~95s -- uncomfortably
 // close to a 120s ceiling, which produced a spurious "backend did not start" while
@@ -179,6 +183,14 @@ final class BackendProcess {
 
     /// Refuse to start rather than fight an existing listener: two backends on one
     /// port means the UI silently talks to someone else's server.
+    /// Port selection lives in PortProbe.swift so it can be tested on its own --
+    /// against real sockets, and against the real /api/version. A copy in a test
+    /// would only test the copy, which is how the size-picker bug survived review
+    /// in the first place.
+    static func chooseBackendPort() -> Int? { PortProbe.choosePort() }
+    static func answersAsOurs(_ port: Int) -> Bool { PortProbe.answersAsOurs(port) }
+    static func ladder() -> [Int] { PortProbe.ladder() }
+
     static func portInUse(_ port: Int) -> Bool {
         // lsof is present on every macOS install; no added dependency.
         let p = Process()
@@ -906,14 +918,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
             reason: "Local image generation backend is running")
         buildWindow()
 
-        if BackendProcess.portInUse(backendPort) {
+        // Walk up the port ladder rather than refusing to launch. 8001 is a popular
+        // port and a dev server, an older build, or an unrelated app may hold it;
+        // none of those should stop this one from starting. A rung already serving
+        // OUR backend is reused instead, so opening the app twice does not leave two
+        // engines resident with two copies of the model in memory.
+        if let chosen = BackendProcess.chooseBackendPort() {
+            if chosen != backendPort {
+                NSLog("DiffusionBear: port \(backendPort) is unavailable; using \(chosen) instead")
+            }
+            backendPort = chosen
+        } else {
+            let rungs = PortProbe.ladder().map(String.init).joined(separator: ", ")
             showBlockingError(
-                title: "Port \(backendPort) is already in use",
+                title: "No free port",
                 message: """
-                Another process is already listening on 127.0.0.1:\(backendPort).
+                Every port this app tries is taken by another program: \(rungs).
 
-                Stop it, or restart this app, then try again. Running two backends \
-                on one port would leave the window showing someone else's server.
+                Stop one of them, or restart this app, then try again.
                 """)
             return
         }
