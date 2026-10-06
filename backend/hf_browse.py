@@ -203,7 +203,33 @@ _EXECUTABLE_RULES: list[tuple[tuple[str, ...], tuple[str, ...], str, str]] = [
     ((), ("z-image", "zimage"), "z-image-turbo", "Z-Image Turbo"),
     ((), ("krea",), "krea2-turbo", "Krea 2 Turbo"),
     ((), ("qwen-image", "qwenimage"), "qwen-image-2.1", "Qwen-Image 2.1"),
+    # SDXL. These were MISSING, so every SDXL repo in the browser read "Not runnable
+    # here" -- including RunDiffusion/Juggernaut-XL-Lightning, the registry's own
+    # repo, which the app had already downloaded and shown as INSTALLED. Four
+    # engines, so a repo has to be told apart from its siblings; the ordering is
+    # most-specific first.
+    (("realvis", "xl", "v5", "lightning"), (), "realvis-xl-v5-lightning", "Realvis XL v5 Lightning (MLX)"),
+    (("realvis", "xl", "v5"), (), "realvis-xl-v5", "Realvis XL v5 (MLX)"),
+    (("juggernaut", "xl", "lightning"), (), "juggernaut-xl-lightning", "Juggernaut XL Lightning (MLX)"),
+    (("juggernaut", "xi"), (), "juggernaut-xi", "Juggernaut XI v11 (MLX)"),
 ]
+
+# Names that match a rule above but are not a checkpoint. A ControlNet, a LoRA, a
+# VAE or a CoreML conversion of one cannot be loaded as a pipeline, and offering them
+# is worse than saying no: the owner pays a multi-gigabyte download to find out.
+# `digitalbrain79/juggernaut-xl-lightning-4step-controlnet-coreml-6b` matches the
+# juggernaut-xl-lightning rule on every required token, which is how this list came
+# to exist.
+_NOT_A_CHECKPOINT = (
+    "controlnet",
+    "coreml",
+    "lora",
+    "lycoris",
+    "vae",
+    "upscale",
+    "embedding",
+    "embed",
+)
 
 
 def usable_as(repo_id: str, kind: str = "diffusion") -> tuple[str | None, str]:
@@ -221,6 +247,11 @@ def usable_as(repo_id: str, kind: str = "diffusion") -> tuple[str | None, str]:
     if kind != "diffusion":
         return None, "Not an image model."
     stem = _stem(repo_id)
+    # Reject non-checkpoints BEFORE the rules, so a name that happens to contain
+    # every required token cannot be offered as runnable.
+    blocked = next((n for n in _NOT_A_CHECKPOINT if n in stem), None)
+    if blocked:
+        return None, f"Not a checkpoint: this is a {blocked}, and it cannot be loaded as a model."
     for required, alternatives, model_id, label in _EXECUTABLE_RULES:
         if not all(n in stem for n in required):
             continue

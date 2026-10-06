@@ -26,6 +26,7 @@ from image_meta import (
     extract_image_metadata,
 )
 from upscale import upscale_image, thumbnail_path
+from sdxl_layout import sdxl_layout_report
 
 import app_settings
 
@@ -3309,6 +3310,15 @@ def _generate_sdxl(prompt, width, height, steps, guidance, seed, loras,
                 or minfo.get("model_dir")
                 or (ASSET_DIR / "models" / "juggernaut-xl-lightning")
             )
+            # Check the diffusers layout HERE, before handing the path to the engine.
+            # Without this the owner gets a forty-line traceback ending in
+            # "No .safetensors files in .../unet" and learns nothing; it was reported
+            # from a second machine whose download had been interrupted, leaving an
+            # empty unet/ behind an INSTALLED badge. This is the last point at which
+            # the app can still explain itself.
+            ok_sdxl, why_sdxl = sdxl_layout_report(Path(model_dir))
+            if not ok_sdxl:
+                raise ValueError(f"SDXL cannot load this model: {why_sdxl}")
             req = {
                 "prompt": prompt,
                 "negative_prompt": negative_prompt or "",
