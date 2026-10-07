@@ -1,0 +1,296 @@
+{
+  "models.browserTitle": {
+    "es": "Explorador y descargador de modelos",
+    "zh": "模型浏览器与下载器",
+    "ja": "モデルブラウザーとダウンローダー",
+    "pt": "Navegador e downloader de modelos",
+    "ko": "모델 브라우저 및 다운로더"
+  },
+  "models.browserDesc": {
+    "es": "Busca modelos cuantizados en Hugging Face e instálalos directamente aquí.",
+    "zh": "在 Hugging Face 上搜索量化模型，并直接在此处安装。",
+    "ja": "Hugging Face で量子化モデルを検索し、ここから直接インストールできます。",
+    "pt": "Pesquise modelos quantizados no Hugging Face e instale-os aqui mesmo.",
+    "ko": "Hugging Face에서 양자화 모델을 검색하고 여기에서 바로 설치하세요."
+  },
+  "models.searchPlaceholder": {
+    "es": "Buscar modelos…",
+    "zh": "搜索模型…",
+    "ja": "モデルを検索…",
+    "pt": "Pesquisar modelos…",
+    "ko": "모델 검색…"
+  },
+  "models.searchLabel": {
+    "es": "Buscar modelos",
+    "zh": "搜索模型",
+    "ja": "モデルを検索",
+    "pt": "Pesquisar modelos",
+    "ko": "모델 검색"
+  },
+  "models.filterOrg": {
+    "es": "Organización",
+    "zh": "组织",
+    "ja": "組織",
+    "pt": "Organização",
+    "ko": "조직"
+  },
+  "models.filterArchitecture": {
+    "es": "Arquitectura",
+    "zh": "架构",
+    "ja": "アーキテクチャ",
+    "pt": "Arquitetura",
+    "ko": "아키텍처"
+  },
+  "models.filterQuantization": {
+    "es": "Cuantización",
+    "zh": "量化",
+    "ja": "量子化",
+    "pt": "Quantização",
+    "ko": "양자화"
+  },
+  "models.filterType": {
+    "es": "Tipo",
+    "zh": "类型",
+    "ja": "種類",
+    "pt": "Tipo",
+    "ko": "유형"
+  },
+  "models.filterAll": {
+    "es": "Todos",
+    "zh": "全部",
+    "ja": "すべて",
+    "pt": "Todos",
+    "ko": "전체"
+  },
+  "models.sortBy": {
+    "es": "Ordenar por",
+    "zh": "排序方式",
+    "ja": "並び替え",
+    "pt": "Ordenar por",
+    "ko": "정렬 기준"
+  },
+  "models.sort.downloads": {
+    "es": "Descargas",
+    "zh": "下载量",
+    "ja": "ダウンロード数",
+    "pt": "Downloads",
+    "ko": "다운로드 수"
+  },
+  "models.sort.likes": {
+    "es": "Me gusta",
+    "zh": "点赞",
+    "ja": "いいね",
+    "pt": "Curtidas",
+    "ko": "좋아요"
+  },
+  "models.sort.lastModified": {
+    "es": "Actualizados recientemente",
+    "zh": "最近更新",
+    "ja": "最近更新",
+    "pt": "Atualizados recentemente",
+    "ko": "최근 업데이트"
+  },
+  "models.kind.diffusion": {
+    "es": "Generador",
+    "zh": "生成模型",
+    "ja": "生成モデル",
+    "pt": "Gerador",
+    "ko": "생성 모델"
+  },
+  "models.kind.lora": {
+    "es": "LoRA",
+    "zh": "LoRA",
+    "ja": "LoRA",
+    "pt": "LoRA",
+    "ko": "LoRA"
+  },
+  "models.kind.upscaler": {
+    "es": "Upscaler",
+    "zh": "超分辨率模型",
+    "ja": "アップスケーラー",
+    "pt": "Upscaler",
+    "ko": "업스케일러"
+  },
+  "models.alphaTag": {
+    "es": "Alfa nativo",
+    "zh": "原生透明通道",
+    "ja": "ネイティブアルファ",
+    "pt": "Alfa nativo",
+    "ko": "네이티브 알파"
+  },
+  "models.downloads": {
+    "es": "descargas",
+    "zh": "次下载",
+    "ja": "ダウンロード",
+    "pt": "downloads",
+    "ko": "다운로드"
+  },
+  "models.retry": {
+    "es": "Reintentar",
+    "zh": "重试",
+    "ja": "再試行",
+    "pt": "Tentar novamente",
+    "ko": "다시 시도"
+  },
+  "models.searchPlaceholderCivitai": {
+    "es": "Buscar en Civitai…",
+    "zh": "搜索 Civitai…",
+    "ja": "Civitai を検索…",
+    "pt": "Pesquisar no Civitai…",
+    "ko": "Civitai 검색…"
+  },
+  "models.resultsCountCivitai": {
+    "es": "{count} modelo(s) en Civitai",
+    "zh": "Civitai 上 {count} 个模型",
+    "ja": "Civitai に {count} 件のモデル",
+    "pt": "{count} modelo(s) no Civitai",
+    "ko": "Civitai에 모델 {count}개"
+  },
+  "models.convert": {
+    "es": "Convertir a formato utilizable",
+    "zh": "转换为可用格式",
+    "ja": "使用可能な形式に変換",
+    "pt": "Converter para formato utilizável",
+    "ko": "사용 가능한 형식으로 변환"
+  },
+  "models.convertUnavailable": {
+    "es": "Conversión no disponible",
+    "zh": "转换不可用",
+    "ja": "変換を利用できません",
+    "pt": "Conversão indisponível",
+    "ko": "변환 사용 불가"
+  },
+  "models.convertedBadge": {
+    "es": "CONVERTIDO",
+    "zh": "已转换",
+    "ja": "変換済み",
+    "pt": "CONVERTIDO",
+    "ko": "변환됨"
+  },
+  "models.civitaiSort.downloads": {
+    "es": "Descargas",
+    "zh": "下载量",
+    "ja": "ダウンロード数",
+    "pt": "Downloads",
+    "ko": "다운로드 수"
+  },
+  "models.civitaiSort.rated": {
+    "es": "Mejor valorados",
+    "zh": "评分最高",
+    "ja": "評価順",
+    "pt": "Melhor avaliados",
+    "ko": "평점순"
+  },
+  "models.civitaiSort.newest": {
+    "es": "Más recientes",
+    "zh": "最新",
+    "ja": "新着順",
+    "pt": "Mais recentes",
+    "ko": "최신순"
+  },
+  "models.civitaiSort.liked": {
+    "es": "Más gustados",
+    "zh": "最受欢迎",
+    "ja": "いいね順",
+    "pt": "Mais curtidos",
+    "ko": "좋아요순"
+  },
+  "models.notRunnable": {
+    "es": "No se puede ejecutar aquí",
+    "zh": "此处无法运行",
+    "ja": "ここでは実行できません",
+    "pt": "Não executável aqui",
+    "ko": "여기에서 실행 불가"
+  },
+  "models.useFor": {
+    "es": "Usar para {model}",
+    "zh": "用于 {model}",
+    "ja": "{model} に使用",
+    "pt": "Usar para {model}",
+    "ko": "{model}(으)로 사용"
+  },
+  "models.stopUsing": {
+    "es": "Dejar de usar {model}",
+    "zh": "停止使用 {model}",
+    "ja": "{model} の使用を停止",
+    "pt": "Parar de usar {model}",
+    "ko": "{model} 사용 중단"
+  },
+  "models.searching": {
+    "es": "Buscando…",
+    "zh": "搜索中…",
+    "ja": "検索中…",
+    "pt": "Pesquisando…",
+    "ko": "검색 중…"
+  },
+  "models.resultsCount": {
+    "es": "{count} modelo(s)",
+    "zh": "{count} 个模型",
+    "ja": "{count} 件のモデル",
+    "pt": "{count} modelo(s)",
+    "ko": "모델 {count}개"
+  },
+  "models.noResults": {
+    "es": "Ningún modelo coincide con estos filtros.",
+    "zh": "没有模型符合这些筛选条件。",
+    "ja": "これらのフィルターに一致するモデルはありません。",
+    "pt": "Nenhum modelo corresponde a estes filtros.",
+    "ko": "이 필터와 일치하는 모델이 없습니다."
+  },
+  "models.download": {
+    "es": "Descargar",
+    "zh": "下载",
+    "ja": "ダウンロード",
+    "pt": "Baixar",
+    "ko": "다운로드"
+  },
+  "models.downloading": {
+    "es": "Descargando…",
+    "zh": "下载中…",
+    "ja": "ダウンロード中…",
+    "pt": "Baixando…",
+    "ko": "다운로드 중…"
+  },
+  "models.preparing": {
+    "es": "Preparando…",
+    "zh": "准备中…",
+    "ja": "準備中…",
+    "pt": "Preparando…",
+    "ko": "준비 중…"
+  },
+  "models.cancel": {
+    "es": "Cancelar",
+    "zh": "取消",
+    "ja": "キャンセル",
+    "pt": "Cancelar",
+    "ko": "취소"
+  },
+  "models.installed": {
+    "es": "Instalado",
+    "zh": "已安装",
+    "ja": "インストール済み",
+    "pt": "Instalado",
+    "ko": "설치됨"
+  },
+  "models.installedBadge": {
+    "es": "INSTALADO",
+    "zh": "已安装",
+    "ja": "インストール済み",
+    "pt": "INSTALADO",
+    "ko": "설치됨"
+  },
+  "models.alreadyHave": {
+    "es": "Ya tienes {model}",
+    "zh": "你已有 {model}",
+    "ja": "{model} はすでにあります",
+    "pt": "Você já tem {model}",
+    "ko": "이미 {model}이(가) 있습니다"
+  },
+  "models.openOnHf": {
+    "es": "Ver en Hugging Face",
+    "zh": "在 Hugging Face 上查看",
+    "ja": "Hugging Face で見る",
+    "pt": "Ver no Hugging Face",
+    "ko": "Hugging Face에서 보기"
+  }
+}

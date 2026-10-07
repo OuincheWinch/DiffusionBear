@@ -1,0 +1,87 @@
+# -*- mode: gitignore; encoding: utf-8 -*-
+
+# ---- Secrets & local credentials (NEVER commit) ----
+backend/data/civitai_token.txt
+backend/data/hf_token.txt
+backend/data/*.token
+backend/data/*token*.txt
+**/hf_token.txt
+session.txt
+
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+venv-coreml/
+venv-sdxl/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Node / frontend ----
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ---- Generated content & runtime state ----
+backend/data/generated/
+backend/data/uploads/
+backend/data/lora_files/
+backend/data/models/
+backend/data/SDXL/
+backend/data/loras.json
+backend/data/settings.json
+backend/data/pending_queue.json
+backend/data/queue_recovery.json
+backend/data/tmp*.download
+backend/data/.tmp/
+backend/data/settings.smoketest.json
+*.raw.png
+*.download
+
+# ---- Generated content, benchmarks & marketing outputs (kept local) ----
+backend/data/benchmarks/
+test/
+comparison_12_vs_4_steps/
+wordpress_export/
+.cache/
+data/tmp/
+
+# ---- Local agent state ----
+.opencode/
+
+# ---- Local-only work & hidden tests (never committed) ----
+tasks/
+backend/tests/
+
+# ---- Personal docs (kept local only) ----
+PLAN_ACCEL_QWEN.MD
+AGENTS.md
+ARCHITECTURE.md
+ARCHITECTURE_FR.md
+ELON.md
+Principles.md
+QWENROUTE.md
+coding.md
+
+# ---- OS / editor ----
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# ---- Logs ----
+*.log
+nohup.out
+# standalone app build outputs: staging runtimes and the assembled .app (multi-GB)
+packaging/build/
+packaging/dist/
+packaging/vendor/*/build/
+packaging/vendor/*/*.egg-info/
+packaging/dist/.metadata_never_index
+
+# transient output of tools/run-size-selector-render.mjs
+frontend/tools/.render-smoke/

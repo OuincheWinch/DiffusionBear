@@ -1,0 +1,30 @@
+# DiffusionBear — Primary Backend Dependencies (Python 3.10)
+# Engine: FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo via mflux
+# Prompt Enhancer: Qwen2.5-0.5B-Instruct via mlx-lm
+
+# Web API & Server
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0.0
+python-multipart>=0.0.12
+
+# Apple Silicon MLX & Models
+mlx==0.32.1
+# Qwen-Image 2.1 requires the patched mflux fork (PR #736, + 16GB TE/quant fixes);
+# install from repo checkout: `python -m pip install ./mflux --no-deps`
+mflux==0.20.0
+mlx-lm==0.31.3
+mlx-taef==0.8.1
+mlx-teacache==0.11.0
+
+# Image Processing & Serialization
+pillow>=10.0.0
+pillow-heif>=1.7.0
+# Generative fill uses cv2.seamlessClone for Poisson blending: an alpha composite
+# leaves a visible rectangular seam where the generated region meets the preserved
+# pixels, which was reported on every fill. opencv-python-headless is the wheel that
+# ships without GUI libraries, so it does not drag X11 into a packaged .app.
+opencv-python-headless>=4.9.0
+safetensors>=0.4.0
+numpy>=1.26.0
+huggingface-hub>=0.25.0

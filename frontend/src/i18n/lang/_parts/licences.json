@@ -1,0 +1,198 @@
+{
+  "licences.title": {
+    "es": "Licencias",
+    "zh": "许可协议",
+    "ja": "ライセンス",
+    "pt": "Licenças",
+    "ko": "라이선스"
+  },
+  "licences.intro": {
+    "es": "Qué puedes y qué no puedes hacer con DiffusionBear, y en qué proyectos se apoya.",
+    "zh": "你可以用 DiffusionBear 做什么、不能做什么，以及它构建于哪些项目之上。",
+    "ja": "DiffusionBear で行えること、行えないこと、および基になっているプロジェクト。",
+    "pt": "O que você pode e o que não pode fazer com o DiffusionBear, e em quais projetos ele se apoia.",
+    "ko": "DiffusionBear로 할 수 있는 것과 할 수 없는 것, 그리고 기반이 되는 프로젝트입니다."
+  },
+  "licences.source": {
+    "es": "Código fuente:",
+    "zh": "源代码：",
+    "ja": "ソース：",
+    "pt": "Código-fonte:",
+    "ko": "소스:"
+  },
+  "licences.sectionBackend": {
+    "es": "Backend — tiempo de ejecución MLX / mflux (Python)",
+    "zh": "后端 —— MLX / mflux 运行时（Python）",
+    "ja": "バックエンド — MLX / mflux ランタイム（Python）",
+    "pt": "Backend — runtime MLX / mflux (Python)",
+    "ko": "백엔드 — MLX / mflux 런타임(Python)"
+  },
+  "licences.sectionFrontend": {
+    "es": "Frontend — SPA de React / Vite",
+    "zh": "前端 —— React / Vite 单页应用",
+    "ja": "フロントエンド — React / Vite SPA",
+    "pt": "Frontend — SPA em React / Vite",
+    "ko": "프런트엔드 — React / Vite SPA"
+  },
+  "licences.sectionSdxl": {
+    "es": "Motor SDXL — Juggernaut XL Lightning (Python, ejecución sin torch)",
+    "zh": "SDXL 引擎 —— Juggernaut XL Lightning（Python，运行时无需 torch）",
+    "ja": "SDXL エンジン — Juggernaut XL Lightning（Python、torch 不要のランタイム）",
+    "pt": "Motor SDXL — Juggernaut XL Lightning (Python, runtime sem torch)",
+    "ko": "SDXL 엔진 — Juggernaut XL Lightning(Python, torch 없는 런타임)"
+  },
+  "licences.sectionModels": {
+    "es": "Modelos y pesos",
+    "zh": "模型与权重",
+    "ja": "モデルと重み",
+    "pt": "Modelos e pesos",
+    "ko": "모델과 가중치"
+  },
+  "licences.noteBackend": {
+    "es": "Núcleo de generación para FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo y el motor experimental Qwen-Image 2.1.",
+    "zh": "用于 FLUX.2-klein 4B、Krea 2 Turbo、Z-Image Turbo 和实验性 Qwen-Image 2.1 引擎的生成核心。",
+    "ja": "FLUX.2-klein 4B、Krea 2 Turbo、Z-Image Turbo、および実験的な Qwen-Image 2.1 エンジンの生成コア。",
+    "pt": "Núcleo de geração para FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo e o motor experimental Qwen-Image 2.1.",
+    "ko": "FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo 및 실험용 Qwen-Image 2.1 엔진의 생성 코어입니다."
+  },
+  "licences.noteSdxl": {
+    "es": "Las herramientas de conversión solo se incluyen en venv-sdxl; el motor desplegado no necesita torch.",
+    "zh": "转换工具仅随 venv-sdxl 一同提供；部署的引擎运行时不需要 torch。",
+    "ja": "変換ツールは venv-sdxl にのみ含まれます。展開されるエンジンランタイムに torch は不要です。",
+    "pt": "As ferramentas de conversão vêm apenas no venv-sdxl; o runtime do motor implantado não precisa do torch.",
+    "ko": "변환 도구는 venv-sdxl에만 포함되며, 배포된 엔진 런타임에는 torch가 필요하지 않습니다."
+  },
+  "licences.noteFrontend": {
+    "es": "Interfaz de navegador. Los mismos paquetes que cualquier aplicación Vite moderna.",
+    "zh": "浏览器界面。与现代 Vite 应用相同的软件包。",
+    "ja": "ブラウザ UI。現代の Vite アプリと同じパッケージです。",
+    "pt": "Interface de navegador. Os mesmos pacotes de qualquer app Vite moderno.",
+    "ko": "브라우저 UI입니다. 일반적인 최신 Vite 앱과 동일한 패키지를 사용합니다."
+  },
+  "licences.noteWeights": {
+    "es": "Los archivos de peso se descargan de Hugging Face / las fichas de modelo en el primer uso; DiffusionBear no los incluye ni los redistribuye. Cada uno lleva sus propias condiciones.",
+    "zh": "权重文件在首次使用时从 Hugging Face / 模型卡下载 —— DiffusionBear 既不打包也不再分发它们。每份权重都有自己的条款。",
+    "ja": "重みファイルは初回使用時に Hugging Face / モデルカードからダウンロードされます。DiffusionBear はこれらを同梱・再配布しておらず、それぞれ独自の条件があります。",
+    "pt": "Os arquivos de peso são baixados do Hugging Face / cartões de modelo no primeiro uso — o DiffusionBear não os inclui nem os redistribui. Cada um tem seus próprios termos.",
+    "ko": "가중치 파일은 처음 사용할 때 Hugging Face 또는 모델 카드에서 다운로드됩니다. DiffusionBear는 이를 포함하거나 재배포하지 않으며, 각각 고유한 조건을 따릅니다."
+  },
+  "licences.introSecond": {
+    "es": "Cada paquete de terceros indicado abajo mantiene su propia licencia; nada de lo indicado aquí concede ni revoca esos términos.",
+    "zh": "下面列出的每个第三方软件包都保留自己的许可协议；此处的内容既不授予也不撤销这些条款。",
+    "ja": "以下のサードパーティパッケージはそれぞれのライセンスを保持しています。ここに記載した内容によって、これらの条件が付与されたり破棄されたりするわけではありません。",
+    "pt": "Cada pacote de terceiros abaixo mantém sua própria licença; nada aqui concede nem revoga esses termos.",
+    "ko": "아래의 각 서드파티 패키지는 자체 라이선스를 유지하며, 여기 있는 내용은 그 조건을 부여하거나 철회하지 않습니다."
+  },
+  "licences.thisProject": {
+    "es": "Este proyecto",
+    "zh": "本项目",
+    "ja": "このプロジェクト",
+    "pt": "Este projeto",
+    "ko": "이 프로젝트"
+  },
+  "licences.releasedUnder": {
+    "es": "se distribuye bajo la",
+    "zh": "依据以下协议发布：",
+    "ja": "次のライセンスにより公開されています：",
+    "pt": "é distribuído sob a",
+    "ko": "다음 라이선스로 배포됩니다:"
+  },
+  "licences.mitLicense": {
+    "es": "Licencia MIT",
+    "zh": "MIT 许可协议",
+    "ja": "MIT ライセンス",
+    "pt": "Licença MIT",
+    "ko": "MIT 라이선스"
+  },
+  "licences.copyright": {
+    "es": "Copyright © {year}",
+    "zh": "版权所有 © {year}",
+    "ja": "Copyright © {year}",
+    "pt": "Copyright © {year}",
+    "ko": "저작권 © {year}"
+  },
+  "licences.aiAuthored": {
+    "es": "Written en gran parte por IA",
+    "zh": "主要由 AI 编写",
+    "ja": "大部分をAIが執筆",
+    "pt": "Escrito em grande parte por IA",
+    "ko": "대부분 AI가 작성"
+  },
+  "licences.aiCredits": {
+    "es": "asistido por {credits} junto con su autor humano. Revisado y probado manualmente.",
+    "zh": "由 {credits} 与其人类作者共同协助完成。经人工审阅和基准测试。",
+    "ja": "人間による著者とともに {credits} が支援。内容を確認し、手作業でベンチマークしました。",
+    "pt": "assistido por {credits} junto com seu autor humano. Revisado e testado manualmente.",
+    "ko": "사람 저자와 함께 {credits}가 지원했습니다. 직접 검토하고 벤치마크했습니다."
+  },
+  "licences.mitScopeBefore": {
+    "es": "La licencia MIT cubre",
+    "zh": "MIT 许可协议仅涵盖",
+    "ja": "MIT ライセンスは次をカバーします：",
+    "pt": "A licença MIT cobre",
+    "ko": "MIT 라이선스는 다음을 포괄합니다:"
+  },
+  "licences.mitScopeEm": {
+    "es": "solo el código fuente de este proyecto",
+    "zh": "本项目的源代码",
+    "ja": "このプロジェクトのソースコードのみ",
+    "pt": "apenas o código-fonte deste projeto",
+    "ko": "이 프로젝트의 소스 코드만"
+  },
+  "licences.mitScopeAfter": {
+    "es": ". Los pesos del modelo no están cubiertos por ella: consulta la tabla de pesos más abajo.",
+    "zh": "。模型权重不在其涵盖范围内 —— 请参阅下方的权重表。",
+    "ja": "。モデルの重みは対象外です。下の重みの表を参照してください。",
+    "pt": ". Os pesos dos modelos não estão cobertos — veja a tabela de pesos abaixo.",
+    "ko": ". 모델 가중치는 포함되지 않습니다 — 아래 가중치 표를 참조하세요."
+  },
+  "licences.colPackage": {
+    "es": "Paquete",
+    "zh": "软件包",
+    "ja": "パッケージ",
+    "pt": "Pacote",
+    "ko": "패키지"
+  },
+  "licences.colLicence": {
+    "es": "Licencia",
+    "zh": "许可协议",
+    "ja": "ライセンス",
+    "pt": "Licença",
+    "ko": "라이선스"
+  },
+  "licences.colRepository": {
+    "es": "Repositorio",
+    "zh": "仓库",
+    "ja": "リポジトリ",
+    "pt": "Repositório",
+    "ko": "저장소"
+  },
+  "licences.versions": {
+    "es": "Versiones",
+    "zh": "版本",
+    "ja": "バージョン",
+    "pt": "Versões",
+    "ko": "버전"
+  },
+  "licences.frontendVersion": {
+    "es": "Interfaz {version}",
+    "zh": "前端 {version}",
+    "ja": "フロントエンド {version}",
+    "pt": "Front-end {version}",
+    "ko": "프런트엔드 {version}"
+  },
+  "licences.backendApi": {
+    "es": " · API del backend {version}",
+    "zh": " · 后端 API {version}",
+    "ja": " · バックエンド API {version}",
+    "pt": " · API do backend {version}",
+    "ko": " · 백엔드 API {version}"
+  },
+  "licences.repoLink": {
+    "es": "repositorio",
+    "zh": "仓库",
+    "ja": "リポジトリ",
+    "pt": "repositório",
+    "ko": "저장소"
+  }
+}

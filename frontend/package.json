@@ -1,0 +1,22 @@
+{
+  "name": "diffusionbear-frontend",
+  "private": true,
+  "version": "0.3.6",
+  "type": "module",
+  "scripts": {
+    "dev": "caffeinate -s vite",
+    "build": "vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "i18n:build": "node --import ./tools/register-extensionless.mjs src/i18n/lang/build-lang.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.4",
+    "oxlint": "^1.75.0",
+    "vite": "^8.2.0"
+  }
+}

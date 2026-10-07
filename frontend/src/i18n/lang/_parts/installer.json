@@ -1,0 +1,135 @@
+{
+  "installer.tagWeights": {
+    "es": "pesos",
+    "zh": "权重",
+    "ja": "重み",
+    "pt": "pesos",
+    "ko": "가중치"
+  },
+  "installer.statusInstalled": {
+    "es": "✓ Instalado",
+    "zh": "✓ 已安装",
+    "ja": "✓ インストール済み",
+    "pt": "✓ Instalado",
+    "ko": "✓ 설치됨"
+  },
+  "installer.statusFailed": {
+    "es": "✕ Fallo en la descarga",
+    "zh": "✕ 下载失败",
+    "ja": "✕ ダウンロードに失敗",
+    "pt": "✕ Falha no download",
+    "ko": "✕ 다운로드 실패"
+  },
+  "installer.statusCancelled": {
+    "es": "Descarga cancelada",
+    "zh": "下载已取消",
+    "ja": "ダウンロードをキャンセルしました",
+    "pt": "Download cancelado",
+    "ko": "다운로드 취소됨"
+  },
+  "installer.statusDownloading": {
+    "es": "⬇ Descargando…",
+    "zh": "⬇ 下载中……",
+    "ja": "⬇ ダウンロード中…",
+    "pt": "⬇ Baixando…",
+    "ko": "⬇ 다운로드 중…"
+  },
+  "installer.statusNotInstalled": {
+    "es": "⬇ No instalado: descarga primero los pesos",
+    "zh": "⬇ 未安装 —— 请先下载权重",
+    "ja": "⬇ 未インストール — 先に重みをダウンロードしてください",
+    "pt": "⬇ Não instalado — baixe os pesos primeiro",
+    "ko": "⬇ 설치되지 않음 — 먼저 가중치를 다운로드하세요"
+  },
+  "installer.startingBtn": {
+    "es": "Iniciando…",
+    "zh": "正在启动……",
+    "ja": "起動中…",
+    "pt": "Iniciando…",
+    "ko": "시작 중…"
+  },
+  "installer.downloadBtn": {
+    "es": "Descargar",
+    "zh": "下载",
+    "ja": "ダウンロード",
+    "pt": "Baixar",
+    "ko": "다운로드"
+  },
+  "installer.localBtn": {
+    "es": "📁 Local…",
+    "zh": "📁 本地……",
+    "ja": "📁 ローカル…",
+    "pt": "📁 Local…",
+    "ko": "📁 로컬…"
+  },
+  "installer.localBtnTitle": {
+    "es": "Instalar desde una carpeta ya presente en el disco (caché de HF o local)",
+    "zh": "从磁盘上已有的文件夹安装（HF 缓存或本地）",
+    "ja": "ディスク上にあるフォルダーからインストール（HF キャッシュまたはローカル）",
+    "pt": "Instalar a partir de uma pasta já existente no disco (cache do HF ou local)",
+    "ko": "디스크에 이미 있는 폴더에서 설치 (HF 캐시 또는 로컬)"
+  },
+  "installer.pathRequired": {
+    "es": "Elige un repositorio en caché o introduce una ruta de carpeta",
+    "zh": "选择已缓存的仓库，或输入文件夹路径",
+    "ja": "キャッシュ済みリポジトリを選ぶか、フォルダーパスを入力してください",
+    "pt": "Escolha um repositório em cache ou informe o caminho de uma pasta",
+    "ko": "캐시된 저장소를 선택하거나 폴더 경로를 입력하세요"
+  },
+  "installer.localHint": {
+    "es": "Instala desde una copia que ya está en tu disco: no se descarga ni se copia nada; el modelo se carga directamente desde la carpeta.",
+    "zh": "从磁盘上已有的副本安装 —— 不下载也不复制任何内容；模型直接从该文件夹加载。",
+    "ja": "ディスク上にあるコピからインストールします。ダウンロードも複製も行わず、モデルはフォルダーを直接読み込みます。",
+    "pt": "Instale a partir de uma cópia já no seu disco — nada é baixado nem copiado; o modelo é carregado direto da pasta.",
+    "ko": "디스크에 이미 있는 복사본에서 설치합니다 — 아무것도 다운로드하거나 복사하지 않으며, 모델이 폴더에서 직접 로드됩니다."
+  },
+  "installer.scanningCache": {
+    "es": "Analizando la caché de Hugging Face…",
+    "zh": "正在扫描 Hugging Face 缓存……",
+    "ja": "Hugging Face キャッシュをスキャン中…",
+    "pt": "Verificando o cache do Hugging Face…",
+    "ko": "Hugging Face 캐시 검색 중…"
+  },
+  "installer.pickCachedRepo": {
+    "es": "— elige un repositorio de Hugging Face en caché —",
+    "zh": "—— 选择已缓存的 Hugging Face 仓库 ——",
+    "ja": "— キャッシュ済みの Hugging Face リポジトリを選択 —",
+    "pt": "— escolha um repositório do Hugging Face em cache —",
+    "ko": "— 캐시된 Hugging Face 저장소를 선택하세요 —"
+  },
+  "installer.noCachedRepo": {
+    "es": "— no se encontraron repositorios en caché —",
+    "zh": "—— 未找到已缓存的仓库 ——",
+    "ja": "— キャッシュ済みのリポジトリが見つかりません —",
+    "pt": "— nenhum repositório em cache encontrado —",
+    "ko": "— 캐시된 저장소를 찾을 수 없음 —"
+  },
+  "installer.pathPlaceholder": {
+    "es": "…o /ruta/a/carpeta/del/modelo (o un directorio models--org--name de la caché de HF)",
+    "zh": "……或 /path/to/model/folder（或 HF 缓存中的 models--org--name 目录）",
+    "ja": "…または /path/to/model/folder（または HF キャッシュの models--org--name ディレクトリ）",
+    "pt": "…ou /caminho/para/pasta/do/modelo (ou um diretório models--org--name do cache do HF)",
+    "ko": "…또는 /path/to/model/folder(또는 HF 캐시의 models--org--name 디렉터리)"
+  },
+  "installer.installingBtn": {
+    "es": "Instalando…",
+    "zh": "正在安装……",
+    "ja": "インストール中…",
+    "pt": "Instalando…",
+    "ko": "설치 중…"
+  },
+  "installer.installLocalBtn": {
+    "es": "Instalar desde local",
+    "zh": "从本地安装",
+    "ja": "ローカルからインストール",
+    "pt": "Instalar a partir do local",
+    "ko": "로컬에서 설치"
+  },
+  "installer.retryBtn": {
+    "es": "Reintentar",
+    "zh": "重试",
+    "ja": "再試行",
+    "pt": "Tentar novamente",
+    "ko": "다시 시도"
+  }
+}
