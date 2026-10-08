@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DiffusionBear — Model Arena</title>
+<style>
+  :root {
+    --bg: #07090c;
+    --card: #0d1117;
+    --border: #21262d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --orange: #f0883e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 2rem 1.25rem 4rem;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+  .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.75rem; }
+  .prompt-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 1.75rem;
+    font-style: italic;
+  }
+  .prompt-box b { color: var(--accent); font-style: normal; }
+
+  .grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .comp-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .comp-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem; padding: 0.7rem 0.9rem; font-size: 0.82rem; font-weight: 700;
+  }
+  .comp-card-header .vs { color: var(--orange); }
+  .comp-badge {
+    font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.5rem;
+    border-radius: 99px; border: 1px solid var(--border); color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .slider-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 512 / 768;
+    background: #000;
+    overflow: hidden;
+    user-select: none;
+  }
+  .slider-img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+  .slider-img.bottom { z-index: 1; }
+  .slider-img.top { z-index: 2; clip-path: polygon(0 0, var(--pos) 0, var(--pos) 100%, 0 100%); }
+  .slider-divider {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: #fff; left: var(--pos); z-index: 3;
+    box-shadow: 0 0 10px rgba(0,0,0,0.9);
+    pointer-events: none;
+  }
+  .slider-handle {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    left: var(--pos); width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); border: 2px solid #fff; color: #0b0f14;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 900; z-index: 4; pointer-events: none;
+  }
+  .slider-tag {
+    position: absolute; top: 0.7rem; padding: 0.25rem 0.6rem;
+    font-size: 0.72rem; font-weight: 800; border-radius: 5px; z-index: 4;
+    pointer-events: none;
+  }
+  .slider-tag.left  { left: 0.7rem;  background: rgba(13,17,23,0.75); color: var(--accent);  border: 1px solid rgba(88,166,255,0.55); }
+  .slider-tag.right { right: 0.7rem; background: rgba(13,17,23,0.75); color: var(--orange); border: 1px solid rgba(240,136,62,0.55); }
+
+  /* Full-stage invisible range input drives the divider */
+  .range-input {
+    position: absolute; inset: 0; z-index: 6;
+    width: 100%; height: 100%; margin: 0;
+    -webkit-appearance: none; appearance: none;
+    background: transparent; opacity: 0; cursor: ew-resize;
+  }
+
+  .comp-card-footer {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+    padding: 0.6rem 0.9rem; font-size: 0.75rem; color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+  .comp-card-footer b { color: var(--text); font-weight: 600; }
+  .note {
+    margin-top: 1.5rem; font-size: 0.78rem; color: var(--muted);
+    border-top: 1px solid var(--border); padding-top: 0.9rem;
+  }
+  .note code { background: var(--card); padding: 0.1rem 0.35rem; border-radius: 4px; color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>DiffusionBear — Model Arena</h1>
+  <div class="sub">Drag each divider to compare models head-to-head. Images come from the repeatability benchmarking suite — original, royalty-free scenes (no copyrighted characters).</div>
+
+  <div class="prompt-box">
+    All duels use the same prompt per pair, generated identically for both models — e.g. <b>"a rustic, freshly baked sourdough loaf resting on a weathered oak cutting board, crust with intricate decorative scoring…"</b>
+  </div>
+
+  <div class="grid">
+    <!-- CARD 1: FLUX.2-klein 4B vs Z-Image Turbo — Rustic Sourdough -->
+    <div class="comp-card">
+      <div class="comp-card-header">
+        <span>FLUX.2-klein 4B <span class="vs">vs</span> Z-Image Turbo 6B</span>
+        <span class="comp-badge">Rustic Sourdough · 512×768</span>
+      </div>
+      <div class="slider-stage" id="stage1" style="--pos:50%">
+        <img class="slider-img bottom" src="images/zimage_sourdough.png" alt="Z-Image Turbo 6B, Rustic Sourdough">
+        <span class="slider-tag right">Z-Image Turbo 6B</span>
+        <img class="slider-img top" src="images/flux2_klein_sourdough.png" alt="FLUX.2-klein 4B, Rustic Sourdough">
+        <span class="slider-tag left">FLUX.2-klein 4B</span>
+        <div class="slider-divider"></div>
+        <div class="slider-handle">◄ ►</div>
+        <input type="range" min="0" max="100" value="50" class="range-input" data-stage="stage1">
+      </div>
+      <div class="comp-card-footer">
+        <span>FLUX.2-klein 4B — left of divider</span>
+        <span>Z-Image Turbo 6B — right of divider</span>
+      </div>
+    </div>
+
+    <!-- CARD 2: FLUX.2-klein 4B vs Juggernaut XL Lightning — Modern Glass Villa -->
+    <div class="comp-card">
+      <div class="comp-card-header">
+        <span>FLUX.2-klein 4B <span class="vs">vs</span> Juggernaut XL Lightning</span>
+        <span class="comp-badge">Glass Villa · 512×768</span>
+      </div>
+      <div class="slider-stage" id="stage2" style="--pos:50%">
+        <img class="slider-img bottom" src="images/juggernaut_villa.png" alt="Juggernaut XL Lightning, Modern Glass Villa">
+        <span class="slider-tag right">Juggernaut XL Lightning</span>
+        <img class="slider-img top" src="images/flux2_klein_villa.png" alt="FLUX.2-klein 4B, Modern Glass Villa">
+        <span class="slider-tag left">FLUX.2-klein 4B</span>
+        <div class="slider-divider"></div>
+        <div class="slider-handle">◄ ►</div>
+        <input type="range" min="0" max="100" value="50" class="range-input" data-stage="stage2">
+      </div>
+      <div class="comp-card-footer">
+        <span>FLUX.2-klein 4B — left of divider</span>
+        <span>Juggernaut XL Lightning — right of divider</span>
+      </div>
+    </div>
+
+    <!-- CARD 3: FLUX.2-klein 4B vs Krea 2 Turbo 13B — Snow Leopard -->
+    <div class="comp-card">
+      <div class="comp-card-header">
+        <span>FLUX.2-klein 4B <span class="vs">vs</span> Krea 2 Turbo 13B</span>
+        <span class="comp-badge">Snow Leopard · 512×768</span>
+      </div>
+      <div class="slider-stage" id="stage3" style="--pos:50%">
+        <img class="slider-img bottom" src="images/krea_leopard.png" alt="Krea 2 Turbo 13B, Snow Leopard">
+        <span class="slider-tag right">Krea 2 Turbo 13B</span>
+        <img class="slider-img top" src="images/flux2_klein_leopard.png" alt="FLUX.2-klein 4B, Snow Leopard">
+        <span class="slider-tag left">FLUX.2-klein 4B</span>
+        <div class="slider-divider"></div>
+        <div class="slider-handle">◄ ►</div>
+        <input type="range" min="0" max="100" value="50" class="range-input" data-stage="stage3">
+      </div>
+      <div class="comp-card-footer">
+        <span>FLUX.2-klein 4B — left of divider</span>
+        <span>Krea 2 Turbo 13B — right of divider</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    Drag the divider in any browser — the invisible <code>&lt;input type="range"&gt;</code> overlay sets a CSS variable that clips the top image.
+    The same comparison plays inline in the README as muted looping videos (GitHub strips JavaScript, so the draggable version only works opened as a local file).
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll(".range-input").forEach((el) => {
+    const stage = document.getElementById(el.dataset.stage);
+    el.addEventListener("input", () => { stage.style.setProperty("--pos", el.value + "%"); });
+    el.addEventListener("change", () => { stage.style.setProperty("--pos", el.value + "%"); });
+  });
+</script>
+</body>
+</html>
