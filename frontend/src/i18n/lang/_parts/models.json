@@ -292,5 +292,110 @@
     "ja": "Hugging Face で見る",
     "pt": "Ver no Hugging Face",
     "ko": "Hugging Face에서 보기"
+  },
+  "models.detected.title": {
+    "es": "Modelos detectados",
+    "zh": "检测到的模型",
+    "ja": "検出されたモデル",
+    "pt": "Modelos detectados",
+    "ko": "감지된 모델"
+  },
+  "models.detected.desc": {
+    "es": "Modelos descargados mediante el navegador que no están en el registro. Se pueden convertir, registrar o eliminar.",
+    "zh": "通过浏览器下载但不在注册表中的模型。可以转换、注册或删除。",
+    "ja": "ブラウザ経由でダウンロードされたがレジストリにないモデル。変換、登録、削除が可能です。",
+    "pt": "Modelos baixados via navegador que não estão no registro. Podem ser convertidos, registrados ou excluídos.",
+    "ko": "브라우저를 통해 다운로드되었으나 레지스트리에 없는 모델. 변환, 등록 또는 삭제 가능."
+  },
+  "models.detected.loading": {
+    "es": "Cargando modelos detectados…",
+    "zh": "加载检测到的模型…",
+    "ja": "検出されたモデルを読み込み中…",
+    "pt": "Carregando modelos detectados…",
+    "ko": "감지된 모델 로드 중…"
+  },
+  "models.detected.colArchitecture": {
+    "es": "Arquitectura",
+    "zh": "架构",
+    "ja": "アーキテクチャ",
+    "pt": "Arquitetura",
+    "ko": "아키텍처"
+  },
+  "models.detected.colRunnableAs": {
+    "es": "Ejecutable como",
+    "zh": "可作为...运行",
+    "ja": "実行可能エンジン",
+    "pt": "Executável como",
+    "ko": "실행 가능 엔진"
+  },
+  "models.detected.delete": {
+    "es": "Eliminar",
+    "zh": "删除",
+    "ja": "削除",
+    "pt": "Excluir",
+    "ko": "삭제"
+  },
+  "models.detected.deleteTitle": {
+    "es": "Eliminar este modelo del almacenamiento",
+    "zh": "从存储中删除此模型",
+    "ja": "ストレージからこのモデルを削除",
+    "pt": "Excluir este modelo do armazenamento",
+    "ko": "스토리지에서 이 모델 삭제"
+  },
+  "models.detected.confirmDelete": {
+    "es": "¿Eliminar '{model}'? Se liberará espacio en disco. Esta acción no se puede deshacer.",
+    "zh": "删除 '{model}'？这将释放磁盘空间。此操作无法撤销。",
+    "ja": "'{model}' を削除しますか？ディスク容量が解放されます。元に戻せません。",
+    "pt": "Excluir '{model}'? Isso liberará espaço em disco. Esta ação não pode ser desfeita.",
+    "ko": "'{model}'을(를) 삭제하시겠습니까? 디스크 공간이 확보됩니다. 되돌릴 수 없습니다."
+  },
+  "models.detected.deleted": {
+    "es": "Modelo '{model}' eliminado",
+    "zh": "模型 '{model}' 已删除",
+    "ja": "モデル '{model}' を削除しました",
+    "pt": "Modelo '{model}' excluído",
+    "ko": "모델 '{model}'이(가) 삭제됨"
+  },
+  "models.detected.convert": {
+    "es": "Convertir .bin → .safetensors",
+    "zh": "转换 .bin → .safetensors",
+    "ja": ".bin → .safetensors に変換",
+    "pt": "Converter .bin → .safetensors",
+    "ko": ".bin → .safetensors 변환"
+  },
+  "models.detected.convertTitle": {
+    "es": "Convertir pesos SDXL de .bin a .safetensors",
+    "zh": "将 SDXL 权重从 .bin 转换为 .safetensors",
+    "ja": "SDXL 重みを .bin から .safetensors に変換",
+    "pt": "Converter pesos SDXL de .bin para .safetensors",
+    "ko": "SDXL 가중치를 .bin에서 .safetensors로 변환"
+  },
+  "models.detected.converted": {
+    "es": "Modelo '{model}' convertido a .safetensors",
+    "zh": "模型 '{model}' 已转换为 .safetensors",
+    "ja": "モデル '{model}' を .safetensors に変換しました",
+    "pt": "Modelo '{model}' convertido para .safetensors",
+    "ko": "모델 '{model}'이(가) .safetensors로 변환됨"
+  },
+  "models.detected.registered": {
+    "es": "Modelo '{model}' registrado como ejecutable",
+    "zh": "模型 '{model}' 已注册为可执行",
+    "ja": "モデル '{model}' を実行可能として登録しました",
+    "pt": "Modelo '{model}' registrado como executável",
+    "ko": "모델 '{model}'이(가) 실행 가능으로 등록됨"
+  },
+  "models.detected.converting": {
+    "es": "Convirtiendo…",
+    "zh": "转换中…",
+    "ja": "変換中…",
+    "pt": "Convertendo…",
+    "ko": "변환 중…"
+  },
+  "models.deleting": {
+    "es": "Eliminando…",
+    "zh": "删除中…",
+    "ja": "削除中…",
+    "pt": "Excluindo…",
+    "ko": "삭제 중…"
   }
 }

@@ -13,6 +13,77 @@ import sys
 import time
 from pathlib import Path
 
+# Patch Qwen21WeightDefinition to handle single-file text_encoder layouts.
+#
+# Two community layouts ship one `text_encoder/model.safetensors` where the stock
+# definition expects a sharded set plus an index:
+#   * Sawfwair/Qwen-Image-2.1-Turbo-MLX-Mixed-4bit  -- single file, no index at all
+#   * mlx-community/Qwen-Image-2.1-MLX-4bit        -- single file PLUS an index.json
+#                                                      that names that same one file
+# Both are `loading_mode="single"`. Everything else must fall through untouched so mflux
+# raises its own FileNotFoundError naming the missing path.
+#
+# INVARIANT: this selector never returns None. The stock text_encoder definition has no
+# variant_selector at all, so an `... if orig_selector else None` fallback returns None
+# for every non-single layout, and mflux's weight_loader then dereferences that None --
+# surfacing as the opaque "AttributeError: 'NoneType' object has no attribute
+# 'download_url'". Returning the untouched base component instead lets mflux report the
+# real problem.
+try:
+    from mflux.models.qwen21.weights.qwen21_weight_definition import Qwen21WeightDefinition
+    from dataclasses import replace
+    from pathlib import Path
+
+    _QWEN_ORIG_GET_COMPONENTS = Qwen21WeightDefinition.get_components
+
+    def _is_single_file_index(index_json_path: Path) -> bool:
+        """True when index.json maps every tensor to the one model.safetensors."""
+        try:
+            weight_map = json.loads(index_json_path.read_text()).get("weight_map") or {}
+            if not isinstance(weight_map, dict):
+                return False
+            files = set(weight_map.values())
+            return len(files) == 1 and "model.safetensors" in files
+        except Exception:
+            return False
+
+    def _patched_get_components(_orig=_QWEN_ORIG_GET_COMPONENTS):
+        components = _orig()
+        for c in components:
+            if c.name != "text_encoder":
+                continue
+
+            def _te_variant_selector(root_path, _base=c, _orig_selector=c.variant_selector):
+                te_path = root_path / _base.hf_subdir
+                single_file = te_path / "model.safetensors"
+                index_json = te_path / "model.safetensors.index.json"
+                if single_file.is_file() and (
+                    not index_json.is_file() or _is_single_file_index(index_json)
+                ):
+                    # replace(), not a hand-built ComponentDefinition: the latter silently
+                    # drops precision / skip_quantization / key_transform / weight_files.
+                    return replace(_base, loading_mode="single")
+                return _orig_selector(root_path) if _orig_selector else _base
+
+            c.variant_selector = _te_variant_selector
+            break
+        return components
+
+    Qwen21WeightDefinition.get_components = staticmethod(_patched_get_components)
+except Exception as _e:
+    # stderr, not stdout: stdout is the JSON-lines transport and the parent discards
+    # anything that is not valid JSON there.
+    sys.stderr.write(f"[qwen_engine] Qwen21WeightDefinition patch failed: {_e}\n")
+
+import gc
+import json
+import math
+import os
+import signal
+import sys
+import time
+from pathlib import Path
+
 import mlx.core as mx
 from mflux.models.common.vae.tiling_config import TilingConfig
 from mflux.models.qwen21.variants.txt2img.qwen_image_21 import QwenImage21
@@ -37,8 +108,24 @@ def _get_pipeline(model_path, quantization, phase_cb=False):
         return hit[0], 0.0
     if phase_cb:
         emit({"phase": "loading_model", "detail": "Loading Qwen-Image-2.1 4-bit pipeline into unified memory..."})
+
     t0 = time.time()
-    pipe = QwenImage21(quantize=quantization, model_path=str(model_path))
+    try:
+        pipe = QwenImage21(quantize=quantization, model_path=str(model_path))
+    except Exception as exc:
+        # Name the model, the resolved path, and what is actually on disk. mflux's own
+        # failure ("'NoneType' object has no attribute 'download_url'") says none of that,
+        # which is why this cost a whole debugging session once already.
+        te_dir = Path(model_path) / "text_encoder"
+        try:
+            present = ", ".join(sorted(p.name for p in te_dir.iterdir())) or "<empty>"
+        except OSError:
+            present = "<text_encoder/ unreadable>"
+        raise RuntimeError(
+            f"Qwen-Image 2.1 weight load failed: {type(exc).__name__}: {exc} | "
+            f"model_path={model_path} quantize={quantization} | "
+            f"text_encoder/ contains: {present}"
+        ) from exc
     pipe.prompt_cache = _BoundedPromptCache(pipe.prompt_cache)
     load_time = round(time.time() - t0, 2)
     _PIPELINE_CACHE.clear()
@@ -142,6 +229,55 @@ def _fingerprint(name, arr):
               "first12": [float(x) for x in a[:12]]})
     except Exception as e:
         emit({"diag": name, "error": str(e)})
+
+
+def _run_diagnostics(pipe, prompt, seed, height, width, steps, scheduler, eff_guidance):
+    """QWEN_ENGINE_DIAG probe: fingerprint every intermediate the pipeline builds.
+
+    Opt-in, and deliberately scoped so its tensors die with this call rather than
+    staying resident across the render that follows.
+    """
+    from mflux.models.common.config.config import Config as _Config
+    from mflux.models.common.config import ModelConfig as _MC
+    from mflux.models.qwen21.latent_creator.qwen21_latent_creator import Qwen21LatentCreator as _LC
+    from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_prompt_encoder import Qwen21PromptEncoder as _PE
+
+    te = pipe.text_encoder
+    tok = pipe.tokenizers["qwen21"]
+    ids = mx.array(tok.tokenize(prompt).input_ids).reshape(1, -1)
+    tok_emb = te.embed_tokens(ids.astype(mx.int32))
+    mx.eval(tok_emb)
+    _fingerprint("tok_emb_for_tokens", tok_emb)
+
+    lat = _LC.create_noise(seed, height, width).astype(_MC.precision)
+    mx.eval(lat)
+    _fingerprint("noise", lat)
+
+    emb, msk = _PE.encode_prompt(
+        prompt=prompt,
+        prompt_cache=pipe.prompt_cache,
+        tokenizer=tok,
+        text_encoder=te,
+    )
+    mx.eval(emb, msk)
+    _fingerprint("text_embeds", emb)
+    _fingerprint("text_mask", msk.astype(mx.float32))
+
+    cfg = _Config(
+        width=width, height=height, guidance=eff_guidance,
+        scheduler=scheduler, image_path=None, image_strength=None,
+        model_config=_MC.qwen_image_21(), num_inference_steps=steps,
+    )
+    t0 = next(iter(cfg.time_steps))
+    out = pipe.transformer(
+        t=t0, config=cfg,
+        hidden_states=cfg.scheduler.scale_model_input(lat, t0),
+        encoder_hidden_states=emb, encoder_hidden_states_mask=msk,
+    )
+    mx.eval(out)
+    _fingerprint("transformer_first_step_out", out)
+    del out, emb, msk, lat, tok_emb, ids
+    mx.clear_cache()
 
 
 def _value_bytes(value) -> int:
@@ -305,43 +441,11 @@ def _run(req: dict, keep_alive: bool = False) -> int:
                 pipe.vae.decoder = raw_decoder
 
         if os.environ.get("QWEN_ENGINE_DIAG"):
-            from mflux.models.common.config.config import Config as _Config
-            from mflux.models.common.config import ModelConfig as _MC
-            from mflux.models.qwen21.latent_creator.qwen21_latent_creator import Qwen21LatentCreator as _LC
-            from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_prompt_encoder import Qwen21PromptEncoder as _PE
-            te = pipe.text_encoder
-            _tok = pipe.tokenizers["qwen21"]
-            _ids = mx.array(_tok.tokenize(prompt).input_ids).reshape(1, -1)
-            _tok_emb = te.embed_tokens(_ids.astype(mx.int32))
-            mx.eval(_tok_emb)
-            _fingerprint("tok_emb_for_tokens", _tok_emb)
-            _lat = _LC.create_noise(seed, height, width)
-            _lat = _lat.astype(_MC.precision)
-            mx.eval(_lat)
-            _fingerprint("noise", _lat)
-            _emb, _msk = _PE.encode_prompt(
-                prompt=prompt,
-                prompt_cache=pipe.prompt_cache,
-                tokenizer=pipe.tokenizers["qwen21"],
-                text_encoder=pipe.text_encoder,
-            )
-            mx.eval(_emb)
-            _fingerprint("text_embeds", _emb)
-            mx.eval(_msk)
-            _fingerprint("text_mask", _msk.astype(mx.float32))
-            _cfg = _Config(
-                width=width, height=height, guidance=eff_guidance,
-                scheduler=scheduler, image_path=None, image_strength=None,
-                model_config=_MC.qwen_image_21(), num_inference_steps=steps,
-            )
-            _t0 = next(iter(_cfg.time_steps))
-            _o = pipe.transformer(
-                t=_t0, config=_cfg,
-                hidden_states=_cfg.scheduler.scale_model_input(_lat, _t0),
-                encoder_hidden_states=_emb, encoder_hidden_states_mask=_msk,
-            )
-            mx.eval(_o)
-            _fingerprint("transformer_first_step_out", _o)
+            # Its own function scope on purpose: this holds a full first-step transformer
+            # output plus embeddings. Inline in _run they stay referenced until _run
+            # returns, i.e. across the entire real generation -- on the 16 GB machine
+            # that is the documented OOM. Returning frees them and clears the cache.
+            _run_diagnostics(pipe, prompt, seed, height, width, steps, scheduler, eff_guidance)
 
         step_cb = _StepCB(phase_cb=(lambda ph, d: phase(ph, d)) if req.get("phase_cb") else None)
         pipe.callbacks.in_loop = [step_cb]

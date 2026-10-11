@@ -140,6 +140,14 @@ def _model_is_fully_cached_uncached(model_id: str, minfo: dict | None = None, lo
             return path.is_dir() and not _has_incomplete_files(path) and any(path.rglob("*.safetensors"))
         except OSError:
             return False
+    # For other models (FLUX, etc.), check the model directory in ASSET_DIR/models first
+    model_dir = generator.ASSET_DIR / "models" / model_id
+    if model_dir.is_dir():
+        try:
+            return not _has_incomplete_files(model_dir) and any(model_dir.rglob("*.safetensors"))
+        except OSError:
+            return False
+    # Fall back to HF cache check
     repo = generator.model_download_repo(model_id, minfo) or ""
     return "/" in repo and _complete_hf_snapshot(repo)
 
@@ -187,10 +195,10 @@ def list_models():
 
 
 @router.delete("/api/models/{model_id}")
-def remove_model(model_id: str):
+def remove_model(model_id: str, force: bool = False):
     if model_id not in generator.MODELS:
         raise HTTPException(404, "unknown model")
-    ok, reason = generator.uninstall_model(model_id)
+    ok, reason = generator.uninstall_model(model_id, force=force)
     if not ok:
         raise HTTPException(409, reason or "model is in use")
     return {"status": "unlinked" if reason and "unlinked" in reason else "removed", "model_id": model_id}

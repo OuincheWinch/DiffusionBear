@@ -1,5 +1,12 @@
 # -*- mode: gitignore; encoding: utf-8 -*-
 
+# The whole runtime data directory. The entries below it used to be listed one by one,
+# which meant anything new that landed there showed up as untracked -- that is how
+# queue_recovery.json.invalid.<ts> became a git candidate, and a stray token file would
+# have done the same. test_repo_security only audits `git ls-files`, so an untracked
+# secret there is invisible to it. Nothing in backend/data belongs in version control.
+backend/data/
+
 # ---- Secrets & local credentials (NEVER commit) ----
 backend/data/civitai_token.txt
 backend/data/hf_token.txt
@@ -86,3 +93,17 @@ packaging/dist/.metadata_never_index
 # transient output of tools/run-size-selector-render.mjs
 frontend/tools/.render-smoke/
 backend/data/prompt_cache.sqlite*
+
+# ---- Local build artifacts / scratch docs (never committed) ----
+# packaging/DiffusionBear-*-arm64.zip is a 500MB distributable rebuilt by
+# packaging/build_app.sh; it is output, not source.
+packaging/DiffusionBear-*-arm64.zip
+packaging/dist/
+SUPERPOWERS_GUIDE.html
+
+# Local-only: the www.diffusionbear.com parking page is deployed separately,
+# not from this repo.
+site/
+
+# macOS
+.DS_Store

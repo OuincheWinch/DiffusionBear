@@ -199,8 +199,15 @@ class Krea2(nn.Module):
                 v = v_neg + guidance * (v - v_neg)
             return v
 
-        # Warmup + shapeless compilation for M1/M2 (MLX 0.32+ improved compilation)
-        # Run first 2 steps eagerly to establish shapes, then compile with shapeless=True
+        # Warmup + compilation for M1/M2 (MLX 0.32+ improved compilation)
+        # Run first 2 steps eagerly to establish shapes, then compile.
+        #
+        # NOTE: this must NOT be `mx.compile(..., shapeless=True)`. Shapeless compilation
+        # cannot infer output shapes for a `Split` whose axis length is only known at
+        # runtime, and Krea 2's transformer hits exactly that: it died at denoise step
+        # 3/8 with "[Primitive::output_shapes] Split cannot infer output shapes."
+        # Shape-specialised compilation still fuses the graph and still gives the M1
+        # most of the speedup -- it just bakes in the shapes it saw during warmup.
         warmup_steps = 2
         step_counter = [0]
         predict_ref = [predict]
@@ -209,13 +216,13 @@ class Krea2(nn.Module):
             result = predict_ref[0](latents, timestep)
             step_counter[0] += 1
             if step_counter[0] == warmup_steps:
-                predict_ref[0] = mx.compile(predict_ref[0], shapeless=True)
+                predict_ref[0] = mx.compile(predict_ref[0])
             return result
 
         # Use warmup_predict initially; it will swap to compiled after warmup
         if AppleSiliconUtil.is_m1_or_m2():
             return warmup_predict
-        return mx.compile(predict, shapeless=True)
+        return mx.compile(predict)
 
     @staticmethod
     def _resolve_scheduler(scheduler: str | None) -> str:

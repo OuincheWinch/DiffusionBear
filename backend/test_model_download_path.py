@@ -209,12 +209,12 @@ class DownloadStallWatchdogTests(unittest.TestCase):
         self.downloads = downloads
         self._saved = dict(downloads.MODEL_DOWNLOAD_TASKS)
         downloads.MODEL_DOWNLOAD_TASKS.clear()
-        self._saved_limit = downloads._DOWNLOAD_STALL_LIMIT_S
+        self._saved_limit = downloads._DOWNLOAD_STALL_LIMIT_BASE_S
 
     def tearDown(self):
         self.downloads.MODEL_DOWNLOAD_TASKS.clear()
         self.downloads.MODEL_DOWNLOAD_TASKS.update(self._saved)
-        self.downloads._DOWNLOAD_STALL_LIMIT_S = self._saved_limit
+        self.downloads._DOWNLOAD_STALL_LIMIT_BASE_S = self._saved_limit
 
     def _task(self, **over):
         base = {
@@ -229,7 +229,7 @@ class DownloadStallWatchdogTests(unittest.TestCase):
     def test_a_frozen_transfer_is_failed(self):
         import time
 
-        self.downloads._DOWNLOAD_STALL_LIMIT_S = 1.0
+        self.downloads._DOWNLOAD_STALL_LIMIT_BASE_S = 1.0
         self.downloads.MODEL_DOWNLOAD_TASKS["t1"] = self._task(
             _last_progress_at=time.monotonic() - 60
         )
@@ -242,7 +242,7 @@ class DownloadStallWatchdogTests(unittest.TestCase):
     def test_the_error_says_what_happened_and_what_to_do(self):
         import time
 
-        self.downloads._DOWNLOAD_STALL_LIMIT_S = 1.0
+        self.downloads._DOWNLOAD_STALL_LIMIT_BASE_S = 1.0
         self.downloads.MODEL_DOWNLOAD_TASKS["t1"] = self._task(
             _last_progress_at=time.monotonic() - 60
         )
@@ -254,7 +254,7 @@ class DownloadStallWatchdogTests(unittest.TestCase):
     def test_a_healthy_transfer_is_left_alone(self):
         import time
 
-        self.downloads._DOWNLOAD_STALL_LIMIT_S = 300.0
+        self.downloads._DOWNLOAD_STALL_LIMIT_BASE_S = 300.0
         self.downloads.MODEL_DOWNLOAD_TASKS["t1"] = self._task(
             _last_progress_at=time.monotonic()
         )
@@ -265,7 +265,7 @@ class DownloadStallWatchdogTests(unittest.TestCase):
         """A slow start on a large first file is not a hang."""
         import time
 
-        self.downloads._DOWNLOAD_STALL_LIMIT_S = 1.0
+        self.downloads._DOWNLOAD_STALL_LIMIT_BASE_S = 1.0
         self.downloads.MODEL_DOWNLOAD_TASKS["t1"] = self._task(
             downloaded_bytes=0, _last_progress_at=time.monotonic() - 600
         )

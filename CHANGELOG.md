@@ -2,6 +2,134 @@
 
 All notable changes to **DiffusionBear** are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.3.8] — beta — 2026-10-11
+
+### Fixed
+- **`shapeless=True` compilation removed from every engine we ship** (FLUX.2 txt2img and
+  edit, Krea 2, Z-Image). Shapeless compilation cannot infer output shapes for a `Split`
+  whose axis length is only known at runtime; Krea 2 died at denoise step 3/8 with
+  `[Primitive::output_shapes] Split cannot infer output shapes.` Now shape-specialised,
+  which keeps the fusion and drops the crash. Costs ~6 s on a 512×768 FLUX.2 4-step run.
+- **FLUX.2 reference-image editing crashed at denoise step 3/4** with
+  `[eval] Attempting to eval an array during function transformations like compile or
+  vmap is not allowed.` The cause was our own rope memo cache: it keys on
+  `ids.reshape(-1).tolist()`, which forces an evaluation, and the reference-image graph
+  reaches the rope while `mx.compile` is tracing. The cache now detects the tracing case
+  and falls through to the uncached call, so the edit path compiles again.
+- **Qwen-Image 2.1 single-file text-encoder layouts no longer crash.** The weight
+  definition's selector returned `None` for a `model.safetensors` present without an
+  index, producing `AttributeError: 'NoneType' object has no attribute 'download_url'`.
+  Both the no-index and single-file-with-index layouts are handled, and the selector now
+  always returns the base component. Regression-tested across all three layouts.
+- **Installed models are no longer re-downloaded.** `resolve_local_model_path` now falls
+  back to the Hugging Face cache and rejects incomplete downloads (`.incomplete` /
+  `.part`), so a model already on disk reports `already_installed` instead of fetching
+  again. `_newest_complete_hf_snapshot` replaces the old "any weight file" probe.
+- **FLUX.2-klein 4B image-to-image used the wrong repository.** The edit branch fell back
+  to the unquantised upstream `black-forest-labs/FLUX.2-klein-4B`, pulling ~22 GB. It now
+  resolves the installed `mlx-community/flux2-klein-4b-4bit` weights first.
+- **`_generate_sdxl` never re-armed the Qwen watchdog** it cancelled on the way in.
+
+### Changed
+- **The vendored mflux is now the code that is tested.** The dev venv was synced to
+  `packaging/vendor/mflux-src`, so a green test run describes the tree that actually
+  ships. FLUX.2 4-step 512×768 measured 42.9 s → 49.2 s after the shapeless change.
+- **`LSMinimumSystemVersion` is derived from the payload** instead of hardcoded at 15.0.
+  The shipped binaries require **macOS 26.2**, which the old value understated by 11
+  releases — Gatekeeper would have refused to launch the app.
+
+### Removed
+- **Dead diffusers engine** (`qwen_diffusers_engine.py` and its dispatcher) — unreachable
+  since both Qwen models moved to the mflux subprocess.
+- **Duplicate Qwen selector monkey-patch** in `generator.py`, and unconditional debug
+  prints on the engine hot paths.
+- **Temporary `/halloween-report` and `/halloween` routes** — they served files from
+  `/tmp` to any unauthenticated caller.
+
+### Added
+- **Detected-models panel** — checkpoints downloaded through the browser that are not in
+  the registry are listed with their on-disk size, and offered as a runnable alias.
+- Regression tests: `test_qwen_text_encoder_layout.py` (9 cases),
+  `test_rope_memo_cache.py` (4 cases, reproduces the trace-time `ValueError`).
+
+### Known
+- `reference_strength` is accepted and recorded but has **no effect on FLUX**. The edit
+  variant starts from pure noise and consumes the reference as conditioning tokens, so
+  the value would only skip denoise steps, not increase fidelity.
+- Three pre-existing wired-budget assertions in `test_latency_cache` still fail; they
+  assert a hardcoded budget that the auto-derived budget replaced in 0.3.6.
+
+## [0.3.8] — beta — 2026-10-11
+
+A stability release. Every engine in the registry was re-verified by live generation on
+this build (MacBook Pro, Apple M1, 16 GB): FLUX.2-klein 4B/9B, Krea 2 Turbo, Z-Image
+Turbo, Qwen-Image 2.1 and its Turbo variant.
+
+### Removed
+- **`mx.compile(shapeless=True)` from every model we ship.** 0.3.7 introduced it as an
+  11–20% speedup. It was measured on FLUX.2 only and generalised from there, and it is
+  not safe: shapeless compilation cannot infer output shapes for a `Split` whose axis
+  length is only known at runtime. Krea 2 dies at denoise step 3 of 8 with
+  `[Primitive::output_shapes] Split cannot infer output shapes.` Compilation is now
+  shape-specialised, which keeps the graph fusion and drops the crash class. FLUX 4B
+  measures ~49 s at 512×768/4 steps, against ~43 s with shapeless — a real, and
+  deliberate, cost. The upstream helpers in `flow_match_euler_discrete_scheduler.py` and
+  `gpt_oss` are untouched.
+
+### Fixed
+- **FLUX 4B Edit failed at denoise step 3/4** with `Attempting to eval an array during
+  function transformations like compile or vmap is not allowed`. Root cause was ours, not
+  mflux: the rope memo cache builds its key with `ids.reshape(-1).tolist()`, which forces
+  an evaluation, and the reference-image graph reaches the rope embedder while the
+  compiled graph is being traced. The cache now detects the tracing case and falls
+  through to the uncached call — nothing is lost, because a compiled graph traces once
+  and then reuses its own fused result. FLUX Edit was previously "fixed" by not compiling
+  it at all, which silently cost the speedup; it compiles again. Regression test added,
+  and it reproduces the exact production error when the fix is reverted.
+- **Qwen-Image 2.1 text-encoder selector returned `None`** for a single-file model with no
+  index, so mflux crashed with an opaque `AttributeError` on the component's missing
+  `download_url`. The selector now always returns a usable component definition, handling
+  the single-file/no-index, single-file-with-index and sharded layouts.
+- **Installed models were re-downloaded.** `resolve_local_model_path` only looked in the
+  asset directory and missed anything already in the Hugging Face cache, so the download
+  endpoint offered a re-download of weights that were on disk. It now resolves the newest
+  *complete* snapshot — an interrupted transfer staged as `.incomplete`/`.part` is no
+  longer mistaken for a finished one.
+- **FLUX.2-klein 4B could fall back to the unquantized upstream repo.** The pipeline was
+  built with `model_path=None` in one path and the registry repo in another, so an edit
+  could pull `black-forest-labs/FLUX.2-klein-4B` (22 GB) instead of the 4-bit MLX build.
+  Both txt2img and edit now fall back to the registry repo explicitly.
+
+### Changed
+- **Vendored mflux reconciled with the development venv.** The packaging build installs
+  `packaging/vendor/mflux-src`, which had drifted from the venv that was actually being
+  tested. The two trees are now identical, so what CI runs is what ships. This also
+  restored `use_kv_cache` as a valid kwarg — img2img paths raised `TypeError` against the
+  older venv.
+- **`LSMinimumSystemVersion` is derived from the payload** instead of hardcoded to 15.0.
+  The bundled Mach-O binaries require 26.2, so the old plist understated the requirement
+  by eleven macOS majors and the app would fail to launch rather than be refused cleanly.
+- **Model registry carries a real `engine` field** instead of inferring the engine from
+  the model id.
+- **Qwen-Image 2.1 no longer routed to a diffusers path** that had no working dependency
+  in the bundle; both Qwen models go through the mflux subprocess, and the dead
+  `qwen_diffusers_engine.py` and its dispatcher are deleted.
+- **Preset labels no longer quote unmeasured generation times.** The Qwen-Image 2.1 Turbo
+  presets advertised "~3–6 min" figures that were never measured; the labels now state
+  only the settings, and times return once each preset has a real median.
+
+### Added
+- `test_rope_memo_cache.py` — reproduces the FLUX Edit compile failure.
+- `test_qwen_text_encoder_layout.py` — covers the three text-encoder layouts.
+- `RELEASE_BLOCKERS.md` — the full review tracker, with resolution status.
+
+### Security
+- **Temporary `/halloween-report` routes removed.** They served a generated HTML report
+  from `/tmp` on an unauthenticated origin.
+- **`backend/data/` is gitignored in full.** `data/lora_files` is 425 MB and
+  `data/hf_token.txt` is a real credential; the previous partial exclusion covered only
+  `data/models`.
+
 ## [0.3.7] — beta — 2026-10-08
 
 ### Added

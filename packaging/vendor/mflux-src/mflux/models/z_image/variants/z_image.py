@@ -235,8 +235,13 @@ class ZImage(nn.Module):
             )
             return noise + guidance * (noise - negative_noise)
 
-        # Warmup + shapeless compilation for M1/M2 (MLX 0.32+ improved compilation)
-        # Run first 2 steps eagerly to establish shapes, then compile with shapeless=True
+        # Warmup + compilation for M1/M2 (MLX 0.32+ improved compilation)
+        # Run first 2 steps eagerly to establish shapes, then compile.
+        #
+        # NOTE: shape-specialised on purpose. Shapeless compilation cannot infer output
+        # shapes for a `Split` whose axis length is only known at runtime; Krea 2 hit
+        # exactly that and died at denoise step 3 with
+        # "[Primitive::output_shapes] Split cannot infer output shapes."
         warmup_steps = 2
         step_counter = [0]
         predict_ref = [predict]
@@ -255,10 +260,10 @@ class ZImage(nn.Module):
             )
             step_counter[0] += 1
             if step_counter[0] == warmup_steps:
-                predict_ref[0] = mx.compile(predict_ref[0], shapeless=True)
+                predict_ref[0] = mx.compile(predict_ref[0])
             return result
 
         # Use warmup_predict initially; it will swap to compiled after warmup
         if AppleSiliconUtil.is_m1_or_m2():
             return warmup_predict
-        return mx.compile(predict, shapeless=True)
+        return mx.compile(predict)

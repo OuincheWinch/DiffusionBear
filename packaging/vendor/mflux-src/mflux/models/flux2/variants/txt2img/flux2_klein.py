@@ -416,8 +416,15 @@ class Flux2Klein(nn.Module):
                 noise = negative_noise + guidance * (noise - negative_noise)
             return noise
 
-        # Warmup + shapeless compilation for M1/M2 (MLX 0.32+ improved compilation)
-        # Run first 2 steps eagerly to establish shapes, then compile with shapeless=True
+        # Warmup + compilation for M1/M2 (MLX 0.32+ improved compilation)
+        # Run first 2 steps eagerly to establish shapes, then compile.
+        #
+        # NOTE: shape-specialised on purpose. Shapeless compilation cannot infer output
+        # shapes for a `Split` whose axis length is only known at runtime; Krea 2 hit
+        # exactly that and died at denoise step 3 with
+        # "[Primitive::output_shapes] Split cannot infer output shapes."
+        # FLUX happened to survive it, but that is a property of its graph, not a
+        # guarantee -- so no model we ship compiles shapeless.
         warmup_steps = 2
         step_counter = [0]
         predict_ref = [predict]  # mutable container for function reference
@@ -442,14 +449,14 @@ class Flux2Klein(nn.Module):
             step_counter[0] += 1
             if step_counter[0] == warmup_steps:
                 # After warmup, replace with compiled version
-                predict_ref[0] = mx.compile(predict_ref[0], shapeless=True)
+                predict_ref[0] = mx.compile(predict_ref[0])
             return result
 
         # Use warmup_predict initially; it will swap to compiled after warmup
         if AppleSiliconUtil.is_m1_or_m2() or transformer.model_config.supports_kv_cache:
             return warmup_predict
-        # Non-M1/M2 without KV cache: compile immediately with shapeless
-        return mx.compile(predict, shapeless=True)
+        # Non-M1/M2 without KV cache: compile immediately
+        return mx.compile(predict)
 
     @staticmethod
     def _cached_predict(transformer):

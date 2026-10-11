@@ -84,13 +84,17 @@ class TileSizeSettingTests(unittest.TestCase):
 
         `elif model_id == "krea2-turbo"` appears more than once in this file, so matching
         the branch by its id silently picked an unrelated one and the assertion passed or
-        failed for the wrong reason."""
+        failed for the wrong reason.
+
+        The branch terminator is the dispatcher's closing `else: raise ValueError`.
+        It used to be the qwen branch; Qwen is dispatched in generate() before _get_pipeline
+        is ever reached, so that arm no longer exists here."""
         src = GEN.read_text(encoding="utf-8")
         ctor = src.index("_pipeline = Krea2(")
         # The tiling call must come after the pipeline exists, and before the branch ends.
         apply_at = src.index("_apply_krea_vae_tiling(_pipeline)")
         self.assertGreater(apply_at, ctor, "tiling configured before the pipeline was built")
-        nxt = src.index('elif model_id == "qwen-image-2.1"', ctor)
+        nxt = src.index('raise ValueError(f"unknown model: {model_id}")', ctor)
         self.assertLess(apply_at, nxt, "tiling call fell outside the krea2 branch")
 
     def test_the_config_requests_more_than_one_tile(self):

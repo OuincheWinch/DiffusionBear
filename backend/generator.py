@@ -48,6 +48,41 @@ try:
     def _safe_mflux_to_numpy(images: mx.array) -> np.ndarray:
         if len(images.shape) == 5:
             images = mx.squeeze(images, axis=2)
+        mx.eval(images)
+        return _orig_mflux_to_numpy(images)
+
+    _mflux_img_util.ImageUtil._to_numpy = _safe_mflux_to_numpy
+except Exception as _e:
+    print(f"[generator] mflux ImageUtil patch failed: {_e}", flush=True)
+
+# The Qwen21 text_encoder layout patch lives in qwen_engine.py ONLY.
+#
+# It used to be duplicated here as well, and that was a bug factory: generate() returns
+# for both Qwen models before ever reaching _get_pipeline, so the copy in this file was
+# unreachable, and it silently drifted out of date (it lacked the index.json-naming-a-
+# single-file case, and returned None for every other layout -- the same defect that
+# produced "AttributeError: 'NoneType' object has no attribute 'download_url'").
+# Two copies of a load-bearing monkey-patch with no test asserting they agree is exactly
+# how that happened. Qwen generation runs in a separate interpreter, so this process
+# never needs it.
+
+# Anti-SIGABRT Safety Patch for mflux ImageUtil:
+# By default, mflux calls np.array(images) on an un-evaluated MLX array.
+# If an allocation/Metal failure occurs during eval_impl inside Python's C buffer protocol
+# (getbufferproc), the unhandled C++ exception causes std::terminate() -> SIGABRT (Abort trap 6).
+# Forcing mx.eval(images) in Python scope before calling np.array(images) ensures any Metal error
+# is raised as a standard, catchable Python RuntimeError.
+try:
+    import mlx.core as mx
+    import numpy as np
+    import mflux.utils.image_util as _mflux_img_util
+
+    _orig_mflux_to_numpy = _mflux_img_util.ImageUtil._to_numpy
+
+    @staticmethod
+    def _safe_mflux_to_numpy(images: mx.array) -> np.ndarray:
+        if len(images.shape) == 5:
+            images = mx.squeeze(images, axis=2)
         images = mx.transpose(images, (0, 2, 3, 1))
         images = mx.array.astype(images, mx.float32)
         mx.eval(images)
@@ -172,8 +207,9 @@ _MAX_PROMPT_BYTES = 128 * (1 << 10)
 MODELS = {
     "flux2-klein-4b": {
         "id": "flux2-klein-4b",
+        "engine": "mflux",
         "label": "FLUX.2-klein 4B",
-        "repo": DEFAULT_MODEL,
+        "repo": "mlx-community/flux2-klein-4b-4bit",
         "civitai_model_id": 2387000,
         "civitai_version_id": 2684089,
         "civitai_model_name": "FLUX.2-klein 4B",
@@ -201,6 +237,7 @@ MODELS = {
     },
     "flux2-klein-9b": {
         "id": "flux2-klein-9b",
+        "engine": "mflux",
         "label": "FLUX.2-klein 9B",
         "repo": "mlx-community/flux2-klein-9b-4bit",
         "civitai_model_id": 2387000,
@@ -355,6 +392,7 @@ MODELS = {
     },
     "z-image-turbo": {
         "id": "z-image-turbo",
+        "engine": "mflux",
         "label": "Z-Image Turbo 6B",
         "repo": "filipstrand/Z-Image-Turbo-mflux-4bit",
         "civitai_model_id": 2168935,
@@ -389,6 +427,7 @@ MODELS = {
     },
     "krea2-turbo": {
         "id": "krea2-turbo",
+        "engine": "mflux",
         "label": "Krea 2 Turbo 13B",
         "repo": "local:krea2-turbo-q4",
         "civitai_model_id": 2726029,
@@ -420,6 +459,7 @@ MODELS = {
     },
     "qwen-image-2.1": {
         "id": "qwen-image-2.1",
+        "engine": "qwen",
         "label": "Qwen-Image 2.1 (MLX q4, experimental)",
         "repo": "mlx-community/Qwen-Image-2.1-MLX-4bit",
         # mflux-community/mflux fork (Qwen-Image-2.1 port, PR #736) patched to load the
@@ -454,6 +494,38 @@ MODELS = {
             # guess at on a loaded one.
             {"id": "wide", "label": "✦ Wide 768×768 25 steps (~12min)", "width": 768, "height": 768, "steps": 25},
             {"id": "landscape", "label": "✦ Landscape 768×512 25 steps (~9min)", "width": 768, "height": 512, "steps": 25},
+        ],
+    },
+    "qwen-image-2.1-turbo": {
+        "id": "qwen-image-2.1-turbo",
+        "engine": "qwen",
+        "label": "Qwen-Image 2.1 Turbo (MLX q4, experimental)",
+        "repo": "Sawfwair/Qwen-Image-2.1-Turbo-MLX-Mixed-4bit",
+        "ecosystem": "Qwen-Image 2.1",
+        "is_distilled": True,
+        "default_steps": 8,
+        "default_width": 512,
+        "default_height": 768,
+        "default_guidance": 1.0,
+        "supports_guidance": True,
+        "supports_negative": True,
+        "supports_loras": False,
+        "supports_ref": True,
+        "max_reference_images": 1,
+        "supports_fast_vae": False,
+        "samplers": ["linear", "euler"],
+        "default_sampler": "linear",
+        # No time estimates here. test_latency_cache.PresetTimeClaimTests requires a
+        # preset to quote a time only when it has a measured median at that exact
+        # (size, steps), and Turbo has none yet -- the only measurements are 512x768 and
+        # 512x512 at 4 steps. These labels were carrying invented ~3-6min figures.
+        # Measure each preset at its own size/steps and add them to MEASURED_PRESET_
+        # SECONDS in test_latency_cache.py before quoting a time again.
+        "presets": [
+            {"id": "draft", "label": "⚡ Fast Draft 512×768 8 steps", "width": 512, "height": 768, "steps": 8},
+            {"id": "wide", "label": "✦ Wide 768×768 8 steps", "width": 768, "height": 768, "steps": 8},
+            {"id": "landscape", "label": "✦ Landscape 768×512 8 steps", "width": 768, "height": 512, "steps": 8},
+            {"id": "quality", "label": "✦ Quality 1024×1024 8 steps", "width": 1024, "height": 1024, "steps": 8},
         ],
     },
 }
@@ -1285,12 +1357,64 @@ def resolve_local_model_path(model_id: str, path: Path | str | None = None) -> P
     if path is None:
         raw = app_settings.model_local_path(model_id)
         if not raw:
+            # Fall back to default model directory: ASSET_DIR / "models" / <model_id>
+            path = ASSET_DIR / "models" / model_id
+        else:
+            path = Path(raw).expanduser()
+    else:
+        p = Path(path).expanduser()
+        if not p.exists():
             return None
-        path = Path(raw).expanduser()
+        return _resolve_hf_cache_snapshot(p)
     p = Path(path).expanduser()
     if not p.exists():
+        # For mflux models, try HF cache if default path doesn't exist
+        minfo = get_model_info(model_id)
+        is_mflux = (
+            minfo
+            and (
+                # Every registry entry now carries an explicit engine, so this is the
+                # real discriminator. The id tuple stays only as a safety net for a
+                # model added without one -- it is not load-bearing and should not be.
+                minfo.get("engine") in ("mflux", "qwen")
+                or model_id in ("flux2-klein-4b", "flux2-klein-9b", "z-image-turbo", "krea2-turbo", "qwen-image-2.1", "qwen-image-2.1-turbo")
+            )
+        )
+        if minfo and is_mflux:
+            repo = model_download_repo(model_id, minfo) or ""
+            if "/" in repo:
+                # Deliberately the SAME completeness test _is_model_cached_uncached uses
+                # (:1296). Accepting a snapshot on "has any .safetensors" alone means an
+                # interrupted download that finished one shard reads as installed, and
+                # the pipeline then loads half a model instead of triggering a re-fetch.
+                snapshot = _newest_complete_hf_snapshot(repo)
+                if snapshot is not None:
+                    return snapshot
         return None
     return _resolve_hf_cache_snapshot(p)
+
+
+def _newest_complete_hf_snapshot(repo_id: str) -> Path | None:
+    """Newest HF-cache snapshot for ``repo_id`` that has weights and no partial files."""
+    if "/" not in str(repo_id or ""):
+        return None
+    snapshots = _hf_repo_cache_dir(repo_id) / "snapshots"
+    if not snapshots.is_dir():
+        return None
+    try:
+        candidates = sorted(
+            (p for p in snapshots.iterdir() if p.is_dir()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+    except OSError:
+        return None
+    for candidate in candidates:
+        if _model_path_has_incomplete(candidate):
+            continue
+        if _model_path_has_weights(candidate):
+            return candidate
+    return None
 
 
 def validate_local_model_dir(model_id: str, path: Path | str) -> tuple[bool, str | None]:
@@ -1422,12 +1546,12 @@ def model_disk_usage(model_id: str, minfo: dict | None = None) -> int:
     return 0
 
 
-def uninstall_model(model_id: str) -> tuple[bool, str | None]:
+def uninstall_model(model_id: str, force: bool = False) -> tuple[bool, str | None]:
     with _model_maintenance_lock:
-        return _uninstall_model(model_id)
+        return _uninstall_model(model_id, force=force)
 
 
-def _uninstall_model(model_id: str) -> tuple[bool, str | None]:
+def _uninstall_model(model_id: str, force: bool = False) -> tuple[bool, str | None]:
     """Remove a model's weights from disk. Refuses (False, reason) while the model
     is queued/generating or a weights download is in-flight for it."""
     minfo = get_model_info(model_id)
@@ -1470,7 +1594,8 @@ def _uninstall_model(model_id: str) -> tuple[bool, str | None]:
             d = minfo.get("model_dir")
             if d and Path(d).exists():
                 if ASSET_DIR != DATA_DIR and Path(d).resolve().is_relative_to(ASSET_DIR.resolve()):
-                    return False, "model is in the shared asset store; remove it from the source application"
+                    if not force:
+                        return False, "model is in the shared asset store; remove it from the source application (use force=true to override)"
                 import shutil
 
                 shutil.rmtree(Path(d), ignore_errors=True)
@@ -1483,7 +1608,8 @@ def _uninstall_model(model_id: str) -> tuple[bool, str | None]:
             d = ASSET_DIR / "models" / "krea2-turbo-q4"
             if d.exists():
                 if ASSET_DIR != DATA_DIR:
-                    return False, "model is in the shared asset store; remove it from the source application"
+                    if not force:
+                        return False, "model is in the shared asset store; remove it from the source application (use force=true to override)"
                 shutil.rmtree(d, ignore_errors=True)
                 removed_any = not d.exists()
                 if not removed_any:
@@ -2018,11 +2144,34 @@ def _install_rope_cache(model_id: str):
         return
     if spec in _ROPE_CACHE_INSTALLED:
         return
+    _install_rope_cache_on_class(cls)
+    _ROPE_CACHE_INSTALLED.add(spec)
+    print(f"[generator] installed rope memo cache for {model_id} ({spec[1]}, lossless; ids constant across steps)", flush=True)
+
+
+def _install_rope_cache_on_class(cls):
+    """Patch one rope class in place. Split out of `_install_rope_cache` so the
+    trace-safety behaviour can be tested against a throwaway class."""
     orig = cls.__call__
     cache = OrderedDict()
 
     def _call(self, ids):
-        key = (ids.shape, str(ids.dtype), tuple(ids.reshape(-1).tolist()))
+        # Building the key calls `.tolist()`, which forces an evaluation. Inside an
+        # mx.compile trace MLX refuses that outright:
+        #   ValueError: [eval] Attempting to eval an array during function
+        #   transformations like compile or vmap is not allowed.
+        # That is what broke FLUX 4B *edit*: the reference-image path reaches this
+        # rope while the compiled graph is being traced, and the whole generation died
+        # at denoise step 3/4. It is a catchable Python exception, so fall through to
+        # the uncached call instead of dying.
+        #
+        # Nothing is lost by skipping the cache during tracing: a compiled graph traces
+        # once and then reuses its own fused result, so the memo would never be hit for
+        # those steps anyway. The cache still does its job on the eager paths.
+        try:
+            key = (ids.shape, str(ids.dtype), tuple(ids.reshape(-1).tolist()))
+        except ValueError:
+            return orig(self, ids)
         hit = cache.get(key)
         if hit is None:
             hit = orig(self, ids)
@@ -2037,8 +2186,6 @@ def _install_rope_cache(model_id: str):
         return hit
 
     cls.__call__ = _call
-    _ROPE_CACHE_INSTALLED.add(spec)
-    print(f"[generator] installed rope memo cache for {model_id} ({spec[1]}, lossless; ids constant across steps)", flush=True)
 
 
 _ROPE_CACHE_INSTALLED = set()
@@ -2071,7 +2218,11 @@ def _get_pipeline(model_id: str, quantization: int, loras: list[dict], variant: 
             from mflux.models.flux2.variants.edit.flux2_klein_edit import Flux2KleinEdit
 
             _pipeline = Flux2KleinEdit(
-                model_path=local_arg,
+                # Same reason as the txt2img branch below: with model_path=None, mflux
+                # falls back to its own default repo (black-forest-labs/FLUX.2-klein-4B,
+                # 22.1 GB of weights this app never loads) instead of the 4.3 GB
+                # quantized repo the app downloads.
+                model_path=local_arg or info["repo"],
                 quantize=quantization,
                 lora_paths=[l["path"] for l in loras] or None,
                 lora_scales=scales or None,
@@ -2081,7 +2232,7 @@ def _get_pipeline(model_id: str, quantization: int, loras: list[dict], variant: 
             from mflux.models.flux2 import Flux2Klein
 
             _pipeline = Flux2Klein(
-                model_path=local_arg,
+                model_path=local_arg or info["repo"],
                 quantize=quantization,
                 lora_paths=[l["path"] for l in loras] or None,
                 lora_scales=scales or None,
@@ -2156,17 +2307,11 @@ def _get_pipeline(model_id: str, quantization: int, loras: list[dict], variant: 
         # decode time (krea2.py:186) and at encode time (:167) and defaults to None, so
         # assigning it after construction is enough -- no patch to mflux is needed.
         _apply_krea_vae_tiling(_pipeline)
-    elif model_id == "qwen-image-2.1":
-        from mflux.models.qwen21.variants.txt2img.qwen_image_21 import QwenImage21
-
-        # mlx-community repo ships EVERYTHING pre-quantized (TE q4 + transformer q4 +
-        # VAE bf16). The fork's qwen21_initializer rebuilds packed layers as
-        # QuantizedLinear/QuantizedEmbedding at load (patch) and, with the TE
-        # skip_quantization/precision overrides, keeps them quantized - no bf16 TE.
-        _pipeline = QwenImage21(
-            quantize=quantization,
-            model_path=local_arg or info["repo"],
-        )
+    # NOTE: qwen-image-2.1 and qwen-image-2.1-turbo deliberately have NO branch here.
+    # generate() dispatches both to _generate_qwen_subprocess, which runs qwen_engine.py
+    # in a separate interpreter -- that is where QwenImage21 is constructed and where the
+    # text_encoder layout patch lives. Reaching this function with a Qwen id would mean
+    # the dispatch regressed; raise rather than silently loading in the wrong process.
     else:
         raise ValueError(f"unknown model: {model_id}")
     _current_pipeline_key = key
@@ -2283,7 +2428,7 @@ def _effective_guidance(minfo, guidance, negative_prompt=""):
         raise ValueError("guidance must be numeric") from e
     if not math.isfinite(value) or value < 0:
         raise ValueError("guidance must be a finite non-negative number")
-    if minfo.get("id") == "qwen-image-2.1" and negative_prompt and value <= 1.0:
+    if minfo.get("id") in ("qwen-image-2.1", "qwen-image-2.1-turbo") and negative_prompt and value <= 1.0:
         return 3.0
     return value
 
@@ -2326,7 +2471,7 @@ def _effective_quantization(model_id, quantization):
         value = int(quantization)
     except (TypeError, ValueError) as e:
         raise ValueError("quantization must be an integer") from e
-    if model_id in ("krea2-turbo", "qwen-image-2.1"):
+    if model_id in ("krea2-turbo", "qwen-image-2.1", "qwen-image-2.1-turbo"):
         if value != 4:
             raise ValueError(f"{model_id} supports only 4-bit quantization")
         return 4
@@ -2378,6 +2523,10 @@ def _resolve_reference_path(value: str) -> str:
 
 
 def _qwen_local_model(minfo):
+    model_id = minfo.get("id")
+    if model_id == "qwen-image-2.1-turbo":
+        local = resolve_local_model_path("qwen-image-2.1-turbo")
+        return str(local.resolve()) if local is not None else str(minfo.get("repo") or "Qwen/Qwen-Image-2.1-Turbo")
     local = resolve_local_model_path("qwen-image-2.1")
     return str(local.resolve()) if local is not None else str(minfo.get("repo") or "mlx-community/Qwen-Image-2.1-MLX-4bit")
 
@@ -2459,14 +2608,14 @@ def generate(
         raise ValueError("negative prompt exceeds the 128 KiB limit")
     chosen_sampler = _validate_sampler(sampler, minfo)
     effective_guidance = _effective_guidance(minfo, guidance, negative_prompt)
-    if minfo["id"] == "qwen-image-2.1" and steps > _QWEN_MAX_STEPS:
+    if minfo["id"] in ("qwen-image-2.1", "qwen-image-2.1-turbo") and steps > _QWEN_MAX_STEPS:
         raise ValueError(
             f"{minfo['label']}: {steps} steps exceeds the {_QWEN_MAX_STEPS}-step ceiling for this "
             f"machine. Measured median at 25 steps is 790.8s vs 910s at 40 steps, so the extra "
             f"steps are not worth the time. Use ≤ {_QWEN_MAX_STEPS} steps, or change the "
             f"per-model default in Parameters > Defaults."
         )
-    if minfo["id"] == "qwen-image-2.1" and width * height > 589824:
+    if minfo["id"] in ("qwen-image-2.1", "qwen-image-2.1-turbo") and width * height > 589824:
         raise ValueError(
             f"{minfo['label']}: resolutions above 768×768 (589k px) OOM the bf16 VAE "
             f"decode on 16GB Apple Silicon and can crash the app. Keep ≤ 512×768 / 768×512 / 768×768."
@@ -2553,7 +2702,7 @@ def generate(
             cache_interval=cache_interval, quantization=quantization,
             output_format=output_format, stealth=stealth, fast_vae=fast_vae,
         )
-    if minfo["id"] == "qwen-image-2.1":
+    if minfo["id"] in ("qwen-image-2.1", "qwen-image-2.1-turbo"):
         return _generate_qwen_subprocess(
             prompt=prompt, width=width, height=height, steps=steps,
             guidance=effective_guidance, seed=seed, progress_cb=progress_cb,
@@ -2718,6 +2867,16 @@ def generate(
             t_infer_start = time.time()
             sampler_label = chosen_sampler
             if variant == "edit":
+                # NOTE: image_strength is deliberately NOT passed here.
+                # The FLUX edit variant starts from PURE NOISE (create_noise) and feeds
+                # the reference as concatenated conditioning tokens -- it is not classic
+                # img2img. image_strength only feeds Config.init_time_step, so on this
+                # path it would not make the result more faithful to the reference; it
+                # would just skip the first `int(steps * strength)` denoise steps and
+                # degrade the image. Verified: passing the app's 0.6 default skips 60%
+                # of the steps. Fidelity here is controlled by the prompt and guidance,
+                # not by a strength slider. `reference_strength` is therefore accepted
+                # and recorded but has no effect on FLUX -- see RELEASE_BLOCKERS.md.
                 out = pipe.generate_image(
                     seed=seed,
                     prompt=prompt,
@@ -2854,7 +3013,7 @@ _sdxl_stderr_done = None
 # distilled model in the registry runs 6 steps, so this is generous.
 _DISTILLED_MAX_STEPS = 12
 
-# Hard ceiling for qwen-image-2.1, by owner decision (2026-09-28): 40 steps is
+# Hard ceiling for qwen-image-2.1 / qwen-image-2.1-turbo, by owner decision (2026-09-28): 40 steps is
 # never worth running on a 16GB M1. Its own measured medians are 790.8s at
 # 512x768 / 25 steps and 910s at 512x768 / 40 steps, so the extra 15 steps buy
 # almost nothing for ~15% more time. Refused loudly rather than silently
@@ -3425,8 +3584,9 @@ def _generate_sdxl(prompt, width, height, steps, guidance, seed, loras,
     global _current_sdxl_model
     raw_image_path = None
     with _lock:
-        _kill_qwen_process()
-        _cancel_sdxl_watchdog()
+        _kill_sdxl_daemon()
+        _cancel_mflux_watchdog()
+        _cancel_qwen_watchdog()
         try:
             _drop_mflux_pipeline()
             minfo = get_model_info(model) or {}
@@ -3617,6 +3777,12 @@ def _generate_sdxl(prompt, width, height, steps, guidance, seed, loras,
                 except OSError:
                     pass
             _arm_sdxl_watchdog()
+            # We cancelled the Qwen watchdog on the way in (a live timer would fire
+            # mid-render). Re-arm it here: a warm Qwen daemon left with no idle timer
+            # holds ~10.5 GB until the next Qwen job or app quit, which on a 16 GB machine
+            # is the documented OOM-adjacent state. _arm_qwen_watchdog self-guards -- it
+            # no-ops when there is no live daemon.
+            _arm_qwen_watchdog()
 
 
 _qwen_stderr_tail = collections.deque(maxlen=100)
@@ -3634,6 +3800,7 @@ def _generate_qwen_subprocess(prompt, width, height, steps, guidance, seed,
                               cancel_event=None, negative_prompt="", sampler=None,
                               ref_paths=None, image_strength=None, quantization=4,
                               output_format="png", stealth=False, fast_vae=True):
+    # model arg is one of "qwen-image-2.1" or "qwen-image-2.1-turbo"
     global _qwen_process, _qwen_reader_messages, _qwen_reader_done, _qwen_reader_thread
     global _qwen_stderr_thread, _qwen_stderr_done
     raw_image_path = None
@@ -3822,6 +3989,7 @@ def _generate_qwen_subprocess(prompt, width, height, steps, guidance, seed,
                 except OSError:
                     pass
             _arm_mflux_watchdog()
+
 
 
 def _shutdown_engines():

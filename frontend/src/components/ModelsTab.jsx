@@ -3,6 +3,7 @@ import HfModelBrowser from "./HfModelBrowser";
 import ModelsSection from "./settings/ModelsSection";
 import StorageSection from "./settings/StorageSection";
 import HfCacheSection from "./settings/HfCacheSection";
+import DetectedModelsSection from "./settings/DetectedModelsSection";
 import { useI18n } from "../i18n/I18nContext";
 import { useModelsList } from "../hooks/useModelsList";
 
@@ -68,6 +69,8 @@ export default function ModelsTab({ onNavigate }) {
         <p className="params-section-desc">{t("settings.section.hfCacheDesc")}</p>
         <HfCacheSection onFeedback={handleFeedback} />
       </section>
+
+      <DetectedModelsSection onModelsChanged={refreshModels} onFeedback={handleFeedback} />
 
       {onNavigate && (
         <button

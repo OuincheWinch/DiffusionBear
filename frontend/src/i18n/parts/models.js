@@ -261,6 +261,96 @@ export const modelsStrings = {
     de: "Auf Hugging Face ansehen",
     it: "Vedi su Hugging Face",
   },
+  "models.detected.title": {
+    fr: "Modèles détectés",
+    en: "Detected Models",
+    de: "Erkannte Modelle",
+    it: "Modelli rilevati",
+  },
+  "models.detected.desc": {
+    fr: "Modèles téléchargés via le navigateur mais absents du registre. Convertissables, enregistrables, supprimables.",
+    en: "Models downloaded via the browser but not in the registry. Convertible, registerable, deletable.",
+    de: "Über den Browser heruntergeladene Modelle, aber nicht im Register. Konvertierbar, registrierbar, löschbar.",
+    it: "Modelli scaricati tramite il browser ma non nel registro. Convertibili, registrabili, eliminabili.",
+  },
+  "models.detected.loading": {
+    fr: "Chargement des modèles détectés…",
+    en: "Loading detected models…",
+    de: "Erkannte Modelle laden…",
+    it: "Caricamento modelli rilevati…",
+  },
+  "models.detected.colArchitecture": {
+    fr: "Architecture",
+    en: "Architecture",
+    de: "Architektur",
+    it: "Architettura",
+  },
+  "models.detected.colRunnableAs": {
+    fr: "Exécutable comme",
+    en: "Runnable as",
+    de: "Ausführbar als",
+    it: "Eseguibile come",
+  },
+  "models.detected.delete": {
+    fr: "Supprimer",
+    en: "Delete",
+    de: "Löschen",
+    it: "Elimina",
+  },
+  "models.detected.deleteTitle": {
+    fr: "Supprimer ce modèle du stockage",
+    en: "Delete this model from storage",
+    de: "Dieses Modell aus dem Speicher löschen",
+    it: "Elimina questo modello dallo storage",
+  },
+  "models.detected.confirmDelete": {
+    fr: "Supprimer « {model} » ? Cela libérera de l'espace disque. Action irréversible.",
+    en: "Delete '{model}'? This will free disk space. This action cannot be undone.",
+    de: "Modell '{model}' löschen? Dies gibt Speicherplatz frei. Nicht rückgängig machbar.",
+    it: "Eliminare '{model}'? Questo libererà spazio su disco. Azione irreversibile.",
+  },
+  "models.detected.deleted": {
+    fr: "Modèle « {model} » supprimé",
+    en: "Model '{model}' deleted",
+    de: "Modell '{model}' gelöscht",
+    it: "Modello '{model}' eliminato",
+  },
+  "models.detected.convert": {
+    fr: "Convertir .bin → .safetensors",
+    en: "Convert .bin → .safetensors",
+    de: ".bin → .safetensors konvertieren",
+    it: "Converti .bin → .safetensors",
+  },
+  "models.detected.convertTitle": {
+    fr: "Convertir les poids SDXL de .bin vers .safetensors",
+    en: "Convert SDXL weights from .bin to .safetensors",
+    de: "SDXL-Gewichte von .bin nach .safetensors konvertieren",
+    it: "Converti i pesi SDXL da .bin a .safetensors",
+  },
+  "models.detected.converted": {
+    fr: "Modèle « {model} » converti en .safetensors",
+    en: "Model '{model}' converted to .safetensors",
+    de: "Modell '{model}' in .safetensors konvertiert",
+    it: "Modello '{model}' convertito in .safetensors",
+  },
+  "models.detected.registered": {
+    fr: "Modèle « {model} » enregistré comme exécutable",
+    en: "Model '{model}' registered as runnable",
+    de: "Modell '{model}' als ausführbar registriert",
+    it: "Modello '{model}' registrato come eseguibile",
+  },
+  "models.detected.converting": {
+    fr: "Conversion…",
+    en: "Converting…",
+    de: "Wird konvertiert…",
+    it: "Conversione…",
+  },
+  "models.deleting": {
+    fr: "Suppression…",
+    en: "Deleting…",
+    de: "Wird gelöscht…",
+    it: "Eliminazione…",
+  },
 };
 
 export default modelsStrings;

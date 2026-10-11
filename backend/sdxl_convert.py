@@ -205,10 +205,6 @@ def convert(
     on_progress=None,
     timeout: int = 60 * 60,
 ) -> dict:
-    """Convert `source` into a diffusers directory at `dest`.
-
-    Runs out-of-process. `on_progress(fraction, text)` is called from the reader thread.
-    """
     exe = python or Path(os.environ.get("MLX_SDXL_CONVERT_PYTHON") or DEFAULT_PYTHON)
     if not source.is_file():
         raise ConversionError(f"checkpoint not found: {source.name}")
@@ -269,6 +265,120 @@ def convert(
             raise ConversionError("conversion produced no model_index.json")
         result["ok"] = True
         return result
+
+
+def convert_bin_to_safetensors(
+    source_dir: Path,
+    dest_dir: Path | None = None,
+    cancel_event: threading.Event | None = None,
+    on_progress=None,
+) -> dict:
+    """Convert a diffusers directory with .bin weights to .safetensors format.
+
+    Some HF repos (e.g., RunDiffusion/Juggernaut-XI-v11) ship diffusers-format
+    models but with PyTorch .bin files in unet/. The SDXL engine needs .safetensors.
+    This loads the model with from_pretrained (which reads .bin) and saves with
+    save_pretrained (which writes .safetensors).
+
+    Runs in-process (not subprocess) since we only need diffusers, not torch
+    directly. The main venv already has diffusers + torch from mflux.
+
+    If dest_dir is None, converts in-place (source_dir is modified).
+    """
+    source_dir = Path(source_dir)
+    if dest_dir is None:
+        dest_dir = source_dir
+    else:
+        dest_dir = Path(dest_dir)
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir, ignore_errors=True)
+        shutil.copytree(source_dir, dest_dir)
+
+    if not (source_dir / "model_index.json").is_file():
+        raise ConversionError(f"not a diffusers directory: {source_dir}")
+
+    if on_progress:
+        on_progress(0.1, "loading model")
+
+    try:
+        import torch
+        from diffusers import StableDiffusionXLPipeline
+    except Exception as exc:
+        raise ConversionError(f"conversion dependencies missing: {exc}")
+
+    # Load the pipeline - from_pretrained reads .bin files automatically
+    try:
+        pipeline = StableDiffusionXLPipeline.from_pretrained(
+            str(source_dir),
+            torch_dtype=torch.float16,
+            local_files_only=True,
+            safety_checker=None,
+        )
+    except Exception as exc:
+        raise ConversionError(f"could not load model from {source_dir}: {exc}")
+
+    if cancel_event is not None and cancel_event.is_set():
+        raise ConversionError("cancelled")
+
+    if on_progress:
+        on_progress(0.6, "saving as safetensors")
+
+    # Save - save_pretrained writes .safetensors by default in diffusers >= 0.40
+    try:
+        pipeline.save_pretrained(str(dest_dir), safe_serialization=True)
+    except Exception as exc:
+        raise ConversionError(f"could not save as safetensors: {exc}")
+
+    # Normalize CLIP keys (same logic as subprocess worker)
+    def _normalise_clip_keys(target: Path):
+        from safetensors.torch import load_file, save_file
+        te = target / "text_encoder" / "model.safetensors"
+        te2 = target / "text_encoder_2" / "model.safetensors"
+        if not te.is_file() or not te2.is_file():
+            return
+        with safe_open_keys(te) as k1, safe_open_keys(te2) as k2:
+            prefixed_elsewhere = any(x.startswith("text_model.") for x in k2)
+            needs = bool(k1) and not any(x.startswith("text_model.") for x in k1)
+        if not (prefixed_elsewhere and needs):
+            return
+        tensors = load_file(str(te))
+        renamed = {(k if k.startswith("text_model.") else "text_model." + k): v for k, v in tensors.items()}
+        save_file(renamed, str(te), metadata={"format": "pt"})
+
+    def safe_open_keys(path: Path):
+        from safetensors import safe_open
+        class _Ctx:
+            def __enter__(self):
+                self._h = safe_open(str(path), "pt")
+                return list(self._h.keys())
+            def __exit__(self, *a):
+                return False
+        return _Ctx()
+
+    _normalise_clip_keys(dest_dir)
+
+    # Restore slow tokenizer files
+    def _restore_slow_tokenizer_files(target: Path):
+        import json as _json
+        for sub in ("tokenizer", "tokenizer_2"):
+            folder = target / sub
+            src = folder / "tokenizer.json"
+            if not src.is_file() or (folder / "vocab.json").is_file():
+                continue
+            model = _json.loads(src.read_text("utf-8")).get("model") or {}
+            vocab, merges = model.get("vocab"), model.get("merges")
+            if not vocab or not merges:
+                continue
+            (folder / "vocab.json").write_text(_json.dumps(vocab, ensure_ascii=False), encoding="utf-8")
+            lines = [" ".join(m) if isinstance(m, (list, tuple)) else str(m) for m in merges]
+            (folder / "merges.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    _restore_slow_tokenizer_files(dest_dir)
+
+    if on_progress:
+        on_progress(1.0, "done")
+
+    return {"ok": True, "dest": str(dest_dir)}
 
 
 class tempfile_dir:

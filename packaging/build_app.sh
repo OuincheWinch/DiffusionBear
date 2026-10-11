@@ -368,6 +368,26 @@ cp "$REPO/packaging/icon/DiffusionBear.icns" "$APP/Contents/Resources/AppIcon.ic
 echo "  AppIcon.icns installed"
 
 say "writing Info.plist"
+
+# LSMinimumSystemVersion is DERIVED, not declared.
+#
+# It used to be hardcoded 15.0 on the belief that "MLX calls a Metal API absent on
+# Sonoma". That is stale, and it understated the real floor by eleven majors: the mlx
+# wheels we ship carry minos 26.2 in their own LC_BUILD_VERSION load commands
+# (libmlx.dylib, core.cpython-*.so, libjaccl.dylib -- verified with otool -l). torch is
+# 14.0, the pbs interpreters 11.0. So on macOS 15.0-26.1 the Swift shell starts fine
+# (its own minos is 15.0), spawns the backend, and dyld kills the child -- which the
+# launcher reports as "The backend exited during startup" after ~5 minutes, not as a
+# version error. Take the max across the payload so the plist can never understate it.
+MIN_MACOS="$(find "$APP/Contents/Resources" \( -name '*.so' -o -name '*.dylib' \) -print0 2>/dev/null \
+  | xargs -0 -n1 otool -l 2>/dev/null \
+  | awk '/LC_BUILD_VERSION/{f=1} f && /minos/{print $2; f=0}' \
+  | sort -V | tail -1)"
+MIN_MACOS="${MIN_MACOS:-26.2}"
+if [ "$(printf '%s\n%s\n' "$MIN_MACOS" "15.0" | sort -V | tail -1)" != "15.0" ]; then
+  echo "  payload requires macOS $MIN_MACOS or newer (derived from binary load commands)"
+fi
+
 # No XML DOCTYPE: it is a legacy prolog that macOS does not need, and its
 # apple.com DTD URL trips test_outbound_hosts_are_allowlisted for no benefit.
 cat > "$APP/Contents/Info.plist" <<PLIST
@@ -382,7 +402,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key>           <string>APPL</string>
   <key>CFBundleShortVersionString</key>    <string>$VERSION</string>
   <key>CFBundleVersion</key>               <string>$VERSION</string>
-  <key>LSMinimumSystemVersion</key>        <string>15.0</string>
+  <key>LSMinimumSystemVersion</key>        <string>$MIN_MACOS</string>
   <key>NSHighResolutionCapable</key>       <true/>
   <key>LSApplicationCategoryType</key>     <string>public.app-category.graphics-design</string>
   <!-- Disk access: the model store and the gallery live on an external volume via

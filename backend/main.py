@@ -28,7 +28,6 @@ from state import _discover_local_loras, _init_gallery_index
 from routers import jobs, gallery, loras, tokens, uploads, downloads, settings as settings_router, storage as storage_router
 import app_version
 
-
 import threading
 
 

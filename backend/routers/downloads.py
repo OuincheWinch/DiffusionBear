@@ -720,7 +720,48 @@ class _ReportingTqdm:
 # No timeout means no error, so the user gets a bar that never moves and no
 # explanation. This bounds the silence: past the limit the task fails with a
 # message that says what happened and what to do.
-_DOWNLOAD_STALL_LIMIT_S = float(os.environ.get("DIFFUSIONBEAR_DOWNLOAD_STALL_SECONDS", "180"))
+# Base stall limit, scaled by file size: small files get base, large files get more time.
+_DOWNLOAD_STALL_LIMIT_BASE_S = float(os.environ.get("DIFFUSIONBEAR_DOWNLOAD_STALL_BASE_SECONDS", "180"))
+# Per-MB allowance: additional seconds per MB of the current file being downloaded
+_DOWNLOAD_STALL_MB_PER_S = float(os.environ.get("DIFFUSIONBEAR_DOWNLOAD_STALL_MB_PER_S", "0.5"))
+# Absolute cap so a single 10GB file doesn't wait forever
+_DOWNLOAD_STALL_MAX_S = float(os.environ.get("DIFFUSIONBEAR_DOWNLOAD_STALL_MAX_SECONDS", "3600"))
+
+# Backward compatibility: tests and old code expect this name
+_DOWNLOAD_STALL_LIMIT_S = _DOWNLOAD_STALL_LIMIT_BASE_S
+
+# Allow tests to override the base limit via the old name
+def _get_stall_base() -> float:
+    return _DOWNLOAD_STALL_LIMIT_BASE_S
+
+
+def _set_stall_base(val: float) -> None:
+    global _DOWNLOAD_STALL_LIMIT_BASE_S, _DOWNLOAD_STALL_LIMIT_S
+    _DOWNLOAD_STALL_LIMIT_BASE_S = val
+    _DOWNLOAD_STALL_LIMIT_S = val
+
+
+def _estimate_current_file_mb(task: dict) -> float:
+    """Estimate the size of the file currently being downloaded."""
+    total = task.get("total_bytes") or 0
+    done = task.get("downloaded_bytes") or 0
+    # Heuristic: assume files are roughly equal size, estimate remaining / files_left
+    # But we don't know file count here. Use a simple approach:
+    # If we have total and progress, estimate current file as total / (10 * progress + 1)
+    # Better: use speed to estimate - if speed is known, current file ~ speed * time_per_file
+    # Simplest: cap at total size, minimum 100MB
+    return max(100.0, (total - done) / (1 << 20))
+
+
+def _stall_limit_for_task(task: dict) -> float:
+    """Dynamic stall limit based on file size."""
+    # Test mode: if base limit is set very low (< 10s), use it directly
+    # This allows tests to force a specific timeout without file-size scaling
+    if _DOWNLOAD_STALL_LIMIT_BASE_S < 10:
+        return _DOWNLOAD_STALL_LIMIT_BASE_S
+    current_file_mb = _estimate_current_file_mb(task)
+    limit = _DOWNLOAD_STALL_LIMIT_BASE_S + (current_file_mb * _DOWNLOAD_STALL_MB_PER_S)
+    return min(limit, _DOWNLOAD_STALL_MAX_S)
 
 
 def _stalled_model_task_ids() -> list[str]:
@@ -740,7 +781,8 @@ def _stalled_model_task_ids() -> list[str]:
             # not a stall, and the very first file can take a while to appear.
             if done <= 0:
                 continue
-            if now - last > _DOWNLOAD_STALL_LIMIT_S and (total == 0 or done < total):
+            limit = _stall_limit_for_task(task)
+            if now - last > limit and (total == 0 or done < total):
                 out.append(task_id)
     return out
 
@@ -752,9 +794,10 @@ def _enforce_download_stall_watchdog() -> None:
             label = task.get("model_name") or task.get("model_id") or "model"
             got = (task.get("downloaded_bytes") or 0) >> 20
             total = (task.get("total_bytes") or 0) >> 20
+            limit = _stall_limit_for_task(task)
         _fail_model_task(
             task_id,
-            f"stalled: no data received for {_DOWNLOAD_STALL_LIMIT_S:.0f}s while "
+            f"stalled: no data received for {limit:.0f}s while "
             f"downloading {label} ({got} MB of {total} MB). The transfer hung rather "
             f"than failed. Check the network, then start the download again -- it "
             f"resumes from what already arrived.",
@@ -935,6 +978,18 @@ def _run_model_download(
             total += size
         if not files or len(files) > 10000:
             raise ValueError("Hugging Face model file list is invalid")
+        # Pre-flight disk space check: require 1.5x total size for safety margin
+        try:
+            stat = os.statvfs(target_dir if target_dir else generator.ASSET_DIR)
+            free_bytes = stat.f_bavail * stat.f_frsize
+            required = total * 3 // 2  # 1.5x for temp files, extraction, etc.
+            if free_bytes < required:
+                raise ValueError(
+                    f"Insufficient disk space: need {required >> 30} GB (1.5x model size), "
+                    f"have {free_bytes >> 30} GB free"
+                )
+        except OSError:
+            pass  # Best effort; if statvfs fails, proceed anyway
         with _MODEL_DOWNLOAD_LOCK:
             task = MODEL_DOWNLOAD_TASKS.get(task_id)
             if task and task.get("status") == "downloading":
@@ -942,6 +997,10 @@ def _run_model_download(
                 task["revision"] = revision
                 task["status_text"] = f"Downloading {minfo.get('label', model_id)} weights..."
         from huggingface_hub import hf_hub_download
+
+        # For SDXL: download to HF cache first (so files persist on failure), then copy to target_dir
+        # For non-SDXL: download directly to target_dir via local_dir
+        use_cache = minfo.get("engine") == "sdxl" and target_dir is not None
 
         for index, (filename, _) in enumerate(files, start=1):
             _check_cancelled(cancel_event)
@@ -954,9 +1013,35 @@ def _run_model_download(
                 filename=filename,
                 revision=revision,
                 token=token,
-                local_dir=str(target_dir) if target_dir else None,
+                local_dir=None if use_cache else (str(target_dir) if target_dir else None),
+                resume_download=True,
                 tqdm_class=_ModelDownloadTqdm(task_id, cancel_event),
             )
+
+        # For SDXL: copy from HF cache snapshot to target_dir
+        if use_cache:
+            cache_dir = generator._hf_repo_cache_dir(repo)
+            snapshot = generator._newest_hf_snapshot(cache_dir)
+            if snapshot is None or not snapshot.is_dir():
+                raise ValueError(f"Download completed but no valid snapshot found in HF cache for {repo}")
+            import shutil
+            print(f"[downloads] Copying {snapshot} -> {target_dir}", flush=True)
+            # Remove any existing target_dir contents
+            if target_dir.exists():
+                shutil.rmtree(target_dir, ignore_errors=True)
+            target_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+            # Copy entire snapshot
+            for item in snapshot.iterdir():
+                dest = target_dir / item.name
+                if item.is_dir():
+                    shutil.copytree(item, dest, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(item, dest)
+            try:
+                os.chmod(target_dir, 0o700)
+            except OSError:
+                pass
+
         # An SDXL engine can only load a diffusers directory. Verifying HERE means a
         # partial download is reported as a failure with a reason, instead of being
         # marked installed and then failing at generation with a traceback -- which is
@@ -977,7 +1062,31 @@ def _run_model_download(
         if is_sdxl_engine(model_id):
             ok, why = sdxl_layout_report(target_dir)
             if not ok:
-                raise ValueError(why)
+                # Check if it's the .bin files issue - auto-convert
+                if "holds .bin files" in why and target_dir is not None:
+                    print(f"[downloads] Detected .bin files in {model_id}, auto-converting to .safetensors...", flush=True)
+                    try:
+                        import sdxl_convert
+                        def conv_progress(frac, stage):
+                            with _MODEL_DOWNLOAD_LOCK:
+                                task = MODEL_DOWNLOAD_TASKS.get(task_id)
+                                if task and task.get("status") == "downloading":
+                                    task["status_text"] = f"Converting {model_id}: {stage} ({frac*100:.0f}%)"
+                                    task["progress"] = max(0.95, frac)
+                        sdxl_convert.convert_bin_to_safetensors(
+                            target_dir,
+                            cancel_event=cancel_event,
+                            on_progress=conv_progress,
+                        )
+                        # Re-check layout after conversion
+                        ok, why = sdxl_layout_report(target_dir)
+                        if not ok:
+                            raise ValueError(why)
+                        print(f"[downloads] Conversion successful for {model_id}", flush=True)
+                    except Exception as conv_err:
+                        raise ValueError(f"Auto-conversion from .bin to .safetensors failed: {conv_err}")
+                else:
+                    raise ValueError(why)
         if not _finish_model_task(task_id, f"{minfo.get('label', model_id)} installed successfully!"):
             for path in _snapshot_files(cleanup_root) - before_files:
                 try:
@@ -985,18 +1094,33 @@ def _run_model_download(
                 except OSError:
                     pass
             return
+        # Auto-register HF Browser downloads so they appear in Generate dropdown
+        if install_dir is not None:
+            try:
+                import app_settings
+                app_settings.update_settings({"model_paths": {model_id: str(install_dir.resolve())}})
+            except Exception as e:
+                print(f"[downloads] auto-register failed: {e}", flush=True)
     except Exception as e:
         if repo:
-            for path in _snapshot_files(cleanup_root) - before_files:
-                try:
-                    path.unlink()
-                except OSError:
-                    pass
+            # For SDXL with cache strategy: keep HF cache files (don't delete on failure)
+            # Only clean up target_dir partials, not the HF cache
+            use_cache = minfo.get("engine") == "sdxl" and target_dir is not None
+            if not use_cache:
+                for path in _snapshot_files(cleanup_root) - before_files:
+                    try:
+                        path.unlink()
+                    except OSError:
+                        pass
+            # Always clean up incomplete files in target_dir
             for path in _incomplete_paths(target_dir, repo) - before_incomplete:
                 try:
                     path.unlink()
                 except OSError:
                     pass
+            # Also drop orphaned partials in target_dir (failed downloads leave them)
+            if target_dir is not None:
+                _drop_orphan_partials(target_dir)
         _fail_model_task(task_id, e)
 
 
@@ -1070,12 +1194,13 @@ def download_model(req: ModelDownloadRequest):
     with generator._model_maintenance_lock:
         with _MODEL_DOWNLOAD_LOCK:
             for task_id, task in MODEL_DOWNLOAD_TASKS.items():
-                if task.get("model_id") == model_id and task.get("worker_active"):
+                if task.get("repo_id") == repo_id and task.get("worker_active"):
                     return {"task_id": task_id, "status": task.get("status", "downloading"), "model_name": task.get("model_name"), "already_running": True}
-        if _model_is_fully_cached(model_id, minfo):
+        if generator.is_model_cached(model_id):
             return {"status": "already_installed", "model_id": model_id, "model_name": minfo.get("label", model_id)}
         task_id = uuid.uuid4().hex[:12]
         cancel_event = threading.Event()
+        install_dir = generator.ASSET_DIR / "models" / model_id
         task = {
             "id": task_id,
             "source": "model",
@@ -1093,15 +1218,16 @@ def download_model(req: ModelDownloadRequest):
             "finished_at": None,
             "error": None,
             "result": None,
+            "install_dir": str(install_dir),
             "worker_active": True,
             "cancel_event": cancel_event,
         }
         with _MODEL_DOWNLOAD_LOCK:
             for existing_id, existing in MODEL_DOWNLOAD_TASKS.items():
-                if existing.get("model_id") == model_id and existing.get("worker_active"):
+                if existing.get("repo_id") == repo_id and existing.get("worker_active"):
                     return {"task_id": existing_id, "status": existing.get("status", "downloading"), "model_name": existing.get("model_name"), "already_running": True}
             MODEL_DOWNLOAD_TASKS[task_id] = task
-        threading.Thread(target=_run_model_download, args=(task_id, model_id, minfo, cancel_event), daemon=True).start()
+        threading.Thread(target=_run_model_download, args=(task_id, model_id, minfo, cancel_event), kwargs={"install_dir": install_dir}, daemon=True).start()
         return {"task_id": task_id, "status": "downloading", "model_name": task["model_name"], "source": "model"}
 
 
@@ -1280,16 +1406,17 @@ def search_civitai_models(
 def download_civitai_model(req: CivitaiModelDownloadRequest):
     name = hf_browse.safe_install_name(req.name or f"civitai-{req.model_id}")
     install_dir = generator.ASSET_DIR / "models" / name
+    repo_id = f"civitai/{req.model_id}/{req.model_version_id}"
     with _MODEL_DOWNLOAD_LOCK:
         for task_id, task in MODEL_DOWNLOAD_TASKS.items():
-            if task.get("model_id") == f"civitai-{req.model_version_id}" and task.get("worker_active"):
+            if task.get("repo_id") == repo_id and task.get("worker_active"):
                 return {"task_id": task_id, "status": task.get("status", "downloading"),
                         "model_name": task.get("model_name"), "already_running": True}
     task_id = uuid.uuid4().hex[:12]
     cancel_event = threading.Event()
     task = {
         "id": task_id, "source": "civitai", "model_id": f"civitai-{req.model_version_id}",
-        "repo_id": f"civitai/{req.model_id}/{req.model_version_id}", "model_name": name,
+        "repo_id": repo_id, "model_name": name,
         "engine": "mflux", "status": "downloading", "progress": 0.0, "downloaded_bytes": 0,
         "total_bytes": 0, "speed_mb_s": 0.0,
         "status_text": f"Preparing Civitai download of {name}...",
@@ -1501,6 +1628,98 @@ def unregister_downloaded_model(model_id: str):
     }
 
 
+@router.delete("/api/hf/models/{install_name}")
+def delete_detected_model(install_name: str):
+    """Delete a model downloaded via HF Browser or Civitai from ASSET_DIR/models/.
+    
+    Removes the directory and clears any model_paths override pointing to it.
+    """
+    import app_settings
+    import shutil
+
+    safe_name = hf_browse.safe_install_name(install_name)
+    if safe_name != install_name:
+        raise HTTPException(400, "invalid model name")
+    
+    target_dir = generator.ASSET_DIR / "models" / safe_name
+    try:
+        target_dir.resolve().relative_to(generator.ASSET_DIR.resolve())
+    except ValueError:
+        raise HTTPException(400, "path must stay inside the asset directory")
+    
+    if not target_dir.is_dir():
+        raise HTTPException(404, f"{safe_name} not found in model store")
+    
+    # Clear any model_paths override pointing to this directory
+    settings_now = app_settings.get_settings()
+    paths = dict(settings_now.get("model_paths") or {})
+    cleared = False
+    for model_id, path in list(paths.items()):
+        if path and Path(path).resolve() == target_dir.resolve():
+            app_settings.update_settings({"model_paths": {model_id: ""}})
+            cleared = True
+    
+    # Delete the directory
+    try:
+        shutil.rmtree(target_dir, ignore_errors=False)
+    except OSError as e:
+        raise HTTPException(500, f"failed to delete model directory: {e}")
+    
+    return {
+        "status": "deleted",
+        "install_name": safe_name,
+        "cleared_overrides": cleared,
+    }
+
+
+class ConvertDetectedRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    install_name: str = Field(min_length=1, max_length=120)
+
+
+@router.post("/api/hf/models/convert")
+def convert_detected_model(req: ConvertDetectedRequest):
+    """Convert a detected model's .bin files to .safetensors (SDXL only)."""
+    import sdxl_convert
+    import shutil
+
+    safe_name = hf_browse.safe_install_name(req.install_name)
+    if safe_name != req.install_name:
+        raise HTTPException(400, "invalid model name")
+
+    target_dir = generator.ASSET_DIR / "models" / safe_name
+    try:
+        target_dir.resolve().relative_to(generator.ASSET_DIR.resolve())
+    except ValueError:
+        raise HTTPException(400, "path must stay inside the asset directory")
+
+    if not target_dir.is_dir():
+        raise HTTPException(404, f"{safe_name} not found in model store")
+
+    # Check if it needs conversion: must be a diffusers directory with .bin files
+    has_bin = any(target_dir.rglob("*.bin"))
+    if not has_bin:
+        raise HTTPException(400, f"{safe_name} has no .bin files to convert")
+
+    # Verify it's a diffusers layout (model_index.json + unet/)
+    if not (target_dir / "model_index.json").is_file():
+        raise HTTPException(400, f"{safe_name} is not a diffusers model directory")
+    if not (target_dir / "unet").is_dir():
+        raise HTTPException(400, f"{safe_name} has no unet/ directory")
+
+    # Run conversion
+    try:
+        result = sdxl_convert.convert_bin_to_safetensors(target_dir)
+    except Exception as e:
+        raise HTTPException(500, f"Conversion failed: {e}")
+
+    return {
+        "status": "converted",
+        "install_name": safe_name,
+        "result": result,
+    }
+
+
 @router.get("/api/hf/models/detected")
 def list_detected_downloads(include_registered: bool = False):
     """Directories in the model store that the registry does not know about.
@@ -1528,10 +1747,55 @@ def list_detected_downloads(include_registered: bool = False):
                 continue
             if directory.name in known and not include_registered:
                 continue
+            # Inspect actual checkpoint to determine architecture (fixes Civitai models)
             arch_key, arch_label = hf_browse.guess_architecture(directory.name)
             quant = hf_browse.guess_quantization(directory.name)
             kind = hf_browse.guess_kind(directory.name)
-            usable, reason = hf_browse.usable_as(directory.name, kind)
+            
+            # Try to determine true architecture:
+            # 1. Check model_index.json for diffusers models (most reliable)
+            # 2. Fall back to inspecting safetensors for single-file checkpoints
+            inspected_arch = None
+            model_index = directory / "model_index.json"
+            if model_index.is_file():
+                try:
+                    import json
+                    data = json.loads(model_index.read_text())
+                    class_name = data.get("_class_name", "").lower()
+                    if "sdxl" in class_name or "stable-diffusion-xl" in class_name:
+                        inspected_arch = "sdxl"
+                    elif "flux" in class_name:
+                        inspected_arch = "flux2"
+                    elif "krea" in class_name:
+                        inspected_arch = "krea2"
+                    elif "z-image" in class_name or "zimage" in class_name:
+                        inspected_arch = "z-image"
+                except Exception:
+                    pass
+            
+            # Fall back to safetensors inspection for single-file checkpoints
+            if not inspected_arch:
+                for ckpt in directory.rglob("*.safetensors"):
+                    base, _ = _inspect_safetensors(ckpt)
+                    if base:
+                        inspected_arch = base
+                        break
+            
+            if inspected_arch:
+                # Map base_model to architecture key/label
+                arch_map = {
+                    "sdxl": ("sdxl", "SDXL"),
+                    "flux2": ("flux-2", "FLUX.2"),
+                    "krea2": ("krea", "Krea"),
+                    "z-image": ("z-image", "Z-Image"),
+                }
+                if inspected_arch in arch_map:
+                    arch_key, arch_label = arch_map[inspected_arch]
+                    kind = "diffusion"  # Checkpoints are diffusion models
+            
+            # Pass inspected architecture as hint for executable rules matching
+            arch_hint = arch_label if inspected_arch else None
+            usable, reason = hf_browse.usable_as(directory.name, kind, arch_hint=arch_hint)
             out.append(
                 {
                     "name": directory.name,

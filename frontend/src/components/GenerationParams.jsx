@@ -26,11 +26,10 @@ function GenerationParams({
   setSampler,
   cacheInterval,
   setCacheInterval,
-   supportsRef,
-   supportsMultiRef,
-   maxReferenceImages = 1,
-   refImages,
-
+  supportsRef,
+  supportsMultiRef,
+  maxReferenceImages = 1,
+  refImages,
   refStrength,
   setRefStrength,
   pickRefImages,
@@ -39,7 +38,27 @@ function GenerationParams({
   maxPixels,
   setMaxPixels,
 }) {
-   const { t } = useI18n();
+  const { t } = useI18n();
+
+  async function handlePaste(e) {
+    if (!supportsRef) return;
+    if (refImages.length >= maxRefImages) return;
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        if (item.types.includes("image/png") || item.types.includes("image/jpeg") || item.types.includes("image/webp")) {
+          const blob = await item.getType("image/png") || await item.getType("image/jpeg") || await item.getType("image/webp");
+          const file = new File([blob], `pasted-${Date.now()}.png`, { type: blob.type });
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          pickRefImages({ target: { files: dt.files } });
+          break;
+        }
+      }
+    } catch (err) {
+      console.warn("[GenerationParams] Paste failed:", err);
+    }
+  }
    // De-duplicated and sorted so the dropdown order is stable regardless of how the
    // registry listed them, and so a registry repeating a name cannot fake a choice.
    const samplerChoices = [...new Set(modelInfo.samplers || [])].sort();
@@ -302,6 +321,7 @@ function GenerationParams({
               <label
                 className={`ref-add-card${refImages.length ? "" : " is-slim"}`}
                 title={t("params.ref.addCardTitle")}
+                onPaste={handlePaste}
               >
                 <input
                   type="file"

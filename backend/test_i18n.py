@@ -466,6 +466,7 @@ _ALLOWED_LATIN = {
     "AppKit", "WebKit", "macOS", "Finder", "Civit", "GPU", "Silicon", "JSON", "Web",
     "EXIF", "DIFFUSION", "Fast", "LLM", "Instruct", "Klein", "TAEF", "TAESD",
     "krea", "mlx", "qwen", "blob", "snapshot", "snapshots", "TASK",
+    "bin",
 }
 
 

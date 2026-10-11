@@ -212,6 +212,12 @@ _EXECUTABLE_RULES: list[tuple[tuple[str, ...], tuple[str, ...], str, str]] = [
     (("realvis", "xl", "v5"), (), "realvis-xl-v5", "Realvis XL v5 (MLX)"),
     (("juggernaut", "xl", "lightning"), (), "juggernaut-xl-lightning", "Juggernaut XL Lightning (MLX)"),
     (("juggernaut", "xi"), (), "juggernaut-xi", "Juggernaut XI v11 (MLX)"),
+    # Generic architecture fallbacks for Civitai/unknown checkpoints.
+    # Matched only if no specific rule above matched. Uses arch_hint from checkpoint inspection.
+    (("sdxl",), (), "juggernaut-xl-lightning", "SDXL (generic)"),
+    (("flux",), (), "flux2-klein-4b", "FLUX (generic)"),
+    (("krea",), (), "krea2-turbo", "Krea (generic)"),
+    (("z-image",), (), "z-image-turbo", "Z-Image (generic)"),
 ]
 
 # Names that match a rule above but are not a checkpoint. A ControlNet, a LoRA, a
@@ -257,13 +263,16 @@ def _non_checkpoint_token(repo_id: str) -> str | None:
     return None
 
 
-def usable_as(repo_id: str, kind: str = "diffusion") -> tuple[str | None, str]:
+def usable_as(repo_id: str, kind: str = "diffusion", arch_hint: str | None = None) -> tuple[str | None, str]:
     """Return (registry model_id or None, human reason).
 
     Every generator build in this app is a `model_id == ...` dispatch onto a fixed mflux
     class (generator.py:1846 onwards). A downloaded repo becomes runnable by pointing the
     EXISTING settings.model_paths override at its directory, which feeds `local_arg` ->
     `model_path=`; no generation code has to change. That is the whole mechanism.
+
+    If `arch_hint` is provided (e.g., from inspecting the actual checkpoint), it is used
+    to match against executable rules instead of relying solely on the repo name.
     """
     if kind == "upscaler":
         return None, "This app upscales with Lanczos, not a neural model, so upscalers cannot be selected."
@@ -271,7 +280,13 @@ def usable_as(repo_id: str, kind: str = "diffusion") -> tuple[str | None, str]:
         return None, "LoRAs are registered separately, not as models."
     if kind != "diffusion":
         return None, "Not an image model."
-    stem = _stem(repo_id)
+    
+    # Use arch_hint tokens if provided, otherwise fall back to repo_id stem
+    if arch_hint:
+        stem = arch_hint.lower().replace(" ", "-").replace(".", "")
+    else:
+        stem = _stem(repo_id)
+    
     # Reject non-checkpoints BEFORE the rules, so a name that happens to contain
     # every required token cannot be offered as runnable.
     blocked = _non_checkpoint_token(repo_id)

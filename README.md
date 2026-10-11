@@ -45,7 +45,7 @@ environments on your side.
 
 | | Detail |
 |---|---|
-| **Requires** | An Apple Silicon Mac, **macOS 15 (Sequoia) or later**. The bundle declares `LSMinimumSystemVersion 15.0`: MLX calls a Metal API that Sonoma does not have, so macOS refuses to launch it rather than crashing at import. |
+| **Requires** | An Apple Silicon Mac, **macOS 26.2 or later**, 16 GB unified memory recommended. The floor is derived from the `minos` of the Mach-O binaries in the bundle (`libmlx.dylib`, `core.cpython-310-darwin.so`) rather than hardcoded, so the plist can no longer understate it. |
 | **First launch** | The app is ad-hoc signed, not notarised with an Apple Developer ID. macOS will therefore block a plain double-click the first time — **right-click the app → Open** to get past Gatekeeper. |
 | **Your files** | Settings, gallery, LoRA registry and model store live in `~/Library/Application Support/DiffusionBear`, never inside the app bundle. To put the store on another volume, write an absolute path into `~/Library/Application Support/DiffusionBear/store_path`; a store path can be shared by several installs. |
 | **Model weights** | Not bundled. They are downloaded on first use from Hugging Face or [Civitai](https://civitai.red/?ref_code=88C8VEBA) into that store — a few GB for the first model. After that the app works fully offline. |
@@ -72,17 +72,20 @@ is three scripts and no decisions to make.
 
 ## Screenshots
 
+Captured from **v0.3.8** on a MacBook Pro (Apple M1, 16 GB), running against a live
+backend — not mock-ups.
+
 | Generate | Browser |
 |---|---|
-| ![The generation page](docs/screenshots/main-page.png) | ![The browser](docs/screenshots/browser.png) |
+| ![The generation page](screenshot/0.3.8/1-generate.png) | ![The browser](screenshot/0.3.8/2-browser.png) |
 
 | Models | Parameters |
 |---|---|
-| ![The models tab](docs/screenshots/models.png) | ![The parameters tab](docs/screenshots/parameters.png) |
+| ![The models tab](screenshot/0.3.8/3-models.png) | ![The parameters tab](screenshot/0.3.8/4-parameters.png) |
 
 | Prompt enhancer | Licences |
 |---|---|
-| ![Prompt enhancer](docs/screenshots/prompt-enhancer.png) | ![Licences tab](docs/screenshots/licences.png) |
+| ![Prompt enhancer](screenshot/0.3.8/5-prompt-enhancer.png) | ![Licences tab](screenshot/0.3.8/6-licences.png) |
 
 ---
 

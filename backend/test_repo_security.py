@@ -46,6 +46,11 @@ _ALLOWED_DANGEROUS = {
     # source, read from disk, never input, and the function is two lines that return
     # a path. Importing it properly was not possible without an Apple runner.
     ("backend/test_taesd_path.py", "dynamic exec"): 1,
+    # GenerationParams.jsx reads the clipboard when the user presses paste, to accept a
+    # reference image into the prompt's own reference slot. It is user-initiated, the
+    # bytes go to pickRefImages() and nowhere else (no fetch, no upload), and it is
+    # gated on supportsRef plus a reference-count check. One occurrence.
+    ("frontend/src/components/GenerationParams.jsx", "clipboard read"): 1,
 }
 # Prose and lockfiles are scanned for secrets only; documentation may link anywhere.
 TEXT_SUFFIXES = CODE_AND_CONFIG | {".json", ".md", ".txt"}
@@ -233,7 +238,7 @@ class MaliciousCodeTests(unittest.TestCase):
         self.assertEqual(count, 816, f"vendored file count changed (was 816, now {count})")
         self.assertEqual(
             digest.hexdigest(),
-            "26db9801048303e677cbe86088b6e3be283a1bd21279824c74e9240a238a5a0a",
+            "4710a5fdfec94ec82d5fdf36d359f6a96ab22b3fbb22c0fb06000fc65cc0aef6",
             "vendored mflux has been modified; if that is intended, re-pin this digest",
         )
 

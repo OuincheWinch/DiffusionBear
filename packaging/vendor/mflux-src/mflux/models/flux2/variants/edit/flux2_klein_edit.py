@@ -291,40 +291,20 @@ class Flux2KleinEdit(nn.Module):
                 noise = negative_noise + guidance * (noise - negative_noise)
             return noise
 
-        # Warmup + shapeless compilation for M1/M2 (MLX 0.32+ improved compilation)
-        # Run first 2 steps eagerly to establish shapes, then compile with shapeless=True
-        warmup_steps = 2
-        step_counter = [0]
-        predict_ref = [predict]
+        # Compiled, but NEVER shapeless. Two hazards killed this path:
+        #   1. shapeless=True cannot infer output shapes for a `Split` whose axis length
+        #      is only known at runtime (Krea 2 died at denoise step 3 with
+        #      "[Primitive::output_shapes] Split cannot infer output shapes.")
+        #   2. the reference-image graph evaluated an array while the trace was open
+        #      (the app's rope memo cache does), and MLX refuses that: "[eval]
+        #      Attempting to eval an array during function transformations like compile
+        #      or vmap is not allowed." -- raised at denoise step 3 of 4 on a real
+        #      reference run. Hazard 2 is independent of shapeless, so shape-specialising
+        #      never helped; it was fixed at the source instead -- generator.py's rope
+        #      memo cache now detects the tracing case and falls through to the uncached
+        #      call. Verified: FLUX 4B edit completes.
+        return mx.compile(predict)
 
-        def warmup_predict(
-            latents: mx.array,
-            image_latents: mx.array,
-            latent_ids: mx.array,
-            image_latent_ids: mx.array,
-            prompt_embeds: mx.array,
-            text_ids: mx.array,
-            negative_prompt_embeds: mx.array | None,
-            negative_text_ids: mx.array | None,
-            guidance: float,
-            timestep: mx.array,
-            kv_cache: Flux2KVCache | None = None,
-            negative_kv_cache: Flux2KVCache | None = None,
-        ) -> mx.array:
-            result = predict_ref[0](
-                latents, image_latents, latent_ids, image_latent_ids,
-                prompt_embeds, text_ids,
-                negative_prompt_embeds, negative_text_ids,
-                guidance, timestep, kv_cache, negative_kv_cache
-            )
-            step_counter[0] += 1
-            if step_counter[0] == warmup_steps:
-                predict_ref[0] = mx.compile(predict_ref[0], shapeless=True)
-            return result
-
-        # Use warmup_predict initially; it will swap to compiled after warmup
-        if AppleSiliconUtil.is_m1_or_m2() or self.model_config.supports_kv_cache:
-            return warmup_predict
 
     @staticmethod
     def _cached_predict(transformer):
