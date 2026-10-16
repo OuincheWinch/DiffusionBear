@@ -46,7 +46,14 @@ environments on your side.
 | | Detail |
 |---|---|
 | **Requires** | An Apple Silicon Mac, **macOS 26.2 or later**, 16 GB unified memory recommended. The floor is derived from the `minos` of the Mach-O binaries in the bundle (`libmlx.dylib`, `core.cpython-310-darwin.so`) rather than hardcoded, so the plist can no longer understate it. |
-| **First launch** | The app is ad-hoc signed, not notarised with an Apple Developer ID. macOS will therefore block a plain double-click the first time — **right-click the app → Open** to get past Gatekeeper. |
+| **First launch** | The app is ad-hoc signed, not notarised with an Apple Developer ID. macOS Gatekeeper will therefore block a plain double-click the first time you launch DiffusionBear
+|
+|     **Method to: Bypass Gatekeeper**
+|
+|   1. Open System Settings > Privacy & Security.
+|   2. Scroll down to the security section; you will see a notice that the DiffusionBear was blocked.
+|   3. Click Open Anyway and enter your administrator password to confirm.
+|
 | **Your files** | Settings, gallery, LoRA registry and model store live in `~/Library/Application Support/DiffusionBear`, never inside the app bundle. To put the store on another volume, write an absolute path into `~/Library/Application Support/DiffusionBear/store_path`; a store path can be shared by several installs. |
 | **Model weights** | Not bundled. They are downloaded on first use from Hugging Face or [Civitai](https://civitai.red/?ref_code=88C8VEBA) into that store — a few GB for the first model. After that the app works fully offline. |
 
