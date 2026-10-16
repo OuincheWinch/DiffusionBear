@@ -1,0 +1,163 @@
+{
+  "fill.title": {
+    "es": "Relleno generativo",
+    "zh": "生成式填充",
+    "ja": "生成フィル",
+    "pt": "Preenchimento generativo",
+    "ko": "생성형 채우기"
+  },
+  "fill.canvasLabel": {
+    "es": "Región a regenerar",
+    "zh": "要重新生成的区域",
+    "ja": "再生成する領域",
+    "pt": "Região a regenerar",
+    "ko": "다시 생성할 영역"
+  },
+  "fill.prompt": {
+    "es": "Indicación",
+    "zh": "提示词",
+    "ja": "プロンプト",
+    "pt": "Prompt",
+    "ko": "프롬프트"
+  },
+  "fill.promptPlaceholder": {
+    "es": "Describe lo que debería aparecer en el área pintada…",
+    "zh": "描述涂抹区域中应该出现的内容……",
+    "ja": "塗った領域に何現れるかを説明してください…",
+    "pt": "Descreva o que deve aparecer na área pintada…",
+    "ko": "칠한 영역에 무엇이 나타날지 설명하세요…"
+  },
+  "fill.tools": {
+    "es": "Herramientas",
+    "zh": "工具",
+    "ja": "ツール",
+    "pt": "Ferramentas",
+    "ko": "도구"
+  },
+  "fill.paint": {
+    "es": "Pintar",
+    "zh": "画笔",
+    "ja": "塗りつぶし",
+    "pt": "Pintar",
+    "ko": "칠하기"
+  },
+  "fill.erase": {
+    "es": "Borrar",
+    "zh": "橡皮",
+    "ja": "消去",
+    "pt": "Apagar",
+    "ko": "지우기"
+  },
+  "fill.clear": {
+    "es": "Limpiar",
+    "zh": "清空",
+    "ja": "クリア",
+    "pt": "Limpar",
+    "ko": "비우기"
+  },
+  "fill.brushSize": {
+    "es": "Tamaño del pincel",
+    "zh": "笔刷大小",
+    "ja": "ブラシサイズ",
+    "pt": "Tamanho do pincel",
+    "ko": "브러시 크기"
+  },
+  "fill.engine": {
+    "es": "Motor",
+    "zh": "引擎",
+    "ja": "エンジン",
+    "pt": "Motor",
+    "ko": "엔진"
+  },
+  "fill.coverage": {
+    "es": "{percent}% de la imagen seleccionado",
+    "zh": "已选择图像的 {percent}%",
+    "ja": "画像の {percent}% が選択されています",
+    "pt": "{percent}% da imagem selecionado",
+    "ko": "이미지의 {percent}% 선택됨"
+  },
+  "fill.hint": {
+    "es": "Pinta la región que quieres regenerar y luego describe lo que quieres poner ahí.",
+    "zh": "涂抹要重新生成的区域，然后描述你希望那里出现的内容。",
+    "ja": "再生成したい領域を塗り、その後、そこに何を置きたいか説明してください。",
+    "pt": "Pinte a região que quer regenerar e depois descreva o que deseja colocar ali.",
+    "ko": "다시 생성할 영역을 칠한 다음, 그곳에 무엇을 넣고 싶은지 설명하세요."
+  },
+  "fill.hintLargeRegion": {
+    "es": "Región grande: el resultado puede alejarse más del resto de la imagen, porque el motor regenera todo y luego recompone.",
+    "zh": "大面积区域：结果可能与图像其余部分差异更大，因为引擎会重新生成全部内容再重新合成。",
+    "ja": "大きな領域: エンジンは全体を再生成してから再合成するため、結果が画像の他の部分から外れる可能性があります。",
+    "pt": "Região grande: o resultado pode se afastar mais do restante da imagem, porque o motor regenera tudo e depois recompõe.",
+    "ko": "넓은 영역: 엔진이 전체를 다시 생성한 뒤 재합성하므로 결과가 이미지의 나머지 부분과 더 달라질 수 있습니다."
+  },
+  "fill.submit": {
+    "es": "Rellenar esta área",
+    "zh": "填充此区域",
+    "ja": "この領域を塗りつぶす",
+    "pt": "Preencher esta área",
+    "ko": "이 영역 채우기"
+  },
+  "fill.working": {
+    "es": "Generando…",
+    "zh": "生成中……",
+    "ja": "生成中…",
+    "pt": "Gerando…",
+    "ko": "생성 중…"
+  },
+  "fill.errorInvalid": {
+    "es": "La solicitud fue rechazada. Comprueba que el área pintada coincida con la imagen.",
+    "zh": "请求被拒绝。请检查涂抹区域是否与图像匹配。",
+    "ja": "リクエストは拒否されました。塗った領域が画像と一致しているか確認してください。",
+    "pt": "A solicitação foi recusada. Verifique se a área pintada corresponde à imagem.",
+    "ko": "요청이 거부되었습니다. 칠한 영역이 이미지와 일치하는지 확인하세요."
+  },
+  "fill.errorEngines": {
+    "es": "No se pudo cargar la lista de motores. Inténtalo de nuevo.",
+    "zh": "无法加载引擎列表。请重试。",
+    "ja": "エンジン一覧を読み込めませんでした。もう一度お試しください。",
+    "pt": "Não foi possível carregar a lista de motores. Tente novamente.",
+    "ko": "엔진 목록을 불러오지 못했습니다. 다시 시도하세요."
+  },
+  "fill.errorFailed": {
+    "es": "El relleno falló. Inténtalo de nuevo.",
+    "zh": "填充失败。请重试。",
+    "ja": "フィルに失敗しました。もう一度お試しください。",
+    "pt": "O preenchimento falhou. Tente novamente.",
+    "ko": "채우기에 실패했습니다. 다시 시도하세요."
+  },
+  "fill.cancelled": {
+    "es": "Relleno cancelado.",
+    "zh": "已取消填充。",
+    "ja": "フィルをキャンセルしました。",
+    "pt": "Preenchimento cancelado.",
+    "ko": "채우기를 취소했습니다."
+  },
+  "fill.progressEta": {
+    "es": "~{seconds} s restantes",
+    "zh": "剩余约 {seconds} 秒",
+    "ja": "残り約 {seconds} 秒",
+    "pt": "~{seconds}s restantes",
+    "ko": "약 {seconds}초 남음"
+  },
+  "fill.doneBanner": {
+    "es": "Relleno completado: la imagen se ha añadido a la galería.",
+    "zh": "填充完成 —— 图像已添加到图库。",
+    "ja": "フィル完了 — 画像をギャラリーに追加しました。",
+    "pt": "Preenchimento concluído — a imagem foi adicionada à galeria.",
+    "ko": "채우기 완료 — 이미지가 갤러리에 추가되었습니다."
+  },
+  "fill.cardButton": {
+    "es": "Rellenar una región",
+    "zh": "填充区域",
+    "ja": "領域を塗りつぶす",
+    "pt": "Preencher uma região",
+    "ko": "영역 채우기"
+  },
+  "fill.cancel": {
+    "es": "Cancelar",
+    "zh": "取消",
+    "ja": "キャンセル",
+    "pt": "Cancelar",
+    "ko": "취소"
+  }
+}

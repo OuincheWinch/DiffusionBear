@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (compile + tests)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.10"
+      # Minimal set the backend test modules import. mlx/mflux stay out: the
+      # generator guards those imports, so the suite runs on the CI image.
+      - name: Install test dependencies
+        run: |
+              python -m pip install --disable-pip-version-check \
+                pillow==12.3.0 \
+                "fastapi>=0.115.0" \
+                "pydantic>=2.0.0" \
+                "requests>=2.31.0" \
+                "httpx>=0.27.0" \
+                "huggingface_hub>=0.27.0" \
+                "numpy>=1.26" \
+                "safetensors>=0.4" \
+                "tqdm>=4.66" \
+                "pillow-heif>=0.18" \ \
+                "python-multipart>=0.0.9"
+      - name: Compile-check backend packages
+        run: |
+          python -m compileall -q backend
+          echo "backend python OK"
+      - name: Run backend tests
+        run: python -m unittest discover -s backend -p "test_*.py"
+      - name: Validate launch scripts
+        run: |
+          bash -n run.sh
+          bash -n dev-backend.sh
+          python - <<'PY'
+          from pathlib import Path
+          for name in ("run.sh", "dev-backend.sh"):
+              lines = Path(name).read_text().splitlines()
+              commands = "\n".join(line for line in lines if line.strip() and not line.lstrip().startswith("#"))
+              if "bin/uvicorn" in commands or "-m uvicorn" not in commands:
+                  raise SystemExit(f"unsafe launcher: {name}")
+          PY
+
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  license-check:
+    name: Licence data sanity
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Verify licence data parses
+        run: node -e "const s=require('fs').readFileSync('frontend/src/data/licences.js','utf8'); if(!s.includes('LICENCE_SECTIONS')) throw Error('missing'); console.log('licences.js OK');"

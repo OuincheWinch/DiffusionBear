@@ -1,0 +1,254 @@
+{
+  "sources.license": {
+    "es": "Licencia",
+    "zh": "许可协议",
+    "ja": "ライセンス",
+    "pt": "Licença",
+    "ko": "라이선스"
+  },
+  "sources.commercialUse": {
+    "es": "Uso comercial",
+    "zh": "商业使用",
+    "ja": "商用利用",
+    "pt": "Uso comercial",
+    "ko": "상업적 사용"
+  },
+  "sources.derivatives": {
+    "es": "Derivados permitidos",
+    "zh": "允许衍生作品",
+    "ja": "派生作品許可",
+    "pt": "Derivados permitidos",
+    "ko": "파생 작업 허용"
+  },
+  "sources.creditRequired": {
+    "es": "Crédito obligatorio",
+    "zh": "必须署名",
+    "ja": "クレジット表記が必要",
+    "pt": "Crédito obrigatório",
+    "ko": "크레딧 표기 필요"
+  },
+  "sources.differentLicense": {
+    "es": "Licencia distinta permitida",
+    "zh": "允许使用不同许可协议",
+    "ja": "異なるライセンス利用可能",
+    "pt": "Licença diferente permitida",
+    "ko": "다른 라이선스 허용"
+  },
+  "sources.viewOnSource": {
+    "es": "Ver en la fuente",
+    "zh": "在来源处查看",
+    "ja": "ソースで確認",
+    "pt": "Ver na fonte",
+    "ko": "출처에서 보기"
+  },
+  "sources.unknownLicense": {
+    "es": "Licencia no indicada por la fuente",
+    "zh": "来源未提供许可协议",
+    "ja": "ソースはライセンスを提示していません",
+    "pt": "A fonte não informa a licença",
+    "ko": "출처가 라이선스를 제공하지 않음"
+  },
+  "sources.noPermissions": {
+    "es": "La fuente no indica permisos de uso",
+    "zh": "来源未提供使用权限说明",
+    "ja": "ソースは利用条件を提示していません",
+    "pt": "A fonte não informa permissões de uso",
+    "ko": "출처가 이용 조건을 제공하지 않음"
+  },
+  "sources.fetchFailed": {
+    "es": "No se pudo consultar la licencia",
+    "zh": "未能获取许可协议",
+    "ja": "ライセンスを取得できませんでした",
+    "pt": "Não foi possível consultar a licença",
+    "ko": "라이선스를 가져오지 못했습니다"
+  },
+  "sources.title": {
+    "es": "Explorar modelos",
+    "zh": "浏览模型",
+    "ja": "モデルを探す",
+    "pt": "Explorar modelos",
+    "ko": "모델 둘러보기"
+  },
+  "sources.searchPlaceholder.huggingface": {
+    "es": "Buscar en Hugging Face",
+    "zh": "在 Hugging Face 搜索",
+    "ja": "Hugging Face で検索",
+    "pt": "Buscar no Hugging Face",
+    "ko": "Hugging Face에서 검색"
+  },
+  "sources.searchPlaceholder.civitai": {
+    "es": "Buscar en Civitai",
+    "zh": "在 Civitai 搜索",
+    "ja": "Civitai で検索",
+    "pt": "Buscar no Civitai",
+    "ko": "Civitai에서 검색"
+  },
+  "sources.searchPlaceholder.drawthings": {
+    "es": "Filtrar por nombre",
+    "zh": "按名称筛选",
+    "ja": "名前で絞り込み",
+    "pt": "Filtrar por nome",
+    "ko": "이름으로 필터"
+  },
+  "sources.searchPlaceholder.diffusionbee": {
+    "es": "Filtrar por nombre",
+    "zh": "按名称筛选",
+    "ja": "名前で絞り込み",
+    "pt": "Filtrar por nome",
+    "ko": "이름으로 필터"
+  },
+  "sources.import": {
+    "es": "Importar",
+    "zh": "导入",
+    "ja": "インポート",
+    "pt": "Importar",
+    "ko": "가져오기"
+  },
+  "sources.importing": {
+    "es": "Importando…",
+    "zh": "正在导入…",
+    "ja": "インポート中…",
+    "pt": "Importando…",
+    "ko": "가져오는 중…"
+  },
+  "sources.imported": {
+    "es": "Importado",
+    "zh": "已导入",
+    "ja": "インポート済み",
+    "pt": "Importado",
+    "ko": "가져옴"
+  },
+  "sources.baseModel": {
+    "es": "Modelo base",
+    "zh": "基础模型",
+    "ja": "基盤モデル",
+    "pt": "Modelo base",
+    "ko": "기본 모델"
+  },
+  "sources.detected": {
+    "es": "{count} archivos detectados",
+    "zh": "检测到 {count} 个文件",
+    "ja": "{count} 件を検出",
+    "pt": "{count} arquivos detectados",
+    "ko": "파일 {count}개 감지"
+  },
+  "sources.fluxNoModelWarning": {
+    "es": "Esta app no tiene ningún modelo FLUX.1, así que una LoRA FLUX no podrá usarse para generar.",
+    "zh": "此应用没有任何 FLUX.1 模型，因此 FLUX LoRA 将无法用于生成。",
+    "ja": "このアプリには FLUX.1 モデルがないため、FLUX LoRA は生成に使用できません。",
+    "pt": "Este aplicativo não tem nenhum modelo FLUX.1, então uma LoRA FLUX não poderá ser usada para gerar.",
+    "ko": "이 앱에는 FLUX.1 모델이 없으므로 FLUX LoRA는 생성에 사용할 수 없습니다."
+  },
+  "sources.skippedTensors": {
+    "es": "{count} tensores omitidos: no hay módulo de destino para ellos.",
+    "zh": "已跳过 {count} 个张量：没有对应的目标模块。",
+    "ja": "{count} 個のテンソルをスキップしました: 対応するモジュールがありません。",
+    "pt": "{count} tensores ignorados: não há módulo de destino para eles.",
+    "ko": "텐서 {count}개를 건너뛰었습니다: 대상 모듈이 없습니다."
+  },
+  "sources.matchCivitai": {
+    "es": "Buscar en Civitai",
+    "zh": "在 Civitai 中查找",
+    "ja": "Civitai で検索",
+    "pt": "Buscar no Civitai",
+    "ko": "Civitai에서 찾기"
+  },
+  "sources.matchByUrl": {
+    "es": "O pega la URL de la versión",
+    "zh": "或粘贴版本链接",
+    "ja": "またはバージョンの URL を貼付",
+    "pt": "Ou cole a URL da versão",
+    "ko": "또는 버전 URL 붙여넣기"
+  },
+  "sources.noMatch": {
+    "es": "No se encontró ninguna coincidencia",
+    "zh": "未找到匹配项",
+    "ja": "一致するものがありません",
+    "pt": "Nenhuma correspondência encontrada",
+    "ko": "일치하는 항목이 없습니다"
+  },
+  "sources.modelsComingSoon": {
+    "es": "Modelos completos: próximamente",
+    "zh": "完整模型：即将推出",
+    "ja": "フルモデル: 近日対応",
+    "pt": "Modelos completos: em breve",
+    "ko": "전체 모델: 준비 중"
+  },
+  "sources.review": {
+    "es": "Revisar antes de importar",
+    "zh": "导入前确认",
+    "ja": "インポート前の確認",
+    "pt": "Revisar antes de importar",
+    "ko": "가져오기 전에 확인"
+  },
+  "sources.name": {
+    "es": "Nombre",
+    "zh": "名称",
+    "ja": "名前",
+    "pt": "Nome",
+    "ko": "이름"
+  },
+  "sources.trigger": {
+    "es": "Palabra activadora",
+    "zh": "触发词",
+    "ja": "トリガーワード",
+    "pt": "Palavra-gatilho",
+    "ko": "트리거 단어"
+  },
+  "sources.confirm": {
+    "es": "Confirmar importación",
+    "zh": "确认导入",
+    "ja": "インポートを確定",
+    "pt": "Confirmar importação",
+    "ko": "가져오기 확인"
+  },
+  "sources.cancel": {
+    "es": "Cancelar",
+    "zh": "取消",
+    "ja": "キャンセル",
+    "pt": "Cancelar",
+    "ko": "취소"
+  },
+  "sources.overwriteRefused": {
+    "es": "Ya existe un archivo con ese nombre. No se sobrescribió nada.",
+    "zh": "已存在同名文件，未覆盖任何内容。",
+    "ja": "同じ名前のファイルがすでに存在します。何も上書きされませんでした。",
+    "pt": "Já existe um arquivo com esse nome. Nada foi sobrescrito.",
+    "ko": "같은 이름의 파일이 이미 있습니다. 아무것도 덮어쓰지 않았습니다."
+  },
+  "sources.installed": {
+    "es": "Instalados",
+    "zh": "已安装",
+    "ja": "インストール済み",
+    "pt": "Instalados",
+    "ko": "설치됨"
+  },
+  "sources.importTab": {
+    "es": "Importar",
+    "zh": "导入",
+    "ja": "インポート",
+    "pt": "Importar",
+    "ko": "가져오기"
+  },
+  "sources.importOnImportTab": {
+    "es": "Se importa en la pestaña Importar",
+    "zh": "请在“导入”标签页导入",
+    "ja": "インポートタブで取り込みます",
+    "pt": "Importa na aba Importar",
+    "ko": "가져오기 탭에서 가져오세요"
+  },
+  "sources.scale": {
+    "es": "Intensidad",
+    "zh": "强度",
+    "ja": "強度",
+    "pt": "Intensidade",
+    "ko": "강도"
+  },
+  "sources.actionsLabel": {
+    "es": "Acciones de la imagen",
+    "zh": "图片操作",
+    "ja": "画像の操作",
+    "pt": "Ações da imagem",
+    "ko": "이미지 작업"
+  }
+}
