@@ -66,7 +66,7 @@ environments on your side.
 1. Unzip it and move `DiffusionBear.app` into `/Applications`.
 2. **First launch only:** the app is ad-hoc signed, not notarised with an Apple
    Developer ID, so macOS refuses a plain double-click with *"Apple cannot check it for
-   malicious software"*. **Right-click the app → Open → Open.** It is not malware; it is
+   malicious software"*. ****Open System Settings > Privacy & Security** -> **Scroll down to the security section; you will see a notice that the app was blocked.** -> **Click Open Anyway and enter your administrator password to confirm** ** It is not malware; it is
    simply unsigned, and the warning does not return on later launches.
 3. To check the download: `shasum -a 256 DiffusionBear-0.3.9-arm64.zip`, compared
    against the [`ALL_SHA256SUMS`](https://github.com/OuincheWinch/DiffusionBear/releases/download/v0.3.9/ALL_SHA256SUMS)
