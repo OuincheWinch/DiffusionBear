@@ -139,7 +139,7 @@ backend — not mock-ups.
 
 **Prompt enhancement**
 
-- A local **Qwen2.5-0.5B-Instruct 4-bit** model rewrites your prompt for the
+- A local **Qwen2.5-0.5B-Instruct 4-bit** or **Qwen2.5-1.5B-Instruct 4-bit** model rewrites your prompt for the
   selected engine, in prose or in JSON, with editable per-engine system prompts.
 - Active LoRA trigger words are preserved verbatim, with a deterministic
   re-insertion guarantee.
