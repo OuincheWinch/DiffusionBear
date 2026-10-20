@@ -1,0 +1,53 @@
+{
+  "downloader.starting": {
+    "es": "Iniciando la descarga de «{model}» ({base})…",
+    "zh": "正在开始下载“{model}”（{base}）……",
+    "ja": "「{model}」({base}) のダウンロードを開始…",
+    "pt": "Iniciando o download de \"{model}\" ({base})…",
+    "ko": "\"{model}\"({base}) 다운로드를 시작합니다…"
+  },
+  "downloader.failed": { "es": "Error en la descarga: {error}", "zh": "下载失败：{error}", "ja": "ダウンロードに失敗しました: {error}", "pt": "Falha no download: {error}", "ko": "다운로드 실패: {error}" },
+  "downloader.cancelFailed": { "es": "No se pudo cancelar: {error}", "zh": "取消失败：{error}", "ja": "キャンセルに失敗しました: {error}", "pt": "Falha ao cancelar: {error}", "ko": "취소 실패: {error}" },
+  "downloader.tagDirectUrl": { "es": "URL DIRECTA", "zh": "直链", "ja": "直接URL", "pt": "URL DIRETA", "ko": "직접 URL" },
+  "downloader.tagDirect": { "es": "DIRECTA", "zh": "直链", "ja": "直接", "pt": "DIRETA", "ko": "직접" },
+  "downloader.title": { "es": "Descargador universal de LoRA", "zh": "通用 LoRA 下载器", "ja": "汎用 LoRA ダウンローダー", "pt": "Baixador universal de LoRAs", "ko": "범용 LoRA 다운로더" },
+  "downloader.detectedHf": { "es": "🤗 Hugging Face detectado", "zh": "🤗 已检测到 Hugging Face", "ja": "🤗 Hugging Face を検出", "pt": "🤗 Hugging Face detectado", "ko": "🤗 Hugging Face 감지됨" },
+  "downloader.detectedCivitai": { "es": "⚡ Civitai detectado", "zh": "⚡ 已检测到 Civitai", "ja": "⚡ Civitai を検出", "pt": "⚡ Civitai detectado", "ko": "⚡ Civitai 감지됨" },
+  "downloader.detectedDirect": { "es": "🔗 Enlace directo detectado", "zh": "🔗 已检测到直链", "ja": "🔗 直接リンクを検出", "pt": "🔗 Link direto detectado", "ko": "🔗 직접 링크 감지됨" },
+  "downloader.hint": {
+    "es": "Pega la URL o el ID de un modelo de Civitai, el ID o la URL de un repositorio de Hugging Face, o cualquier enlace directo a un archivo .safetensors.",
+    "zh": "粘贴 Civitai 模型的 URL 或 ID、Hugging Face 仓库 ID 或 URL，或指向 .safetensors 文件的任意直链。",
+    "ja": "Civitai モデルの URL または ID、Hugging Face リポジトリの ID または URL、または .safetensors ファイルへの直接リンクを貼り付けてください。",
+    "pt": "Cole a URL ou o ID de um modelo do Civitai, o ID ou a URL de um repositório do Hugging Face, ou qualquer link direto para um arquivo .safetensors.",
+    "ko": "Civitai 모델 URL 또는 ID, Hugging Face 저장소 ID 또는 URL, 또는 .safetensors 파일로 향하는 직접 링크를 붙여넣으세요."
+  },
+  "downloader.urlPlaceholder": {
+    "es": "URL o ID de Civitai, repositorio o URL de Hugging Face, o enlace directo a .safetensors…",
+    "zh": "Civitai URL 或 ID、Hugging Face 仓库或 URL，或 .safetensors 直链……",
+    "ja": "Civitai の URL または ID、Hugging Face のリポジトリまたは URL、.safetensors への直接リンク…",
+    "pt": "URL ou ID do Civitai, repositório ou URL do Hugging Face, ou link direto para .safetensors…",
+    "ko": "Civitai URL 또는 ID, Hugging Face 저장소 또는 URL, 또는 .safetensors 직접 링크…"
+  },
+  "downloader.startingBtn": { "es": "Iniciando…", "zh": "正在启动……", "ja": "開始中…", "pt": "Iniciando…", "ko": "시작 중…" },
+  "downloader.downloadBtn": { "es": "⚡ Descargar y registrar", "zh": "⚡ 下载并注册", "ja": "⚡ ダウンロードして登録", "pt": "⚡ Baixar e registrar", "ko": "⚡ 다운로드 및 등록" },
+  "downloader.namePlaceholder": { "es": "Nombre personalizado (opcional)", "zh": "自定义名称（可选）", "ja": "カスタム名（任意）", "pt": "Nome personalizado (opcional)", "ko": "사용자 지정 이름(선택)" },
+  "downloader.triggersPlaceholder": {
+    "es": "Palabras disparadoras: separadas por comas (opcional)",
+    "zh": "触发词：用逗号分隔（可选）",
+    "ja": "トリガーワード：カンマ区切り（任意）",
+    "pt": "Palavras-gatilho: separadas por vírgula (opcional)",
+    "ko": "트리거 단어: 쉼표로 구분(선택)"
+  },
+  "downloader.autoDetect": { "es": "Detectar arquitectura automáticamente", "zh": "自动检测架构", "ja": "アーキテクチャを自動検出", "pt": "Detectar arquitetura automaticamente", "ko": "아키텍처 자동 감지" },
+  "downloader.cancelTitle": { "es": "Cancelar la descarga", "zh": "取消下载", "ja": "ダウンロードをキャンセル", "pt": "Cancelar o download", "ko": "다운로드 취소" },
+  "downloader.cancelBtn": { "es": "✕ Cancelar", "zh": "✕ 取消", "ja": "✕ キャンセル", "pt": "✕ Cancelar", "ko": "✕ 취소" },
+  "downloader.ready": { "es": "✓ Listo", "zh": "✓ 就绪", "ja": "✓ 準備完了", "pt": "✓ Pronto", "ko": "✓ 준비됨" },
+  "downloader.error": { "es": "✖ Error", "zh": "✖ 错误", "ja": "✖ エラー", "pt": "✖ Erro", "ko": "✖ 오류" },
+  "downloader.cancelled": { "es": "Cancelado", "zh": "已取消", "ja": "キャンセル済み", "pt": "Cancelado", "ko": "취소됨" },
+  "downloader.authRequiredHf": { "es": "Este modelo requiere autenticación en Hugging Face.", "zh": "此模型需要在 Hugging Face 上进行身份验证。", "ja": "このモデルには Hugging Face での認証が必要です。", "pt": "Este modelo requer autenticação no Hugging Face.", "ko": "이 모델에는 Hugging Face 인증이 필요합니다." },
+  "downloader.authRequiredCivitai": { "es": "Este modelo requiere autenticación en Civitai.", "zh": "此模型需要在 Civitai 上进行身份验证。", "ja": "このモデルには Civitai での認証が必要です。", "pt": "Este modelo requer autenticação no Civitai.", "ko": "이 모델에는 Civitai 인증이 필요합니다." },
+  "downloader.configureHfToken": { "es": "🔑 Configurar el token de HF", "zh": "🔑 配置 HF 令牌", "ja": "🔑 HF トークンを設定", "pt": "🔑 Configurar o token do HF", "ko": "🔑 HF 토큰 설정" },
+  "downloader.configureApiKey": { "es": "🔑 Configurar la clave de API", "zh": "🔑 配置 API 密钥", "ja": "🔑 API キーを設定", "pt": "🔑 Configurar a chave de API", "ko": "🔑 API 키 설정" },
+  "downloader.installedFor": { "es": "Instalado para {model}.", "zh": "已为 {model} 安装。", "ja": "{model} 用にインストールしました。", "pt": "Instalado para {model}.", "ko": "{model}용으로 설치되었습니다." },
+  "downloader.switchTo": { "es": "⚡ Cambiar a {model}", "zh": "⚡ 切换到 {model}", "ja": "⚡ {model} に切り替え", "pt": "⚡ Mudar para {model}", "ko": "⚡ {model}(으)로 전환" }
+}

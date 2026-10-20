@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DiffusionBear</title>
+    <script>
+      // Set the theme before the bundle runs.
+      //
+      // The authoritative value lives in settings.json, behind a fetch that cannot
+      // possibly finish before first paint. Without this line every load renders dark
+      // and then flips, which on a light desktop is the single most visible way to get
+      // theming wrong.
+      //
+      // localStorage here is a MIRROR of the backend setting, not a second source of
+      // truth: it is written only after a successful POST, and `useTheme` reconciles
+      // against the backend on every load. If it is absent or stale, the OS preference
+      // wins and the app corrects itself -- so a stale mirror costs at most one flash,
+      // and never a wrong persisted choice.
+      (function () {
+        try {
+          var stored = localStorage.getItem("diffusionbear.theme");
+          var mode = (stored === "light" || stored === "dark")
+            ? stored
+            : (window.matchMedia &&
+               window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", mode);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

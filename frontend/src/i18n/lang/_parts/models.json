@@ -1,0 +1,639 @@
+{
+  "models.browserTitle": {
+    "es": "Explorador y descargador de modelos",
+    "zh": "模型浏览器与下载器",
+    "ja": "モデルブラウザーとダウンローダー",
+    "pt": "Navegador e downloader de modelos",
+    "ko": "모델 브라우저 및 다운로더"
+  },
+  "models.browserDesc": {
+    "es": "Busca modelos cuantizados en Hugging Face e instálalos directamente aquí.",
+    "zh": "在 Hugging Face 上搜索量化模型，并直接在此处安装。",
+    "ja": "Hugging Face で量子化モデルを検索し、ここから直接インストールできます。",
+    "pt": "Pesquise modelos quantizados no Hugging Face e instale-os aqui mesmo.",
+    "ko": "Hugging Face에서 양자화 모델을 검색하고 여기에서 바로 설치하세요."
+  },
+  "models.searchPlaceholder": {
+    "es": "Buscar modelos…",
+    "zh": "搜索模型…",
+    "ja": "モデルを検索…",
+    "pt": "Pesquisar modelos…",
+    "ko": "모델 검색…"
+  },
+  "models.searchLabel": {
+    "es": "Buscar modelos",
+    "zh": "搜索模型",
+    "ja": "モデルを検索",
+    "pt": "Pesquisar modelos",
+    "ko": "모델 검색"
+  },
+  "models.filterOrg": {
+    "es": "Organización",
+    "zh": "组织",
+    "ja": "組織",
+    "pt": "Organização",
+    "ko": "조직"
+  },
+  "models.filterArchitecture": {
+    "es": "Arquitectura",
+    "zh": "架构",
+    "ja": "アーキテクチャ",
+    "pt": "Arquitetura",
+    "ko": "아키텍처"
+  },
+  "models.filterQuantization": {
+    "es": "Cuantización",
+    "zh": "量化",
+    "ja": "量子化",
+    "pt": "Quantização",
+    "ko": "양자화"
+  },
+  "models.filterType": {
+    "es": "Tipo",
+    "zh": "类型",
+    "ja": "種類",
+    "pt": "Tipo",
+    "ko": "유형"
+  },
+  "models.filterAll": {
+    "es": "Todos",
+    "zh": "全部",
+    "ja": "すべて",
+    "pt": "Todos",
+    "ko": "전체"
+  },
+  "models.sortBy": {
+    "es": "Ordenar por",
+    "zh": "排序方式",
+    "ja": "並び替え",
+    "pt": "Ordenar por",
+    "ko": "정렬 기준"
+  },
+  "models.sort.downloads": {
+    "es": "Descargas",
+    "zh": "下载量",
+    "ja": "ダウンロード数",
+    "pt": "Downloads",
+    "ko": "다운로드 수"
+  },
+  "models.sort.likes": {
+    "es": "Me gusta",
+    "zh": "点赞",
+    "ja": "いいね",
+    "pt": "Curtidas",
+    "ko": "좋아요"
+  },
+  "models.sort.lastModified": {
+    "es": "Actualizados recientemente",
+    "zh": "最近更新",
+    "ja": "最近更新",
+    "pt": "Atualizados recentemente",
+    "ko": "최근 업데이트"
+  },
+  "models.kind.diffusion": {
+    "es": "Generador",
+    "zh": "生成模型",
+    "ja": "生成モデル",
+    "pt": "Gerador",
+    "ko": "생성 모델"
+  },
+  "models.kind.lora": {
+    "es": "LoRA",
+    "zh": "LoRA",
+    "ja": "LoRA",
+    "pt": "LoRA",
+    "ko": "LoRA"
+  },
+  "models.kind.upscaler": {
+    "es": "Upscaler",
+    "zh": "超分辨率模型",
+    "ja": "アップスケーラー",
+    "pt": "Upscaler",
+    "ko": "업스케일러"
+  },
+  "models.alphaTag": {
+    "es": "Alfa nativo",
+    "zh": "原生透明通道",
+    "ja": "ネイティブアルファ",
+    "pt": "Alfa nativo",
+    "ko": "네이티브 알파"
+  },
+  "models.downloads": {
+    "es": "descargas",
+    "zh": "次下载",
+    "ja": "ダウンロード",
+    "pt": "downloads",
+    "ko": "다운로드"
+  },
+  "models.retry": {
+    "es": "Reintentar",
+    "zh": "重试",
+    "ja": "再試行",
+    "pt": "Tentar novamente",
+    "ko": "다시 시도"
+  },
+  "models.searchPlaceholderCivitai": {
+    "es": "Buscar en Civitai…",
+    "zh": "搜索 Civitai…",
+    "ja": "Civitai を検索…",
+    "pt": "Pesquisar no Civitai…",
+    "ko": "Civitai 검색…"
+  },
+  "models.resultsCountCivitai": {
+    "es": "{count} modelo(s) en Civitai",
+    "zh": "Civitai 上 {count} 个模型",
+    "ja": "Civitai に {count} 件のモデル",
+    "pt": "{count} modelo(s) no Civitai",
+    "ko": "Civitai에 모델 {count}개"
+  },
+  "models.convert": {
+    "es": "Convertir a formato utilizable",
+    "zh": "转换为可用格式",
+    "ja": "使用可能な形式に変換",
+    "pt": "Converter para formato utilizável",
+    "ko": "사용 가능한 형식으로 변환"
+  },
+  "models.convertUnavailable": {
+    "es": "Conversión no disponible",
+    "zh": "转换不可用",
+    "ja": "変換を利用できません",
+    "pt": "Conversão indisponível",
+    "ko": "변환 사용 불가"
+  },
+  "models.convertedBadge": {
+    "es": "CONVERTIDO",
+    "zh": "已转换",
+    "ja": "変換済み",
+    "pt": "CONVERTIDO",
+    "ko": "변환됨"
+  },
+  "models.civitaiSort.downloads": {
+    "es": "Descargas",
+    "zh": "下载量",
+    "ja": "ダウンロード数",
+    "pt": "Downloads",
+    "ko": "다운로드 수"
+  },
+  "models.civitaiSort.rated": {
+    "es": "Mejor valorados",
+    "zh": "评分最高",
+    "ja": "評価順",
+    "pt": "Melhor avaliados",
+    "ko": "평점순"
+  },
+  "models.civitaiSort.newest": {
+    "es": "Más recientes",
+    "zh": "最新",
+    "ja": "新着順",
+    "pt": "Mais recentes",
+    "ko": "최신순"
+  },
+  "models.civitaiSort.liked": {
+    "es": "Más gustados",
+    "zh": "最受欢迎",
+    "ja": "いいね順",
+    "pt": "Mais curtidos",
+    "ko": "좋아요순"
+  },
+  "models.notRunnable": {
+    "es": "No se puede ejecutar aquí",
+    "zh": "此处无法运行",
+    "ja": "ここでは実行できません",
+    "pt": "Não executável aqui",
+    "ko": "여기에서 실행 불가"
+  },
+  "models.useFor": {
+    "es": "Usar para {model}",
+    "zh": "用于 {model}",
+    "ja": "{model} に使用",
+    "pt": "Usar para {model}",
+    "ko": "{model}(으)로 사용"
+  },
+  "models.stopUsing": {
+    "es": "Dejar de usar {model}",
+    "zh": "停止使用 {model}",
+    "ja": "{model} の使用を停止",
+    "pt": "Parar de usar {model}",
+    "ko": "{model} 사용 중단"
+  },
+  "models.searching": {
+    "es": "Buscando…",
+    "zh": "搜索中…",
+    "ja": "検索中…",
+    "pt": "Pesquisando…",
+    "ko": "검색 중…"
+  },
+  "models.resultsCount": {
+    "es": "{count} modelo(s)",
+    "zh": "{count} 个模型",
+    "ja": "{count} 件のモデル",
+    "pt": "{count} modelo(s)",
+    "ko": "모델 {count}개"
+  },
+  "models.noResults": {
+    "es": "Ningún modelo coincide con estos filtros.",
+    "zh": "没有模型符合这些筛选条件。",
+    "ja": "これらのフィルターに一致するモデルはありません。",
+    "pt": "Nenhum modelo corresponde a estes filtros.",
+    "ko": "이 필터와 일치하는 모델이 없습니다."
+  },
+  "models.download": {
+    "es": "Descargar",
+    "zh": "下载",
+    "ja": "ダウンロード",
+    "pt": "Baixar",
+    "ko": "다운로드"
+  },
+  "models.downloading": {
+    "es": "Descargando…",
+    "zh": "下载中…",
+    "ja": "ダウンロード中…",
+    "pt": "Baixando…",
+    "ko": "다운로드 중…"
+  },
+  "models.preparing": {
+    "es": "Preparando…",
+    "zh": "准备中…",
+    "ja": "準備中…",
+    "pt": "Preparando…",
+    "ko": "준비 중…"
+  },
+  "models.cancel": {
+    "es": "Cancelar",
+    "zh": "取消",
+    "ja": "キャンセル",
+    "pt": "Cancelar",
+    "ko": "취소"
+  },
+  "models.installed": {
+    "es": "Instalado",
+    "zh": "已安装",
+    "ja": "インストール済み",
+    "pt": "Instalado",
+    "ko": "설치됨"
+  },
+  "models.installedBadge": {
+    "es": "INSTALADO",
+    "zh": "已安装",
+    "ja": "インストール済み",
+    "pt": "INSTALADO",
+    "ko": "설치됨"
+  },
+  "models.alreadyHave": {
+    "es": "Ya tienes {model}",
+    "zh": "你已有 {model}",
+    "ja": "{model} はすでにあります",
+    "pt": "Você já tem {model}",
+    "ko": "이미 {model}이(가) 있습니다"
+  },
+  "models.openOnHf": {
+    "es": "Ver en Hugging Face",
+    "zh": "在 Hugging Face 上查看",
+    "ja": "Hugging Face で見る",
+    "pt": "Ver no Hugging Face",
+    "ko": "Hugging Face에서 보기"
+  },
+  "models.detected.title": {
+    "es": "Modelos detectados",
+    "zh": "检测到的模型",
+    "ja": "検出されたモデル",
+    "pt": "Modelos detectados",
+    "ko": "감지된 모델"
+  },
+  "models.detected.desc": {
+    "es": "Modelos descargados mediante el navegador que no están en el registro. Se pueden convertir, registrar o eliminar.",
+    "zh": "通过浏览器下载但不在注册表中的模型。可以转换、注册或删除。",
+    "ja": "ブラウザ経由でダウンロードされたがレジストリにないモデル。変換、登録、削除が可能です。",
+    "pt": "Modelos baixados via navegador que não estão no registro. Podem ser convertidos, registrados ou excluídos.",
+    "ko": "브라우저를 통해 다운로드되었으나 레지스트리에 없는 모델. 변환, 등록 또는 삭제 가능."
+  },
+  "models.detected.loading": {
+    "es": "Cargando modelos detectados…",
+    "zh": "加载检测到的模型…",
+    "ja": "検出されたモデルを読み込み中…",
+    "pt": "Carregando modelos detectados…",
+    "ko": "감지된 모델 로드 중…"
+  },
+  "models.detected.colArchitecture": {
+    "es": "Arquitectura",
+    "zh": "架构",
+    "ja": "アーキテクチャ",
+    "pt": "Arquitetura",
+    "ko": "아키텍처"
+  },
+  "models.detected.colRunnableAs": {
+    "es": "Ejecutable como",
+    "zh": "可作为...运行",
+    "ja": "実行可能エンジン",
+    "pt": "Executável como",
+    "ko": "실행 가능 엔진"
+  },
+  "models.detected.delete": {
+    "es": "Eliminar",
+    "zh": "删除",
+    "ja": "削除",
+    "pt": "Excluir",
+    "ko": "삭제"
+  },
+  "models.detected.deleteTitle": {
+    "es": "Eliminar este modelo del almacenamiento",
+    "zh": "从存储中删除此模型",
+    "ja": "ストレージからこのモデルを削除",
+    "pt": "Excluir este modelo do armazenamento",
+    "ko": "스토리지에서 이 모델 삭제"
+  },
+  "models.detected.confirmDelete": {
+    "es": "¿Eliminar '{model}'? Se liberará espacio en disco. Esta acción no se puede deshacer.",
+    "zh": "删除 '{model}'？这将释放磁盘空间。此操作无法撤销。",
+    "ja": "'{model}' を削除しますか？ディスク容量が解放されます。元に戻せません。",
+    "pt": "Excluir '{model}'? Isso liberará espaço em disco. Esta ação não pode ser desfeita.",
+    "ko": "'{model}'을(를) 삭제하시겠습니까? 디스크 공간이 확보됩니다. 되돌릴 수 없습니다."
+  },
+  "models.detected.deleted": {
+    "es": "Modelo '{model}' eliminado",
+    "zh": "模型 '{model}' 已删除",
+    "ja": "モデル '{model}' を削除しました",
+    "pt": "Modelo '{model}' excluído",
+    "ko": "모델 '{model}'이(가) 삭제됨"
+  },
+  "models.detected.convert": {
+    "es": "Convertir .bin → .safetensors",
+    "zh": "转换 .bin → .safetensors",
+    "ja": ".bin → .safetensors に変換",
+    "pt": "Converter .bin → .safetensors",
+    "ko": ".bin → .safetensors 변환"
+  },
+  "models.detected.convertTitle": {
+    "es": "Convertir pesos SDXL de .bin a .safetensors",
+    "zh": "将 SDXL 权重从 .bin 转换为 .safetensors",
+    "ja": "SDXL 重みを .bin から .safetensors に変換",
+    "pt": "Converter pesos SDXL de .bin para .safetensors",
+    "ko": "SDXL 가중치를 .bin에서 .safetensors로 변환"
+  },
+  "models.detected.converted": {
+    "es": "Modelo '{model}' convertido a .safetensors",
+    "zh": "模型 '{model}' 已转换为 .safetensors",
+    "ja": "モデル '{model}' を .safetensors に変換しました",
+    "pt": "Modelo '{model}' convertido para .safetensors",
+    "ko": "모델 '{model}'이(가) .safetensors로 변환됨"
+  },
+  "models.detected.registered": {
+    "es": "Modelo '{model}' registrado como ejecutable",
+    "zh": "模型 '{model}' 已注册为可执行",
+    "ja": "モデル '{model}' を実行可能として登録しました",
+    "pt": "Modelo '{model}' registrado como executável",
+    "ko": "모델 '{model}'이(가) 실행 가능으로 등록됨"
+  },
+  "models.detected.converting": {
+    "es": "Convirtiendo…",
+    "zh": "转换中…",
+    "ja": "変換中…",
+    "pt": "Convertendo…",
+    "ko": "변환 중…"
+  },
+  "models.detected.colOrigin": {
+    "es": "Origen",
+    "zh": "来源",
+    "ja": "ソース",
+    "pt": "Origem",
+    "ko": "출처"
+  },
+  "models.detected.chooseModelPlaceholder": {
+    "es": "-- Elegir modelo para asociar --",
+    "zh": "-- 选择要关联的模型 --",
+    "ja": "-- 関連付けるモデルを選択 --",
+    "pt": "-- Escolha o modelo para associar --",
+    "ko": "-- 연결할 모델 선택 --"
+  },
+  "models.detected.attachBtn": {
+    "es": "Asociar",
+    "zh": "关联",
+    "ja": "関連付け",
+    "pt": "Associar",
+    "ko": "연결"
+  },
+  "models.detected.attachTitle": {
+    "es": "Asociar esta carpeta detectada al modelo seleccionado",
+    "zh": "将此检测到的文件夹关联到所选模型",
+    "ja": "この検出されたフォルダを選択したモデルに関連付け",
+    "pt": "Associar esta pasta detectada ao modelo selecionado",
+    "ko": "이 감지된 폴더를 선택한 모델에 연결"
+  },
+  "models.detected.attachedSuccess": {
+    "es": "Modelo «{item}» asociado a {target}",
+    "zh": "模型“{item}”已关联至“{target}”",
+    "ja": "モデル「{item}」を「{target}」に関連付けました",
+    "pt": "Modelo '{item}' associado a {target}",
+    "ko": "모델 '{item}'이(가) '{target}'에 연결되었습니다"
+  },
+  "models.detected.unlinkBtn": {
+    "es": "Desvincular",
+    "zh": "取消关联",
+    "ja": "関連付け解除",
+    "pt": "Desvincular",
+    "ko": "연결 해제"
+  },
+  "models.detected.unlinkTitle": {
+    "es": "Eliminar la asociación de esta carpeta con el modelo",
+    "zh": "取消此文件夹与模型的关联",
+    "ja": "このフォルダとモデルの関連付けを解除",
+    "pt": "Remover a associação desta pasta com o modelo",
+    "ko": "이 폴더와 모델의 연결을 해제"
+  },
+  "models.detected.unlinkedSuccess": {
+    "es": "Vínculo eliminado para «{model}»",
+    "zh": "已取消“{model}”的关联",
+    "ja": "「{model}」の関連付けを解除しました",
+    "pt": "Vínculo removido para '{model}'",
+    "ko": "'{model}'의 연결을 해제했습니다"
+  },
+  "models.detected.registeredBadge": {
+    "es": "Asociado",
+    "zh": "已关联",
+    "ja": "関連付け済み",
+    "pt": "Associado",
+    "ko": "연결됨"
+  },
+  "models.deleting": {
+    "es": "Eliminando…",
+    "zh": "删除中…",
+    "ja": "削除中…",
+    "pt": "Excluindo…",
+    "ko": "삭제 중…"
+  },
+  "models.detected.notInstalled": {
+    "es": "No instalado",
+    "zh": "未安装",
+    "ja": "未インストール",
+    "pt": "Não instalado",
+    "ko": "설치되지 않음"
+  },
+  "models.detected.refreshLicenses": {
+    "es": "Actualizar licencias",
+    "zh": "刷新许可协议",
+    "ja": "ライセンスを更新",
+    "pt": "Atualizar licenças",
+    "ko": "라이선스 새로 고침"
+  },
+  "models.detected.licensesRefreshed": {
+    "es": "{updated} actualizadas, {skipped} sin cambio",
+    "zh": "已更新 {updated} 个，{skipped} 个无变化",
+    "ja": "{updated} 件更新、{skipped} 件変更なし",
+    "pt": "{updated} atualizadas, {skipped} sem alteração",
+    "ko": "{updated}개 갱신, {skipped}개 변경 없음"
+  },
+  "models.detected.refreshingLicenses": {
+    "es": "Actualizando licencias…",
+    "zh": "正在刷新许可协议…",
+    "ja": "ライセンスを更新中…",
+    "pt": "Atualizando licenças…",
+    "ko": "라이선스 새로 고치는 중…"
+  },
+  "models.onboard.title": {
+    "es": "Añadir un modelo no listado",
+    "zh": "添加未收录模型",
+    "ja": "未登録モデルを追加",
+    "pt": "Adicionar um modelo não listado",
+    "ko": "미등록 모델 추가"
+  },
+  "models.onboard.desc": {
+    "es": "Declara la familia y el origen, revisa y confirma. El modelo aparece en Generar sin reiniciar.",
+    "zh": "声明模型家族与来源，检查后确认。模型无需重启即会出现在生成页。",
+    "ja": "ファミリーと取得元を宣言し、確認して登録します。モデルは再起動なしで生成タブに表示されます。",
+    "pt": "Declare a família e a origem, revise e confirme. O modelo aparece em Gerar sem reiniciar.",
+    "ko": "패밀리와 출처를 선언하고 검토한 뒤 확인하세요. 모델은 다시 시작 없이 생성 탭에 나타납니다."
+  },
+  "models.onboard.label": {
+    "es": "Nombre (opcional)",
+    "zh": "名称（可选）",
+    "ja": "名前（任意）",
+    "pt": "Nome (opcional)",
+    "ko": "이름(선택 사항)"
+  },
+  "models.onboard.family": {
+    "es": "Familia",
+    "zh": "模型家族",
+    "ja": "ファミリー",
+    "pt": "Família",
+    "ko": "패밀리"
+  },
+  "models.onboard.variant": {
+    "es": "Variante",
+    "zh": "变体",
+    "ja": "バリアント",
+    "pt": "Variante",
+    "ko": "변형"
+  },
+  "models.onboard.source": {
+    "es": "Origen",
+    "zh": "来源",
+    "ja": "取得元",
+    "pt": "Origem",
+    "ko": "출처"
+  },
+  "models.onboard.sourceLocal": {
+    "es": "Carpeta local",
+    "zh": "本地文件夹",
+    "ja": "ローカルフォルダー",
+    "pt": "Pasta local",
+    "ko": "로컬 폴더"
+  },
+  "models.onboard.sourceHf": {
+    "es": "Repositorio de Hugging Face",
+    "zh": "Hugging Face 仓库",
+    "ja": "Hugging Face リポジトリ",
+    "pt": "Repositório Hugging Face",
+    "ko": "Hugging Face 리포지토리"
+  },
+  "models.onboard.sourceCivitai": {
+    "es": "Versión de Civitai",
+    "zh": "Civitai 版本",
+    "ja": "Civitai バージョン",
+    "pt": "Versão do Civitai",
+    "ko": "Civitai 버전"
+  },
+  "models.onboard.localPath": {
+    "es": "Ruta de la carpeta local",
+    "zh": "本地文件夹路径",
+    "ja": "ローカルフォルダーのパス",
+    "pt": "Caminho da pasta local",
+    "ko": "로컬 폴더 경로"
+  },
+  "models.onboard.hfRepo": {
+    "es": "Repositorio «org/nombre»",
+    "zh": "仓库“org/name”",
+    "ja": "リポジトリ「org/name」",
+    "pt": "Repositório «org/nome»",
+    "ko": "리포지토리 “org/name”"
+  },
+  "models.onboard.civitaiRef": {
+    "es": "URL o ID de la versión de Civitai",
+    "zh": "Civitai 版本 URL 或 ID",
+    "ja": "Civitai バージョンの URL または ID",
+    "pt": "URL ou ID da versão do Civitai",
+    "ko": "Civitai 버전 URL 또는 ID"
+  },
+  "models.onboard.suggest": {
+    "es": "Sugerir desde Civitai",
+    "zh": "从 Civitai 获取建议",
+    "ja": "Civitai から提案を取得",
+    "pt": "Sugerir a partir do Civitai",
+    "ko": "Civitai에서 제안 가져오기"
+  },
+  "models.onboard.suggested": {
+    "es": "Familia sugerida por Civitai — puedes cambiarla",
+    "zh": "Civitai 建议的家族，可修改",
+    "ja": "Civitai が提案したファミリー。変更できます。",
+    "pt": "Família sugerida pelo Civitai — podes alterá-la",
+    "ko": "Civitai 제안 패밀리 — 변경할 수 있습니다"
+  },
+  "models.onboard.review": {
+    "es": "Revisa antes de registrar",
+    "zh": "注册前检查",
+    "ja": "登録前に確認",
+    "pt": "Revê antes de registar",
+    "ko": "등록 전 검토"
+  },
+  "models.onboard.confirm": {
+    "es": "Confirmar el registro",
+    "zh": "确认注册",
+    "ja": "登録を確定",
+    "pt": "Confirmar o registo",
+    "ko": "등록 확인"
+  },
+  "models.onboard.working": {
+    "es": "Procesando…",
+    "zh": "处理中…",
+    "ja": "処理中…",
+    "pt": "A processar…",
+    "ko": "처리 중…"
+  },
+  "models.onboard.registered": {
+    "es": "Modelo «{model}» registrado",
+    "zh": "模型“{model}”已注册",
+    "ja": "モデル「{model}」を登録しました",
+    "pt": "Modelo «{model}» registado",
+    "ko": "모델 “{model}” 등록됨"
+  },
+  "models.onboard.downloadStarted": {
+    "es": "Descarga iniciada — se registrará al terminar",
+    "zh": "下载已开始，完成后注册",
+    "ja": "ダウンロードを開始しました。完了後に登録します。",
+    "pt": "Descarga iniciada — registado ao concluir",
+    "ko": "다운로드 시작 — 완료 시 등록됩니다"
+  },
+  "models.onboard.convertAndRegister": {
+    "es": "Convertir a formato diffusers y registrar",
+    "zh": "转换为 diffusers 格式并注册",
+    "ja": "diffusers 形式に変換して登録",
+    "pt": "Converter para formato diffusers e registar",
+    "ko": "diffusers 형식으로 변환 후 등록"
+  },
+  "models.onboard.convertingStarted": {
+    "es": "Conversión iniciada — se registrará al finalizar",
+    "zh": "转换已开始 — 完成后将自动注册",
+    "ja": "変換を開始しました — 完了時に登録されます",
+    "pt": "Conversão iniciada — registado ao concluir",
+    "ko": "변환 시작됨 — 완료 시 등록됩니다"
+  }
+}
