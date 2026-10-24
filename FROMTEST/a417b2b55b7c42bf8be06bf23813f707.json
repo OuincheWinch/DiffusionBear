@@ -1,0 +1,103 @@
+{
+  "id": "a417b2b55b7c42bf8be06bf23813f707",
+  "prompt": "{\"summary\": {\"meta\": [\"scene\"], \"canvas\": \"single\", \"caption\": \"Modify <ref_image_0>: modify <sea_1>, modify <sky_2>, modify <sea_3>, modify <image_4>, modify <island_5>. [{\\\"id\\\":\\\"sea_1\\\",\\\"from\\\":\\\"target\\\",\\\"src_bbox\\\":null,\\\"tgt_bbox\\\":[495,0,1000,1000],\\\"desc\\\":\\\"Sea\\\"},{\\\"id\\\":\\\"sky_2\\\",\\\"from\\\":\\\"target\\\",\\\"src_bbox\\\":null,\\\"tgt_bbox\\\":[0,0,500,1000],\\\"desc\\\":\\\"Sky\\\"},{\\\"id\\\":\\\"sea_3\\\",\\\"from\\\":\\\"target\\\",\\\"src_bbox\\\":null,\\\"tgt_bbox\\\":[0,22,1000,522],\\\"desc\\\":\\\"sea\\\"},{\\\"id\\\":\\\"image_4\\\",\\\"from\\\":\\\"target\\\",\\\"src_bbox\\\":null,\\\"tgt_bbox\\\":[43,621,354,934],\\\"desc\\\":\\\"Image 1\\\"},{\\\"id\\\":\\\"island_5\\\",\\\"from\\\":\\\"target\\\",\\\"src_bbox\\\":null,\\\"tgt_bbox\\\":[388,648,1000,1000],\\\"desc\\\":\\\"paradisiac island\\\"}]\"}, \"items\": [{\"label\": \"object\", \"caption\": \"Sky\", \"bbox\": [-256, -384, 0, 384]}, {\"label\": \"object\", \"caption\": \"Sea\", \"bbox\": [-3, -384, 256, 384]}, {\"label\": \"object\", \"caption\": \"sea\", \"bbox\": [-256, -367, 256, 17]}, {\"label\": \"object\", \"caption\": \"Image 1\", \"bbox\": [-234, 93, -75, 333]}, {\"label\": \"object\", \"caption\": \"paradisiac island\", \"bbox\": [-57, 114, 256, 384]}], \"bbox_coord_space\": \"abs_centralized\", \"bbox_format\": \"yxyx\"}",
+  "negative_prompt": "",
+  "sampler": "flow_match_euler_discrete",
+  "scheduler": "flow_match_euler_discrete",
+  "width": 768,
+  "height": 512,
+  "steps": 4,
+  "guidance": 3.0,
+  "seed": 1792499736,
+  "quantization": null,
+  "loras": [],
+  "generation_time": 338.48,
+  "load_time": 0.17,
+  "created_at": 1792500077.649122,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear",
+  "tags": [],
+  "file": "a417b2b55b7c42bf8be06bf23813f707.png",
+  "model": "OpenMOSS-Team/MOSS-Image-SFT",
+  "engine": "moss",
+  "reference_images": [
+    "06e6c929c67f_logo.png"
+  ],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": false,
+  "tiled_vae": false,
+  "spatial_boxes": [
+    {
+      "uid": "box_prompt_0_water_1",
+      "id": "sea_1",
+      "bbox": [
+        495,
+        0,
+        1000,
+        1000
+      ],
+      "desc": "Sea",
+      "kind": "object",
+      "action": "add",
+      "lang": "object"
+    },
+    {
+      "uid": "box_prompt_1_cloud_2",
+      "id": "sky_2",
+      "bbox": [
+        0,
+        0,
+        500,
+        1000
+      ],
+      "desc": "Sky",
+      "kind": "object",
+      "action": "add",
+      "lang": "shio"
+    },
+    {
+      "uid": "box_prompt_2_right_3",
+      "id": "sea_3",
+      "bbox": [
+        0,
+        22,
+        1000,
+        522
+      ],
+      "desc": "sea",
+      "kind": "object",
+      "action": "add",
+      "lang": "sea"
+    },
+    {
+      "uid": "box_prompt_3_sun_4",
+      "id": "image_4",
+      "bbox": [
+        43,
+        621,
+        354,
+        934
+      ],
+      "desc": "Image 1",
+      "kind": "object",
+      "action": "add",
+      "lang": "object"
+    },
+    {
+      "uid": "box_prompt_4_ship_5",
+      "id": "island_5",
+      "bbox": [
+        388,
+        648,
+        1000,
+        1000
+      ],
+      "desc": "paradisiac island",
+      "kind": "object",
+      "action": "add",
+      "lang": "object"
+    }
+  ]
+}

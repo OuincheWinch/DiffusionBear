@@ -1,0 +1,87 @@
+{
+  "id": "709ca7cc696b4baca2833b942207408a",
+  "prompt": "{\"summary\": {\"meta\": [\"scene\"], \"canvas\": \"single\", \"caption\": \"{\\\"summary\\\": {\\\"meta\\\": [\\\"scene\\\"], \\\"canvas\\\": \\\"single\\\", \\\"caption\\\": \\\"A scene featuring <object_1> and <object_2> and <object_3> and <object_4>. [{\\\\\\\"id\\\\\\\":\\\\\\\"object_1\\\\\\\",\\\\\\\"bbox\\\\\\\":[500,100,950,900],\\\\\\\"desc\\\\\\\":\\\\\\\"\\\\\\\"},{\\\\\\\"id\\\\\\\":\\\\\\\"object_2\\\\\\\",\\\\\\\"bbox\\\\\\\":[50,100,500,900],\\\\\\\"desc\\\\\\\":\\\\\\\"\\\\\\\"},{\\\\\\\"id\\\\\\\":\\\\\\\"object_3\\\\\\\",\\\\\\\"bbox\\\\\\\":[100,500,900,950],\\\\\\\"desc\\\\\\\":\\\\\\\"\\\\\\\"},{\\\\\\\"id\\\\\\\":\\\\\\\"object_4\\\\\\\",\\\\\\\"bbox\\\\\\\":[100,50,900,500],\\\\\\\"desc”:”Viking drakkar\\\\\\\"}]\\\"}, \\\"items\\\": [{\\\"label\\\": \\\"object\\\", \\\"caption\\\": \\\"object_4\\\", \\\"bbox\\\": [-307, -230, 307, 0]}, {\\\"label\\\": \\\"object\\\", \\\"caption\\\": \\\"object_2\\\", \\\"bbox\\\": [-346, -205, 0, 205]}, {\\\"label\\\": \\\"object\\\", \\\"caption\\\": \\\"object_1\\\", \\\"bbox\\\": [0, -205, 346, 205]}, {\\\"label\\\": \\\"object\\\", \\\"caption\\\": \\\"object_3\\\", \\\"bbox\\\": [-307, 0, 307, 230]}], \\\"bbox_coord_space\\\": \\\"abs_centralized\\\", \\\"bbox_format\\\": \\\"yxyx\\\"}\"}, \"items\": [{\"label\": \"object\", \"caption\": \"object_4\", \"bbox\": [-307, -230, 307, 0]}, {\"label\": \"object\", \"caption\": \"object_2\", \"bbox\": [-346, -205, 0, 205]}, {\"label\": \"object\", \"caption\": \"object_1\", \"bbox\": [0, -205, 346, 205]}, {\"label\": \"object\", \"caption\": \"object_3\", \"bbox\": [-307, 0, 307, 230]}], \"bbox_coord_space\": \"abs_centralized\", \"bbox_format\": \"yxyx\"}",
+  "negative_prompt": "",
+  "sampler": "flow_match_euler_discrete",
+  "scheduler": "flow_match_euler_discrete",
+  "width": 512,
+  "height": 768,
+  "steps": 8,
+  "guidance": 3.0,
+  "seed": 1792501807,
+  "quantization": null,
+  "loras": [],
+  "generation_time": 621.95,
+  "load_time": 0.19,
+  "created_at": 1792502855.350275,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear",
+  "tags": [],
+  "file": "709ca7cc696b4baca2833b942207408a.png",
+  "model": "OpenMOSS-Team/MOSS-Image-SFT",
+  "engine": "moss",
+  "reference_images": [],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": false,
+  "tiled_vae": false,
+  "spatial_boxes": [
+    {
+      "uid": "box_1792501384289_bafgp",
+      "id": "object_1",
+      "bbox": [
+        500,
+        100,
+        950,
+        900
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_1792501412267_q9rgg",
+      "id": "object_2",
+      "bbox": [
+        50,
+        100,
+        500,
+        900
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_1792501431887_bpv7h",
+      "id": "object_3",
+      "bbox": [
+        100,
+        500,
+        900,
+        950
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_1792501461835_m39ep",
+      "id": "object_4",
+      "bbox": [
+        100,
+        50,
+        900,
+        500
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    }
+  ]
+}

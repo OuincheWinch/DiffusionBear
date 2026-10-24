@@ -1,0 +1,33 @@
+{
+  "id": "8165a539d48d4520bc823e22b1c09f70",
+  "prompt": "Photoreal studio product photo of a matte white ceramic coffee mug on a concrete pedestal. add the logo from Image 1 on the mug, Under the logo add clear legible text on the mug: “DiffusionBear\". Smaller line below: \"Beta 0.3.9\". Softbox lighting, shallow depth of field, clean beige background.\n",
+  "negative_prompt": "",
+  "sampler": "Euler",
+  "width": 1024,
+  "height": 1024,
+  "steps": 6,
+  "guidance": 1.0,
+  "seed": 1792171636,
+  "quantization": 4,
+  "loras": [],
+  "generation_time": 218.27,
+  "load_time": 0.0,
+  "created_at": 1792171855.242026,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear",
+  "tags": [],
+  "file": "8165a539d48d4520bc823e22b1c09f70.png",
+  "model": "mlx-community/flux2-klein-4b-4bit",
+  "reference_images": [
+    "94b0af224b03_logo.png"
+  ],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": true,
+  "scheduler": "flow_match_euler_discrete",
+  "modelVersionId": 2684089,
+  "modelId": 2387000,
+  "model_label": "FLUX.2-klein 4B",
+  "modelVersionName": "4-bit"
+}

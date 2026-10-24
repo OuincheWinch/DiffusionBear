@@ -1,0 +1,131 @@
+{
+  "id": "db2ca2578d024dee8df57c5ea1964906",
+  "prompt": "“Old fashionned XX Century vacation poster : A scene featuring <water_1> and <cloud_2> and <right_3> and <sun_4> and <ship_5>. [{\"id\":\"water_1\",\"bbox\":[495,0,1000,1000],\"desc\":\"Calm carebean sea, torquoise water,\"},{\"id\":\"cloud_2\",\"bbox\":[0,0,500,1000],\"desc\":\"Sky, radiant blue, no cloud\"},{\"id\":\"right_3\",\"bbox\":[0,22,1000,522],\"desc\":\"Pristine Pirate ship salling to the right\"},{\"id\":\"sun_4\",\"bbox\":[43,621,354,934],\"desc\":\"Vibrant sun\"},{\"id\":\"ship_5\",\"bbox\":[388,648,1000,1000],\"desc”:”Tropical island\"}]”, featuring <object_2>, <object_1>, <object_3>, <object_4>, <object_5>. [{\"id\": \"object_2\", \"bbox\": [0, 0, 500, 1000], \"desc\": \"\"}, {\"id\": \"object_1\", \"bbox\": [495, 0, 1000, 1000], \"desc\": \"\"}, {\"id\": \"object_3\", \"bbox\": [0, 22, 1000, 522], \"desc\": \"\"}, {\"id\": \"object_4\", \"bbox\": [43, 621, 354, 934], \"desc\": \"\"}, {\"id\": \"object_5\", \"bbox\": [388, 648, 1000, 1000], \"desc\": \"\"}]",
+  "negative_prompt": "",
+  "sampler": "flow_match_euler_discrete",
+  "width": 768,
+  "height": 512,
+  "steps": 16,
+  "guidance": 1.0,
+  "seed": 1792486055,
+  "quantization": 4,
+  "loras": [],
+  "generation_time": 256.38,
+  "load_time": 0.0,
+  "created_at": 1792491686.045998,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear",
+  "tags": [],
+  "file": "db2ca2578d024dee8df57c5ea1964906.png",
+  "model": "zimageapp/FLUX-3-Klein-MLX-Q4",
+  "reference_images": [],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": false,
+  "scheduler": "flow_match_euler_discrete",
+  "bounding_boxes": [
+    [
+      495,
+      0,
+      1000,
+      1000
+    ],
+    [
+      0,
+      0,
+      500,
+      1000
+    ],
+    [
+      0,
+      22,
+      1000,
+      522
+    ],
+    [
+      43,
+      621,
+      354,
+      934
+    ],
+    [
+      388,
+      648,
+      1000,
+      1000
+    ]
+  ],
+  "spatial_boxes": [
+    {
+      "uid": "box_prompt_0_water_1",
+      "id": "object_1",
+      "bbox": [
+        495,
+        0,
+        1000,
+        1000
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_prompt_1_cloud_2",
+      "id": "object_2",
+      "bbox": [
+        0,
+        0,
+        500,
+        1000
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_prompt_2_right_3",
+      "id": "object_3",
+      "bbox": [
+        0,
+        22,
+        1000,
+        522
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_prompt_3_sun_4",
+      "id": "object_4",
+      "bbox": [
+        43,
+        621,
+        354,
+        934
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_prompt_4_ship_5",
+      "id": "object_5",
+      "bbox": [
+        388,
+        648,
+        1000,
+        1000
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    }
+  ]
+}

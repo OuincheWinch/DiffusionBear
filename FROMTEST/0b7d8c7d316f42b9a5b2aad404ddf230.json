@@ -1,0 +1,131 @@
+{
+  "id": "0b7d8c7d316f42b9a5b2aad404ddf230",
+  "prompt": "A scene featuring <object_1> and <object_2> and <object_3> and <object_4> and <En_Text_5>. [{\"id\":\"object_1\",\"bbox\":[495,0,1000,1000],\"desc\":\"\"},{\"id\":\"object_2\",\"bbox\":[0,0,500,1000],\"desc\":\"\"},{\"id\":\"object_3\",\"bbox\":[0,22,1000,522],\"desc\":\"\"},{\"id\":\"object_4\",\"bbox\":[43,621,354,934],\"desc\":\"\"},{\"id\":\"En_Text_5\",\"bbox\":[388,648,1000,1000],\"desc\":\"\"}] [{\"id\": \"object_2\", \"bbox\": [0, 0, 500, 1000], \"desc\": \"\"}, {\"id\": \"object_1\", \"bbox\": [495, 0, 1000, 1000], \"desc\": \"\"}, {\"id\": \"object_3\", \"bbox\": [0, 22, 1000, 522], \"desc\": \"\"}, {\"id\": \"object_4\", \"bbox\": [43, 621, 354, 934], \"desc\": \"\"}, {\"id\": \"En_Text_5\", \"bbox\": [388, 648, 1000, 1000], \"desc\": \"\"}]",
+  "negative_prompt": "",
+  "sampler": "flow_match_euler_discrete",
+  "width": 768,
+  "height": 512,
+  "steps": 16,
+  "guidance": 1.0,
+  "seed": 1792486055,
+  "quantization": 4,
+  "loras": [],
+  "generation_time": 223.42,
+  "load_time": 0.0,
+  "created_at": 1792491429.49772,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear",
+  "tags": [],
+  "file": "0b7d8c7d316f42b9a5b2aad404ddf230.png",
+  "model": "zimageapp/FLUX-3-Klein-MLX-Q4",
+  "reference_images": [],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": false,
+  "scheduler": "flow_match_euler_discrete",
+  "bounding_boxes": [
+    [
+      495,
+      0,
+      1000,
+      1000
+    ],
+    [
+      0,
+      0,
+      500,
+      1000
+    ],
+    [
+      0,
+      22,
+      1000,
+      522
+    ],
+    [
+      43,
+      621,
+      354,
+      934
+    ],
+    [
+      388,
+      648,
+      1000,
+      1000
+    ]
+  ],
+  "spatial_boxes": [
+    {
+      "uid": "box_1792491182541_0_f0z9",
+      "id": "object_1",
+      "bbox": [
+        495,
+        0,
+        1000,
+        1000
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_1792491182541_1_oxef",
+      "id": "object_2",
+      "bbox": [
+        0,
+        0,
+        500,
+        1000
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_1792491182541_2_s2g2",
+      "id": "object_3",
+      "bbox": [
+        0,
+        22,
+        1000,
+        522
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_1792491182541_3_6wwo",
+      "id": "object_4",
+      "bbox": [
+        43,
+        621,
+        354,
+        934
+      ],
+      "desc": "",
+      "kind": "object",
+      "action": "object",
+      "lang": "En"
+    },
+    {
+      "uid": "box_1792491182541_4_5zya",
+      "id": "En_Text_5",
+      "bbox": [
+        388,
+        648,
+        1000,
+        1000
+      ],
+      "desc": "",
+      "kind": "text",
+      "action": "object",
+      "lang": "En"
+    }
+  ]
+}

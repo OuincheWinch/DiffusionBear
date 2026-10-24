@@ -1,0 +1,109 @@
+A scene featuring <water_1> and <cloud_2> and <right_3> and <sun_4> and <ship_5>. [{"id":"water_1","bbox":[495,0,1000,1000],"desc":"Calm carebean sea, torquoise water,"},{"id":"cloud_2","bbox":[0,0,500,1000],"desc":"Sky, radiant blue, no cloud"},{"id":"right_3","bbox":[0,22,1000,522],"desc":"Pristine Pirate ship salling to the right"},{"id":"sun_4","bbox":[43,621,354,934],"desc":"Vibrant sun"},{"id":"ship_5","bbox":[388,648,1000,1000],"desc":"paradisiac"}]
+
+
+A scene featuring <water_1> and <cloud_2> and <right_3> and <sun_4> and <ship_5>. [{"id":"water_1","bbox":[495,0,1000,1000],"desc”:"agitated Caribbean sea, turquoise water,"},{"id":"cloud_2","bbox":[0,0,500,1000],"desc":"Sky, heavy tempest clouds "},{"id":"right_3","bbox":[0,22,1000,522],"desc":"Pristine Pirate ship sailing to the the horizon"},{"id":"sun_4","bbox":[43,621,354,934],"desc":”sun during a solar eclipse"},{"id":"ship_5","bbox":[388,648,1000,1000],"desc”:”paradisiac virgin island"}]
+
+
+
+
+DiffusionBear
+DiffusionBear
+v0.4.1 (beta)
+Generate
+Browser
+Models
+Parameters
+
+MOSS-Image SFT 5B
+MLX · Apple Silicon
+
+SPATIAL BOX
+[+] Box
+Center [250, 250, 750, 750]
+Left [100, 50, 900, 500]
+Right [100, 500, 900, 950]
+Top [50, 100, 500, 900]
+Bottom [500, 100, 950, 900]
+✨ Enhance 1.5B (experimental)
+{ } JSON
+🎨 Colour #FF3366
+
+
+🔴 Weights required
+WEIGHTS
+✕ Download failed: Insufficient disk space: need 38 GB (1.5x model size), have 13 GB free
+Retry
+📁 Local…
+Generate
+Square
+Landscape
+Portrait
+Custom
+
+512×768
+Compact · 2:3
+
+768×1024
+Standard · 3:4
+
+896×1152
+Standard · 7:9
+
+1024×1280
+Social · 4:5
+
+768×1344
+Tall · 4:7
+
+832×1216
+Photo portrait · 13:19
+Steps (50)
+
+Seed
+
++1
++1024
+
+Batch
+Advanced Settings
+
+＋
+Add image
+LoRAs
+Studio Canvas
+768×512 · 235.77s
+🖼️ Backdrop: Last Result
+◻ Hide image (grey canvas)
++ Reference
+Read more
+““Pixar Style : A scene featuring <water_1> and <cloud_2> and <right_3> and <sun_4> and <ship_5>. [{"id":"water_1","bbox":[495,0,1000,1000],"desc":"Calm carebean sea, torquoise water,"},{"id":"cloud_2","bbox":[0,0,500,1000],"desc":"Sky, radiant blue, no cloud"},{"id":"right_3","bbox":[0,22,1000,522],"desc":"Pristine Pirate ship salling to the right"},{"id":"sun_4","bbox":[43,621,354,934],"desc":"Vibrant sun"},{"id":"ship_5","bbox":[388,648,1000,1000],"desc”:”Tropical island"}]”, featuring <object_2>, <object_1>, <object_3>, <object_4>, <object_5>. [{"id": "object_2", "bbox": [0, 0, 500, 1000], "desc": ""}, {"id": "object_1", "bbox": [495, 0, 1000, 1000], "desc": ""}, {"id": "object_3", "bbox": [0, 22, 1000, 522], "desc": ""}, {"id": "object_4", "bbox": [43, 621, 354, 934], "desc": ""}, {"id": "object_5", "bbox": [388, 648, 1000, 1000], "desc": ""}]”
+MODEL:
+FLUX-3-Klein-MLX-Q4
+SEED:
+1792486055
+STEPS:
+16
+SAMPLER:
+flow_match_euler_discrete
+CFG:
+1
+
+Reuse params
+
+Variation
+
+Use as reference
+
+Upscale 2x
+
+Upscale 4x
+
+Copy image
+
+Copy prompt
+
+Copy seed
+
+Export…
+
+Delete
