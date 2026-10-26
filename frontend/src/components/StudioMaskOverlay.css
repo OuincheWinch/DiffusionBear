@@ -1,0 +1,351 @@
+/* StudioMaskOverlay.css — Inpainting & Masked Edit on Reference Image */
+
+.studio-mask-overlay {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+  user-select: none;
+}
+
+.mask-overlay-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  box-sizing: border-box;
+}
+
+/* Floating Top Control Toolbar — Apple Glass Pill Style */
+.studio-mask-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(18, 18, 28, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  width: 100%;
+  max-width: 720px;
+  z-index: 10;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.studio-mask-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.studio-mask-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text, #e2e8f0);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.studio-mask-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.studio-mask-btn.active {
+  background: var(--accent, #7c5cff);
+  border-color: var(--accent, #7c5cff);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(124, 92, 255, 0.45);
+}
+
+.studio-mask-btn.danger {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.studio-mask-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #ffffff;
+}
+
+.studio-mask-btn.primary {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.35) 0%, rgba(37, 99, 235, 0.45) 100%);
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #93c5fd;
+}
+
+.studio-mask-btn.primary:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.55) 0%, rgba(37, 99, 235, 0.65) 100%);
+  border-color: #60a5fa;
+  color: #ffffff;
+}
+
+/* Keyboard Shortcut Keycaps */
+.studio-mask-kbd {
+  display: inline-block;
+  padding: 1px 4px;
+  font-size: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.studio-mask-kbd.primary {
+  color: #dbeafe;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Brush Size Controls */
+.studio-mask-size-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.studio-mask-size-label {
+  color: var(--text-secondary, #9ca3af);
+  font-weight: 500;
+}
+
+.studio-mask-presets {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.studio-mask-preset-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #9ca3af);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.studio-mask-preset-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.studio-mask-preset-btn.active {
+  background: var(--accent, #7c5cff);
+  color: #ffffff;
+}
+
+.studio-mask-size-control input[type="range"] {
+  width: 76px;
+  accent-color: var(--accent, #7c5cff);
+  cursor: pointer;
+}
+
+.studio-mask-size-value {
+  color: var(--text, #ffffff);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  font-size: 11px;
+}
+
+/* Mask Status Badges */
+.studio-mask-status {
+  display: flex;
+  align-items: center;
+}
+
+.studio-mask-coverage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.studio-mask-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: studio-mask-pulse 2s infinite ease-in-out;
+}
+
+@keyframes studio-mask-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+}
+
+.studio-mask-empty-pill {
+  color: var(--text-secondary, #9ca3af);
+  font-size: 11px;
+}
+
+.studio-mask-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Main Canvas Stage */
+.studio-mask-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  background: var(--surface-2, #14141e);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.studio-mask-canvas-box {
+  position: relative;
+  width: 100%;
+  max-height: 560px;
+  margin: 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000000;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  touch-action: none;
+}
+
+.studio-mask-backdrop-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+
+.studio-mask-paint-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 2;
+  /* Translucent red wash so the underlying reference image is clearly visible */
+  opacity: 0.55;
+  outline: 1px dashed rgba(239, 68, 68, 0.45);
+  outline-offset: -1px;
+  touch-action: none;
+  user-select: none;
+}
+
+.studio-mask-paint-canvas.cursor-hidden {
+  cursor: none;
+}
+
+.studio-mask-paint-canvas.mode-erase {
+  outline-color: rgba(147, 197, 253, 0.45);
+}
+
+/* Dynamic Follow-the-Pointer Brush Ring */
+.studio-mask-cursor-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10;
+  will-change: transform, width, height;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.08s ease-out, height 0.08s ease-out, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Paint Mode: Crimson Glow */
+.studio-mask-cursor-ring.mode-paint {
+  border: 1.5px solid rgba(239, 68, 68, 0.95);
+  background: rgba(239, 68, 68, 0.15);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.studio-mask-cursor-ring.mode-paint.is-painting {
+  border-color: #ff4d4d;
+  background: rgba(239, 68, 68, 0.28);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.8), inset 0 0 6px rgba(239, 68, 68, 0.4);
+}
+
+/* Erase Mode: Azure / Cyan Glow */
+.studio-mask-cursor-ring.mode-erase {
+  border: 1.5px solid rgba(96, 165, 250, 0.95);
+  background: rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.studio-mask-cursor-ring.mode-erase.is-painting {
+  border-color: #60a5fa;
+  background: rgba(59, 130, 246, 0.28);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.8), inset 0 0 6px rgba(59, 130, 246, 0.4);
+}
+
+/* Center Precision Dot */
+.studio-mask-cursor-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
