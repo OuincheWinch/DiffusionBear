@@ -1,0 +1,36 @@
+{
+  "id": "4e9e37bfd3ec4b8ab150e344c1d96fa1",
+  "prompt": "A minimalist travel poster of a still mountain lake at dawn, flat vector style with soft gradients. A bold title \"ALPINE LAKES\" across the top and the tagline \"breathe the quiet\" in small capitals along the bottom. Teal, cream and dusty pink palette, clean typography, centered composition.",
+  "negative_prompt": "",
+  "sampler": "moss_dataspace_dmd",
+  "scheduler": "flow_match_euler_discrete",
+  "width": 512,
+  "height": 768,
+  "steps": 4,
+  "guidance": 1.0,
+  "seed": 1002,
+  "quantization": null,
+  "loras": [
+    {
+      "path": "data/lora_files/moss_distill/darask0-4step/lora.safetensors",
+      "scale": 1.0
+    }
+  ],
+  "generation_time": 464.11,
+  "load_time": 0.53,
+  "created_at": 1792598775.579434,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear -  www.ouinche.com - https://github.com/OuincheWinch/DiffusionBear",
+  "tags": [],
+  "file": "4e9e37bfd3ec4b8ab150e344c1d96fa1.png",
+  "model": "OpenMOSS-Team/MOSS-Image-SFT",
+  "engine": "moss",
+  "reference_images": [],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": false,
+  "tiled_vae": false,
+  "adapter_dir": "data/lora_files/moss_distill/darask0-4step",
+  "moss_distill": "dmd4"
+}

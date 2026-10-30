@@ -1,0 +1,19 @@
+{
+ "allowCommercialUse": [
+  "Image",
+  "RentCivit",
+  "Rent",
+  "Sell",
+  "SellMerge"
+ ],
+ "allowDerivatives": true,
+ "allowDifferentLicense": true,
+ "allowNoCredit": true,
+ "creator": {
+  "image": "https://image.civitai.com/xG1nkqKTMzGDvpLrqFT7WA/6ec97fa0-9fe4-40d0-9035-66ee4cac3dfd/width=96/aimann.jpeg",
+  "username": "aimann"
+ },
+ "id": 2890476,
+ "name": "Krea2 4 Step LoRA",
+ "type": "LORA"
+}

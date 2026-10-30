@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MOSS-Image 5B on Apple Silicon: SFT vs DMD Distillation Benchmark</title>
+  <style>
+    :root {
+      --bg: #090d13;
+      --card-bg: #121820;
+      --card-alt: #171f2a;
+      --border: #262f3d;
+      --accent: #58a6ff;
+      --accent-rgb: 88, 166, 255;
+      --green: #3fb950;
+      --orange: #f0883e;
+      --red: #f85149;
+      --purple: #bc8cff;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --bright: #f0f6fc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      padding: 1.5rem 1rem 4rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .article-wrap { width: 100%; max-width: 1280px; }
+
+    .blog-header { text-align: center; margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .blog-tag {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(var(--accent-rgb), 0.12);
+      border: 1px solid rgba(var(--accent-rgb), 0.35);
+      color: var(--accent);
+      padding: 0.3rem 0.9rem; border-radius: 20px;
+      font-size: 0.82rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: clamp(1.8rem, 4vw, 2.7rem); font-weight: 900;
+      color: var(--bright); line-height: 1.25; margin-bottom: 1rem; letter-spacing: -0.02em;
+    }
+    .article-meta {
+      display: flex; justify-content: center; flex-wrap: wrap; gap: 1.25rem;
+      font-size: 0.88rem; color: var(--text-muted);
+    }
+    .article-meta span { display: flex; align-items: center; gap: 0.4rem; }
+    .article-meta b { color: var(--bright); }
+
+    .prose-section {
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.75rem 2rem; margin-bottom: 2rem; font-size: 1.02rem; color: #d0d7de;
+    }
+    .prose-section h2 {
+      font-size: 1.45rem; color: var(--bright); margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.6rem;
+      border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;
+    }
+    .prose-section p { margin-bottom: 1rem; }
+    .prose-section p:last-child { margin-bottom: 0; }
+    .prose-section ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+    .prose-section li { margin-bottom: 0.5rem; }
+    .highlight-box {
+      background: rgba(240, 136, 62, 0.08);
+      border-left: 4px solid var(--orange);
+      padding: 1rem 1.25rem; border-radius: 0 8px 8px 0;
+      margin: 1.25rem 0; font-size: 0.95rem;
+    }
+    .highlight-box.green { background: rgba(63, 185, 80, 0.08); border-left-color: var(--green); }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    @media (max-width: 900px) { .kpi-grid { grid-template-columns: 1fr; } }
+    .kpi-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.1rem; text-align: center;
+    }
+    .kpi-val { font-size: 1.8rem; font-weight: 800; color: var(--bright); }
+    .kpi-val.green { color: var(--green); }
+    .kpi-val.orange { color: var(--orange); }
+    .kpi-val.purple { color: var(--purple); }
+    .kpi-lbl { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-top: 0.35rem; }
+
+    .interactive-stage {
+      background: #0d1219; border: 1px solid #2b3648; border-radius: 14px;
+      padding: 1.5rem; margin-bottom: 2.5rem; box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+    }
+    .interactive-title-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;
+    }
+    .interactive-heading { font-size: 1.35rem; font-weight: 800; color: var(--bright); }
+    .pills-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
+    .pill-item {
+      background: var(--card-bg); border: 1px solid var(--border);
+      color: var(--text-muted); padding: 0.45rem 0.9rem; border-radius: 8px;
+      font-size: 0.84rem; cursor: pointer; transition: all 0.15s ease;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+    .pill-item:hover { border-color: var(--accent); color: var(--bright); }
+    .pill-item.active { background: #1c293a; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+    .prompt-box {
+      background: #121822; border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+    }
+    .prompt-topline {
+      display: flex; justify-content: space-between;
+      font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-muted); margin-bottom: 0.4rem;
+    }
+    .prompt-content { font-size: 1rem; color: var(--bright); line-height: 1.5; }
+
+    .single-duel { max-width: 760px; margin: 0 auto 1.25rem auto; }
+    .comp-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .comp-card-header {
+      padding: 0.85rem 1.1rem; background: #151d27;
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+    }
+    .comp-card-title { font-size: 0.98rem; font-weight: 700; color: var(--bright); }
+    .comp-badge {
+      font-size: 0.74rem; font-weight: 700; padding: 0.2rem 0.55rem;
+      border-radius: 10px; text-transform: uppercase;
+    }
+    .comp-badge.purple { background: rgba(188, 140, 255, 0.15); color: var(--purple); border: 1px solid rgba(188, 140, 255, 0.4); }
+    .comp-badge.accent { background: rgba(var(--accent-rgb), 0.15); color: var(--accent); border: 1px solid rgba(var(--accent-rgb), 0.4); }
+
+    .model-selector-bar {
+      display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 1rem; background: #0f151d; border-bottom: 1px solid var(--border); font-size: 0.85rem;
+    }
+    .model-select {
+      background: #182230; border: 1px solid var(--border); color: var(--bright);
+      padding: 0.35rem 0.65rem; border-radius: 6px; font-size: 0.82rem;
+      font-weight: 600; max-width: 45%; cursor: pointer;
+    }
+    .model-select:focus { outline: none; border-color: var(--accent); }
+
+    .slider-stage {
+      position: relative; width: 100%; aspect-ratio: 768 / 512;
+      background: #05070a; overflow: hidden; user-select: none;
+    }
+    .slider-img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: contain; pointer-events: none;
+    }
+    .slider-img.bottom { z-index: 1; }
+    .slider-img.top { z-index: 2; }
+
+    #stage { --pos: 50%; }
+    #stage .slider-img.top { clip-path: polygon(0 0, var(--pos) 0, var(--pos) 100%, 0 100%); }
+    #stage .slider-divider, #stage .slider-handle { left: var(--pos); }
+
+    .slider-divider {
+      position: absolute; top: 0; bottom: 0; width: 2px; background: #ffffff;
+      z-index: 3; pointer-events: none; box-shadow: 0 0 10px rgba(0,0,0,0.9);
+    }
+    .slider-handle {
+      position: absolute; top: 50%; transform: translate(-50%, -50%);
+      width: 36px; height: 36px; border-radius: 50%; background: #ffffff;
+      border: 3px solid var(--accent); color: #090d13;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 900; z-index: 4; pointer-events: none;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.8);
+    }
+    .slider-tag {
+      position: absolute; top: 0.75rem; padding: 0.3rem 0.65rem; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 700; background: rgba(0,0,0,0.78);
+      backdrop-filter: blur(4px); z-index: 5; pointer-events: none;
+      max-width: 45%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .slider-tag.left { left: 0.75rem; color: var(--accent); border: 1px solid rgba(var(--accent-rgb), 0.5); }
+    .slider-tag.right { right: 0.75rem; color: var(--orange); border: 1px solid rgba(240, 136, 62, 0.5); }
+    .range-input {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: ew-resize; z-index: 10;
+      margin: 0; padding: 0; -webkit-appearance: none; appearance: none;
+    }
+    .comp-card-footer {
+      padding: 0.85rem 1.1rem; background: #111721;
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      font-size: 0.83rem; border-top: 1px solid var(--border); gap: 0.5rem;
+    }
+    .metric-chip { display: flex; gap: 0.35rem; }
+    .metric-chip span { color: var(--text-muted); }
+    .metric-chip b { color: var(--bright); }
+    .slider-instructions { text-align: center; font-size: 0.84rem; color: var(--text-muted); margin-top: 0.5rem; }
+
+    .benchmark-table-wrap {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; overflow-x: auto; margin-bottom: 2rem;
+    }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    th { background: #161e29; color: var(--bright); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+    .outro-box {
+      background: linear-gradient(135deg, rgba(88,166,255,0.08) 0%, rgba(188,140,255,0.05) 100%);
+      border: 1px solid rgba(88,166,255,0.3); border-radius: 12px;
+      padding: 1.75rem; text-align: center; margin-top: 2rem;
+    }
+    .outro-box h3 { color: var(--bright); font-size: 1.3rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+
+<article class="article-wrap">
+
+  <header class="blog-header">
+    <div class="blog-tag">🐻 DiffusionBear Research • Apple Silicon Laboratory</div>
+    <h1>MOSS-Image 5B on Apple Silicon: SFT vs DMD Distillation Benchmark</h1>
+    <div class="article-meta">
+      <span>👤 By <b>Research Team</b></span>
+      <span>📅 <b>October 19, 2026</b></span>
+      <span>💻 Hardware: <b>Apple Silicon M1 16GB Unified Memory</b></span>
+      <span>🧠 Text encoder: <b>Qwen 3.5 9B — MLX 8-bit (first GPU MLX runtime)</b></span>
+    </div>
+  </header>
+  <section class="prose-section">
+    <h2>🐻 1. One prompt, one seed, three inference pipelines</h2>
+    <p>
+      A single press-kit poster — a structured layout (virtual bounding boxes: alpine-lake
+      background, wortmark, logo slot, version line, engine credits) — was rendered by the same
+      <b>MOSS-Image SFT 5B</b> checkpoint through the three pipelines DiffusionBear supports.
+      Identical seed (<b>1024</b>), identical resolution (<b>768×512</b>), identical layout JSON,
+      identical text-encoder path. Only the sampler schedule and the CFG handling change:
+    </p>
+    <ul>
+      <li><b>Stock SFT (30 steps, CFG 3.0):</b> the reference pipeline. Flow-matching Euler over a
+        discrete schedule, two transformer forwards per step (conditional + unconditional). Maximum
+        detail budget, maximum wall time (~43–46 min per poster).</li>
+      <li><b>DMD 8-step (lodestones adapter):</b> the Distribution Matching Distillation adapter
+        replaces the sampling schedule with 8 learned dataspace codes and folds the t=1 CFG vector
+        into a fp32 time embedder — one forward per step, no unconditional pass (~13–14 min).</li>
+      <li><b>DMD 4-step (darask0 adapter):</b> the same machinery at 4 codes: fastest MOSS arm
+        (~7.5–8.5 min), the most compressed trajectory.</li>
+    </ul>
+    <p>
+      Distillation adapters do not merely skip steps: each arm is a genuinely different sampler
+      (different trajectory family, CFG-free vs CFG-on), like our earlier Krea-2 4/6/8-step
+      finding. All comparisons below must be read as <em>pipeline</em> comparisons, not
+      quality gradations of one pipeline.
+    </p>
+  </section>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-val purple">2577s</div>
+      <div class="kpi-lbl">Stock SFT 30 · CFG 3.0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val green">784s</div>
+      <div class="kpi-lbl">DMD 8-step · CFG-free</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val orange">449s</div>
+      <div class="kpi-lbl">DMD 4-step · CFG-free</div>
+    </div>
+  </div>
+
+  <div class="interactive-stage">
+    <div class="interactive-title-bar">
+      <div class="interactive-heading">⚡ Visual Comparator (drag the divider)</div>
+    </div>
+
+    <div class="pills-row">
+      <button class="pill-item active" id="pillVector" onclick="switchStyle('vector')">🏞️ Alpine lake, flat vector dawn</button>
+      <button class="pill-item" id="pillVintage" onclick="switchStyle('vintage')">🕰️ Belle Époque 1900s lithograph</button>
+    </div>
+
+    <div class="prompt-box">
+      <div class="prompt-topline">
+        <span id="promptSubjectLabel">Structured layout • 768×512</span>
+        <span>Seed: <b id="promptSeedVal" style="color:var(--bright)">1024</b></span>
+      </div>
+      <div class="prompt-content" id="promptTextContent">Loading…</div>
+    </div>
+
+    <div class="single-duel">
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <span class="comp-card-title">Duel: pick any two pipelines</span>
+          <span class="comp-badge accent" id="duelBadge">MOSS-Image SFT 5B</span>
+        </div>
+
+        <div class="model-selector-bar">
+          <label style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">LEFT:</label>
+          <select class="model-select" id="selectLeft" onchange="render()"></select>
+          <label style="font-size:0.78rem; color:var(--text-muted); font-weight:700;">RIGHT:</label>
+          <select class="model-select" id="selectRight" onchange="render()"></select>
+        </div>
+
+        <div class="slider-stage" id="stage">
+          <img class="slider-img bottom" id="imgBottom" src="" alt="Right image">
+          <span class="slider-tag right" id="tagRight">Right</span>
+
+          <img class="slider-img top" id="imgTop" src="" alt="Left image">
+          <span class="slider-tag left" id="tagLeft">Left</span>
+
+          <div class="slider-divider"></div>
+          <div class="slider-handle">⮜ ⮞</div>
+
+          <input type="range" min="0" max="100" value="50" class="range-input" id="rangeInput">
+        </div>
+
+        <div class="comp-card-footer">
+          <div class="metric-chip"><span>Gen time (L / R):</span><b id="footerTime">-</b></div>
+          <div class="metric-chip"><span>Speedup (stock / arm):</span><b id="footerSpeedup">-</b></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="slider-instructions">
+      💡 The two styles were generated with identical layout, seed and boxes — only the style
+      description on the background box differs. Drag to compare any two arms side by side.
+    </p>
+  </div>
+
+  <div class="benchmark-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Pipeline</th>
+          <th>Adapter / LoRA</th>
+          <th>Sampler</th>
+          <th>Steps</th>
+          <th>CFG</th>
+          <th>Transformer / step</th>
+          <th>Vectorial dawn</th>
+          <th>Belle Époque 1900s</th>
+          <th>s/step (avg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Stock SFT</strong></td>
+          <td>—</td>
+          <td>flow_match_euler_discrete</td>
+          <td>30</td>
+          <td>3.0 (+ negative slot)</td>
+          <td>2 (cond + uncond)</td>
+          <td><b style="color:var(--purple)">2577.3s</b></td>
+          <td><b style="color:var(--purple)">2738.8s</b></td>
+          <td>≈85.8 / 91.3</td>
+        </tr>
+        <tr>
+          <td><strong>DMD 8-step</strong></td>
+          <td>lodestones-8step</td>
+          <td>moss_dataspace_dmd</td>
+          <td>8</td>
+          <td>1.0 (folded)</td>
+          <td>1</td>
+          <td><b style="color:var(--green)">784.0s</b></td>
+          <td><b style="color:var(--green)">859.2s</b></td>
+          <td>≈98.0 / 107.4</td>
+        </tr>
+        <tr>
+          <td><strong>DMD 4-step</strong></td>
+          <td>darask0-4step</td>
+          <td>moss_dataspace_dmd</td>
+          <td>4</td>
+          <td>1.0 (folded)</td>
+          <td>1</td>
+          <td><b style="color:var(--orange)">449.4s</b></td>
+          <td><b style="color:var(--orange)">502.9s</b></td>
+          <td>≈112.4 / 125.7*</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <section class="prose-section">
+    <h2>🔬 2. What every arm shared</h2>
+    <ul>
+      <li><b>Checkpoint:</b> OpenMOSS-Team/MOSS-Image-SFT 5B (DiT), bf16, MLX.</li>
+      <li><b>Text encoder:</b> Qwen 3.5 9B running on GPU through our MLX 8-bit conversion
+        (g64, GDN layers kept bf16) — parity 0.9995 cos vs the torch bf16 reference
+        (<a style="color:var(--accent)" href="../moss-text-encoder-mlx.md">full write-up</a>), ~17s per prompt instead of ~61s on CPU.</li>
+      <li><b>Structured layout:</b> virtual bounding boxes serialized into the official
+        <code>summary/items</code> JSON layout (<code>abs_centralized</code>, <code>yxyx</code>):
+        full-surface background box, bold wordmark, logo slot, "V 0.4.1 beta" + "now runs",
+        engine credits in the bottom corners.</li>
+      <li><b>Seed 1024, 768×512</b>, FLUX.2-family fp32 VAE decode, no fast-VAE.</li>
+      <li><b>*s/step caveat:</b> DMD arms carry ~2-3 min of fixed overhead (text-encoder pass,
+        252 LoRA wraps, adapter load) that dilutes their per-step average; the stock arm pays
+        two forwards per step instead.</li>
+    </ul>
+  </section>
+
+  <div class="outro-box">
+    <h3>🚀 Practical takeaways</h3>
+    <p style="max-width: 800px; margin: 0 auto; color: var(--text);">
+      In-app, DiffusionBear auto-selects the DMD adapters for runs ≤ 8 steps (4 → darask0,
+      5–8 → lodestones) and keeps stock trajectories above. For poster work where text on the
+      layout matters most, the 30-step stock arm renders the most stable lettering; for fast
+      iteration the 4-step arm is 5.7× cheaper. All arms run 100% locally, offline, on a
+      single 16 GB M1 — no cloud, no subscription.
+    </p>
+  </div>
+
+</article>
+
+<script>
+const ARMS = {
+  stock30: {
+    name: "Stock SFT 30",
+    tag: "30 steps · CFG 3.0",
+    time: { vector: "2577.3s", vintage: "2738.8s" },
+    img:  { vector: "images/stock30_vector.png", vintage: "images/stock30_vintage.png" }
+  },
+  dmd8: {
+    name: "DMD 8-step",
+    tag: "8 steps · CFG-free · lodestones",
+    time: { vector: "784.0s", vintage: "859.2s" },
+    img:  { vector: "images/dmd8_vector.png", vintage: "images/dmd8_vintage.png" }
+  },
+  dmd4: {
+    name: "DMD 4-step",
+    tag: "4 steps · CFG-free · darask0",
+    time: { vector: "449.4s", vintage: "502.9s" },
+    img:  { vector: "images/dmd4_vector.png", vintage: "images/dmd4_vintage.png" }
+  }
+};
+
+const STYLES = {
+  vector: {
+    label: "Alpine lake — flat vector dawn",
+    promptBox: "Background box: \"A minimalist travel poster of a still mountain lake at dawn, flat vector style with soft gradients. Teal, cream and dusty pink palette, clean typography, centered composition.\" + boxes: bold \"DiffusionBear\", logo slot, \"V 0.4.1 beta\" / \"now runs\", \"MOSS Image SFT 5B\", \"Flux 3 Klein 5.6B\"."
+  },
+  vintage: {
+    label: "Belle Époque 1900s lithograph",
+    promptBox: "Background box: \"A vintage early-20th-century travel poster of a still mountain lake at dawn, 1900s Belle Epoque lithograph style with bold flat colour blocks, art nouveau ornament, visible paper grain and ink texture. Teal, cream and dusty pink palette, ornate lettering, centered composition.\" + same boxes, same seed."
+  }
+};
+
+const P_TO_S = { stock30: 2577.3, dmd8: 784.0, dmd4: 449.4 };
+let style = "vector";
+
+function parseTime(t) { return parseFloat(t) || 0; }
+
+function switchStyle(s) {
+  style = s;
+  document.getElementById("pillVector").classList.toggle("active", s === "vector");
+  document.getElementById("pillVintage").classList.toggle("active", s === "vintage");
+  render();
+}
+
+function populate(sel) {
+  sel.innerHTML = "";
+  for (const [id, arm] of Object.entries(ARMS)) {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = `${arm.name} — ${arm.tag}`;
+    sel.appendChild(opt);
+  }
+}
+
+function render() {
+  const left = document.getElementById("selectLeft").value;
+  const right = document.getElementById("selectRight").value;
+  const L = ARMS[left], R = ARMS[right];
+
+  document.getElementById("promptTextContent").textContent = STYLES[style].promptBox;
+  document.getElementById("imgTop").src = L.img[style];
+  document.getElementById("imgBottom").src = R.img[style];
+  document.getElementById("tagLeft").textContent = `${L.name} · ${L.time[style]}`;
+  document.getElementById("tagRight").textContent = `${R.name} · ${R.time[style]}`;
+  document.getElementById("footerTime").textContent = `${L.time[style]} / ${R.time[style]}`;
+
+  const l = parseTime(L.time[style]), r = parseTime(R.time[style]);
+  document.getElementById("footerSpeedup").textContent =
+    l && r ? `${Math.max(l, r) / Math.min(l, r) >= 1 ? (Math.max(l, r) / Math.min(l, r)).toFixed(2) : "1.00"}× (max/min time)` : "-";
+
+  document.getElementById("duelBadge").textContent = style === "vector" ? "Vector dawn" : "Belle Époque";
+}
+
+document.getElementById("rangeInput").addEventListener("input", (e) => {
+  document.getElementById("stage").style.setProperty("--pos", e.target.value + "%");
+});
+
+const sL = document.getElementById("selectLeft");
+const sR = document.getElementById("selectRight");
+populate(sL); populate(sR);
+sL.value = "stock30"; sR.value = "dmd4";
+render();
+</script>
+
+</body>
+</html>

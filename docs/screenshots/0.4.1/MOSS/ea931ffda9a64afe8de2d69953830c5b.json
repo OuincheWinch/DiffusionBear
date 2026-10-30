@@ -1,0 +1,35 @@
+{
+  "id": "ea931ffda9a64afe8de2d69953830c5b",
+  "prompt": "A vintage botanical illustration plate of forest moss and ferns on aged cream paper, fine ink linework with watercolor washes. A caption at the bottom in serif type reads \"Bryophyta\" and below it, smaller, \"plate XII\". Scientific illustration style, balanced layout.",
+  "negative_prompt": "nsfw, worst quality, bad anatomy, watermark, jpeg artifact",
+  "sampler": "moss_dataspace_dmd",
+  "scheduler": "flow_match_euler_discrete",
+  "width": 1024,
+  "height": 1024,
+  "steps": 4,
+  "guidance": 1.0,
+  "seed": 1005,
+  "quantization": null,
+  "loras": [
+    {
+      "path": "data/lora_files/moss_distill/darask0-4step/lora.safetensors",
+      "scale": 1.0
+    }
+  ],
+  "generation_time": 497.93,
+  "load_time": 0.51,
+  "created_at": 1792613719.018838,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear -  www.ouinche.com - https://github.com/OuincheWinch/DiffusionBear",
+  "tags": [],
+  "file": "ea931ffda9a64afe8de2d69953830c5b.png",
+  "model": "OpenMOSS-Team/MOSS-Image-SFT",
+  "engine": "moss",
+  "reference_images": [],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": false,
+  "tiled_vae": false,
+  "adapter_dir": "data/lora_files/moss_distill/darask0-4step"
+}
