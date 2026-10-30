@@ -1,0 +1,16 @@
+# DiffusionBear — SDXL Engine Dependencies (Python 3.14)
+# Model: Juggernaut XL Lightning (4-step distilled) via mlx_diffuser
+
+# Core Runtime (Torch-free inference on Apple Silicon)
+git+https://github.com/AmirHossein-razlighi/mlx_diffuser.git@a26b42aee4e31999dbb4429226b66d896d49e1d8
+mlx==0.32.1
+pillow>=10.0.0
+pillow-heif>=1.7.0
+safetensors>=0.4.0
+numpy>=1.26.0
+
+# Conversion Tools Only (for offline checkpoint conversion)
+torch>=2.0.0
+diffusers>=0.30.0
+transformers>=4.40.0
+accelerate>=0.30.0

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DiffusionBear v0.4.2 — Native Bria FIBO 2.0 Edit Turbo (MLX 4-bit)</title>
+  <meta name="description" content="DiffusionBear v0.4.2 release announcement: Full support for Bria FIBO 2.0 Edit Turbo quantized to 4-bit MLX on Apple Silicon. Single image edit, multi-reference in-context editing, and precision studio masked edit.">
+  <meta property="og:title" content="DiffusionBear v0.4.2 — Native Bria FIBO 2.0 Edit Turbo (MLX 4-bit)">
+  <meta property="og:description" content="Local-first image generation and editing on Apple Silicon Macs with full support for Bria FIBO 2.0 Edit Turbo MLX 4-bit.">
+  <meta property="og:image" content="./annonce_042.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="./annonce_042.png">
+  <style>
+    :root {
+      --bg: #090c10;
+      --surface-1: #0d1117;
+      --surface-2: #161b22;
+      --surface-card: #141a24;
+      --border: #30363d;
+      --border-accent: #388bfd40;
+      --text: #c9d1d9;
+      --text-bright: #f0f6fc;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-glow: rgba(88, 166, 255, 0.15);
+      --purple: #bc8cff;
+      --purple-glow: rgba(188, 140, 255, 0.15);
+      --green: #3fb950;
+      --green-glow: rgba(63, 185, 80, 0.15);
+      --crimson: #ff7b72;
+      --gold: #d29922;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      padding: 0 1rem 6rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+    header {
+      padding: 3rem 0 2rem 0;
+      text-align: center;
+    }
+    .hero-banner-container {
+      width: 100%;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+      margin-bottom: 2.5rem;
+      background: #000;
+      position: relative;
+    }
+    .hero-banner-container img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .pill-blue {
+      background: var(--accent-glow);
+      border-color: rgba(88, 166, 255, 0.4);
+      color: var(--accent);
+    }
+    .pill-purple {
+      background: var(--purple-glow);
+      border-color: rgba(188, 140, 255, 0.4);
+      color: var(--purple);
+    }
+    .pill-green {
+      background: var(--green-glow);
+      border-color: rgba(63, 185, 80, 0.4);
+      color: var(--green);
+    }
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 900;
+      color: var(--text-bright);
+      letter-spacing: -0.03em;
+      margin-bottom: 0.8rem;
+      line-height: 1.15;
+    }
+    .lead {
+      font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+      color: var(--text-muted);
+      max-width: 900px;
+      margin: 0 auto 2rem auto;
+    }
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 1.4rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: #238636;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-primary:hover {
+      background: #2ea043;
+      transform: translateY(-1px);
+    }
+    .btn-hf {
+      background: #ffbd00;
+      color: #111;
+      border: 1px solid rgba(0,0,0,0.15);
+      font-weight: 700;
+    }
+    .btn-hf:hover {
+      background: #ffcd33;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text-bright);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      background: #21262d;
+      border-color: #8b949e;
+      transform: translateY(-1px);
+    }
+    
+    /* Section styling */
+    .section-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text-bright);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .section-desc {
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+      font-size: 1.05rem;
+      max-width: 960px;
+    }
+    
+    /* Comparison Card */
+    .feature-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      margin-bottom: 3rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .feature-header {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    .feature-tag {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--purple);
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+    .feature-name {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text-bright);
+      margin-bottom: 0.4rem;
+    }
+    .prompt-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1.1rem;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 0.9rem;
+      color: #7ee787;
+      margin-top: 0.75rem;
+      word-break: break-word;
+    }
+    .prompt-box span {
+      color: var(--text-muted);
+      user-select: none;
+    }
+    
+    /* Grid Columns */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      align-items: start;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .img-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .img-box {
+      position: relative;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      aspect-ratio: 3/2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .img-box.portrait {
+      aspect-ratio: 2/3;
+    }
+    .img-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+    .img-box:hover img {
+      transform: scale(1.02);
+    }
+    .img-caption {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .img-caption strong {
+      color: var(--text-bright);
+    }
+    .badge-provider {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .badge-bria {
+      background: #233142;
+      color: #6cb6ff;
+      border: 1px solid rgba(108, 182, 255, 0.3);
+    }
+    .badge-diffusionbear {
+      background: #2a1e3b;
+      color: #d2a8ff;
+      border: 1px solid rgba(210, 168, 255, 0.3);
+    }
+    .badge-input {
+      background: #1c2620;
+      color: #7ee787;
+      border: 1px solid rgba(126, 231, 135, 0.3);
+    }
+    
+    /* Metric / Spec Table */
+    .specs-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.95rem;
+      text-align: left;
+    }
+    .specs-table th {
+      background: var(--surface-2);
+      color: var(--text-bright);
+      padding: 0.85rem 1.1rem;
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .specs-table td {
+      padding: 0.85rem 1.1rem;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .specs-table tr:nth-child(even) {
+      background: rgba(255,255,255,0.015);
+    }
+    .specs-table strong {
+      color: var(--text-bright);
+    }
+    .highlight-cell {
+      color: #7ee787 !important;
+      font-weight: 700;
+    }
+    
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Modal Image Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      cursor: zoom-out;
+    }
+    .lightbox img {
+      max-width: 95vw;
+      max-height: 95vh;
+      border-radius: 6px;
+      box-shadow: 0 0 50px rgba(0,0,0,0.8);
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrapper">
+    <header>
+      <div class="badge-bar">
+        <span class="pill pill-blue">DiffusionBear v0.4.2</span>
+        <span class="pill pill-purple">Apple Silicon MLX Native</span>
+        <span class="pill pill-green">4-bit Quantization (Affine Q4_64)</span>
+        <span class="pill">100% Local · Zero Cloud</span>
+      </div>
+
+      <h1>Bria FIBO 2.0 Edit Turbo<br>on Apple Silicon Metal</h1>
+      <p class="lead">
+        DiffusionBear v0.4.2 delivers the first-ever 4-bit affine quantized port of <strong>Bria AI's FIBO 2.0 Edit Turbo</strong>. Run state-of-the-art text-guided edits, multi-reference scene synthesis, and sub-pixel masked inpainting locally with zero cloud dependencies.
+      </p>
+
+      <div class="hero-banner-container">
+        <img src="./annonce_042.png" alt="DiffusionBear v0.4.2 Announcement Banner created by FIBO 2.0 Edit Turbo MLX 4bit">
+      </div>
+
+      <div class="quick-links">
+        <a href="https://huggingface.co/Ouinche/FIBO2-Edit-Turbo-MLX-4bit" class="btn btn-hf" target="_blank" rel="noopener">
+          🤗 Model Weights on Hugging Face (Q4 MLX)
+        </a>
+        <a href="https://huggingface.co/briaai/Fibo-2.0-edit-turbo" class="btn btn-secondary" target="_blank" rel="noopener">
+          📖 Bria AI Original Model Reference
+        </a>
+        <a href="https://github.com/OuincheWinch/DiffusionBear" class="btn btn-primary" target="_blank" rel="noopener">
+          GitHub Repository (DiffusionBear)
+        </a>
+      </div>
+    </header>
+
+    <!-- SECTION 1: SINGLE REFERENCE EDIT -->
+    <article class="feature-card">
+      <div class="feature-header">
+        <span class="feature-tag">Feature 1 · Natural Language Instruction</span>
+        <h2 class="feature-name">Single Image Edit: Text-Guided Attribute Transformation</h2>
+        <p class="feature-desc">
+          Transform specific attributes, lighting, materials, or garments from a single reference image without affecting facial identity, pose, or background depth. The Qwen3-VL-4B vision encoder grounds the source image while the 44-layer DiT applies targeted edits in just 4 steps.
+        </p>
+        <div class="prompt-box">
+          <span>Prompt: </span>"the jacket color is now red"
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="img-cell">
+          <div class="img-box">
+            <img src="./1_FIBO2_reference.png" alt="Reference Image - Man in Yellow Jacket" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>Input Reference</strong>
+            <span class="badge-provider badge-input">Source Image</span>
+          </div>
+        </div>
+
+        <div class="img-cell">
+          <div class="img-box">
+            <img src="./1_FIBO2_output.png" alt="Bria AI Original Output" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>Bria AI Reference</strong>
+            <span class="badge-provider badge-bria">bf16 Baseline</span>
+          </div>
+        </div>
+
+        <div class="img-cell">
+          <div class="img-box">
+            <img src="./1_DiffusionBear_output.png" alt="DiffusionBear 4-bit MLX Output" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>DiffusionBear Studio</strong>
+            <span class="badge-provider badge-diffusionbear">MLX 4-bit (4 steps)</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- SECTION 2: MULTI-REFERENCE IN-CONTEXT -->
+    <article class="feature-card">
+      <div class="feature-header">
+        <span class="feature-tag">Feature 2 · Multimodal In-Context Binding</span>
+        <h2 class="feature-name">Multiple References: Multi-Subject & Garment Transfer</h2>
+        <p class="feature-desc">
+          Combine up to 4 distinct references into a coherent generation. In this benchmark, FIBO2 extracts the identity and posture of the woman from Image 1, and fits her precisely into the dress, cut, and fabric texture from Image 2 while generating a pristine photographic scene.
+        </p>
+        <div class="prompt-box">
+          <span>Prompt: </span>"Generate a new image of the woman from Image 1, keeping her exact face, hairstyle, pose, body shape, and background from Image 1, but make her wear the exact dress from Image 2 (matching the same color, cut, and fabric)."
+        </div>
+      </div>
+
+      <div class="grid-4">
+        <div class="img-cell">
+          <div class="img-box portrait">
+            <img src="./2_FIBO2_woman_reference.png" alt="Reference 1 - Woman Identity" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>Reference 1 (Identity)</strong>
+            <span class="badge-provider badge-input">Input A</span>
+          </div>
+        </div>
+
+        <div class="img-cell">
+          <div class="img-box portrait">
+            <img src="./2_FIBO2_dress_reference.png" alt="Reference 2 - Dress Texture" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>Reference 2 (Garment)</strong>
+            <span class="badge-provider badge-input">Input B</span>
+          </div>
+        </div>
+
+        <div class="img-cell">
+          <div class="img-box portrait">
+            <img src="./2_FIBO2_output.png" alt="Bria AI Multi-Ref Output" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>Bria AI Reference</strong>
+            <span class="badge-provider badge-bria">bf16 Baseline</span>
+          </div>
+        </div>
+
+        <div class="img-cell">
+          <div class="img-box portrait">
+            <img src="./2_DiffusionBear_output.png" alt="DiffusionBear Multi-Ref MLX Output" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>DiffusionBear Studio</strong>
+            <span class="badge-provider badge-diffusionbear">MLX 4-bit (4 steps)</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- SECTION 3: MASKED EDIT / INPAINTING -->
+    <article class="feature-card">
+      <div class="feature-header">
+        <span class="feature-tag">Feature 3 · Sub-Pixel Canvas Precision</span>
+        <h2 class="feature-name">Masked Edit (Inpainting): Zero-Variance Area Replacement</h2>
+        <p class="feature-desc">
+          Paint directly on the reference backdrop in DiffusionBear Studio using the 100% hardness circular brush. Unmasked regions are strictly held constant with deterministic 1.5px Gaussian edge blending and alpha compositing, eliminating ambient variance outside the masked zone while replacing the target subject with surgical realism.
+        </p>
+        <div class="prompt-box">
+          <span>Prompt: </span>"replace the suitcase with a vintage brown leather one"
+        </div>
+      </div>
+
+      <div class="grid-4">
+        <div class="img-cell">
+          <div class="img-box">
+            <img src="./3_FIBO2_reference.png" alt="Original Scene" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>Original Scene</strong>
+            <span class="badge-provider badge-input">Reference Image</span>
+          </div>
+        </div>
+
+        <div class="img-cell">
+          <div class="img-box">
+            <img src="./3_DiffusionBear_mask.png" alt="Studio Binary Mask" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>Studio Painted Mask</strong>
+            <span class="badge-provider badge-input">Canvas Mask</span>
+          </div>
+        </div>
+
+        <div class="img-cell">
+          <div class="img-box">
+            <img src="./3_FIBO2_output.png" alt="Bria AI Inpainting Output" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>Bria AI Reference</strong>
+            <span class="badge-provider badge-bria">bf16 Baseline</span>
+          </div>
+        </div>
+
+        <div class="img-cell">
+          <div class="img-box">
+            <img src="./3_DiffusionBear_output.png" alt="DiffusionBear Inpainting Output" loading="lazy" onclick="openLightbox(this)">
+          </div>
+          <div class="img-caption">
+            <strong>DiffusionBear Studio</strong>
+            <span class="badge-provider badge-diffusionbear">MLX 4-bit (4 steps)</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- SECTION 4: ARCHITECTURE & MEMORY SPECS -->
+    <article class="feature-card">
+      <div class="feature-header">
+        <span class="feature-tag">Technical Telemetry & Engineering</span>
+        <h2 class="feature-name">Quantization & Memory Footprint on Apple Silicon</h2>
+        <p class="feature-desc">
+          Standard bf16 FIBO 2.0 weights require over 24 GB of storage and peak above 17.4 GB in VRAM, causing out-of-memory aborts or severe OS memory thrashing on 16 GB Apple Silicon Macs. DiffusionBear's affine 4-bit MLX quantization compresses the pipeline to 7.33 GB on disk and maintains a strict runtime resident working set under 6.8 GB.
+        </p>
+      </div>
+
+      <table class="specs-table">
+        <thead>
+          <tr>
+            <th>Pipeline Component</th>
+            <th>Original Precision (bf16)</th>
+            <th>4-bit MLX (`group_size=64`)</th>
+            <th>Compression Ratio</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>DiT Transformer</strong> (44 layers, dim 3584)</td>
+            <td>15.32 GB</td>
+            <td><strong>4.26 GB</strong></td>
+            <td class="highlight-cell">-72.2%</td>
+          </tr>
+          <tr>
+            <td><strong>Vision Text Encoder</strong> (Qwen3-VL-4B-Instruct)</td>
+            <td>8.27 GB</td>
+            <td><strong>2.88 GB</strong></td>
+            <td class="highlight-cell">-65.2%</td>
+          </tr>
+          <tr>
+            <td><strong>Latent VAE</strong> (FLUX.2 AutoencoderKL fp16)</td>
+            <td>0.34 GB</td>
+            <td><strong>0.19 GB</strong></td>
+            <td class="highlight-cell">-44.1%</td>
+          </tr>
+          <tr>
+            <td><strong>Total Model Size on Disk</strong></td>
+            <td>24.3 GB</td>
+            <td><strong>7.33 GB</strong></td>
+            <td class="highlight-cell">-69.8%</td>
+          </tr>
+          <tr>
+            <td><strong>Resident Working Set (VRAM)</strong></td>
+            <td>17.4 GB (OOM on 16 GB Macs)</td>
+            <td><strong>&lt; 6.8 GB</strong></td>
+            <td class="highlight-cell">Runs 100% in RAM</td>
+          </tr>
+          <tr>
+            <td><strong>Inference Time (512×768, 4 steps, M1)</strong></td>
+            <td>N/A (Memory Thrash)</td>
+            <td><strong>~85s (21s / step)</strong></td>
+            <td class="highlight-cell">Zero Swap</td>
+          </tr>
+        </tbody>
+      </table>
+    </article>
+
+    <footer>
+      <p>
+        <strong>DiffusionBear Studio v0.4.2</strong> &nbsp;·&nbsp;
+        Created by <a href="https://www.ouinche.com" target="_blank" rel="noopener">Ouinche</a> &nbsp;·&nbsp;
+        <a href="https://github.com/OuincheWinch/DiffusionBear" target="_blank" rel="noopener">GitHub</a> &nbsp;·&nbsp;
+        <a href="https://x.com/DiffusionBear" target="_blank" rel="noopener">x.com/DiffusionBear</a> &nbsp;·&nbsp;
+        Released under the MIT License.
+      </p>
+    </footer>
+  </div>
+
+  <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="Enlarged preview">
+  </div>
+
+  <script>
+    function openLightbox(el) {
+      const box = document.getElementById('lightbox');
+      const img = document.getElementById('lightbox-img');
+      img.src = el.src;
+      box.style.display = 'flex';
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox').style.display = 'none';
+    }
+  </script>
+
+</body>
+</html>
