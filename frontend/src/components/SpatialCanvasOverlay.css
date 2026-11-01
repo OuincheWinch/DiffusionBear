@@ -1,0 +1,640 @@
+/* SpatialCanvasOverlay.css — Direct-on-Canvas Spatial Box Editor */
+
+.spatial-container-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  box-sizing: border-box;
+}
+
+.spatial-canvas-stage {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.spatial-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  max-height: 600px;
+  margin: 0 auto;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  background: var(--surface-1, #0a0a0f);
+}
+
+.spatial-canvas-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+}
+
+.spatial-canvas-overlay.editing-enabled {
+  cursor: crosshair;
+}
+
+/* Layer 0: Backdrop */
+.spatial-canvas-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.spatial-backdrop-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* Neutral grey surface used while the backdrop is muted. The mutation is
+   display-only: the reference image stays attached to the request. */
+.spatial-backdrop-muted {
+  position: absolute;
+  inset: 0;
+  background: #40444c;
+}
+
+/* Blueprint Grid */
+.spatial-blueprint-grid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.guide-line {
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.guide-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.guide-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.guide-25 {
+  top: 25%;
+  left: 25%;
+}
+
+.guide-50 {
+  top: 50%;
+  left: 50%;
+  background-color: rgba(124, 92, 255, 0.18);
+}
+
+.guide-75 {
+  top: 75%;
+  left: 75%;
+}
+
+/* Layer 1: Boxes Container */
+.spatial-canvas-boxes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+/* Single Spatial Box */
+.spatial-box {
+  position: absolute;
+  box-sizing: border-box;
+  /* Per-box palette: the overlay sets --box-color inline so the outline,
+     badge and matching prompt-text all share one hue per box. */
+  border: 2px dashed var(--box-color, var(--accent, #7c5cff));
+  background: color-mix(in srgb, var(--box-color, #7c5cff) 12%, transparent);
+  border-radius: 4px;
+  cursor: move;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+  pointer-events: auto;
+}
+
+.spatial-box:hover {
+  background: color-mix(in srgb, var(--box-color, #7c5cff) 20%, transparent);
+}
+
+.spatial-box.active {
+  border: 2px solid var(--box-color, var(--accent, #7c5cff));
+  background: color-mix(in srgb, var(--box-color, #7c5cff) 22%, transparent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 4px 16px color-mix(in srgb, var(--box-color, #7c5cff) 45%, transparent);
+  z-index: 5;
+}
+
+.spatial-box.spatial-box-drawing {
+  border: 2px solid var(--box-color, #a78bfa);
+  background: color-mix(in srgb, var(--box-color, #a78bfa) 22%, transparent);
+  pointer-events: none;
+}
+
+/* Box Header Pill */
+.spatial-box-header {
+  position: absolute;
+  top: -24px;
+  left: -2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 6;
+  transition: top 0.12s ease, left 0.12s ease;
+}
+
+.spatial-box-header.is-inside {
+  top: 4px;
+  left: 4px;
+}
+
+.spatial-box-header .spatial-box-eye {
+  pointer-events: auto;
+}
+
+.spatial-box-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--surface-10, #181824);
+  border: 1px solid var(--accent, #7c5cff);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.spatial-box.action-remove .spatial-box-badge {
+  border-color: var(--danger, #f87171);
+}
+
+.spatial-box.kind-text .spatial-box-badge {
+  border-color: #38bdf8;
+}
+
+.spatial-tag-remove {
+  background: var(--danger, #f87171);
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Box Label Content */
+.spatial-box-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  padding: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  text-align: center;
+  word-break: break-word;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* 8 Resize Handles */
+.spatial-box-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #ffffff;
+  border: 1px solid var(--accent, #7c5cff);
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  z-index: 7;
+}
+
+.handle-nw { top: -4px; left: -4px; cursor: nwse-resize; }
+.handle-n  { top: -4px; left: calc(50% - 4px); cursor: ns-resize; }
+.handle-ne { top: -4px; right: -4px; cursor: nesw-resize; }
+.handle-e  { top: calc(50% - 4px); right: -4px; cursor: ew-resize; }
+.handle-se { bottom: -4px; right: -4px; cursor: nwse-resize; }
+.handle-s  { bottom: -4px; left: calc(50% - 4px); cursor: ns-resize; }
+.handle-sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
+.handle-w  { top: calc(50% - 4px); left: -4px; cursor: ew-resize; }
+
+/* Layer 2: Floating Inline HUD */
+.spatial-box-hud {
+  position: absolute;
+  z-index: 20;
+  width: 320px;
+  max-width: calc(100% - 20px);
+  box-sizing: border-box;
+  background: var(--surface-10, #181824);
+  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.2));
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+  animation: hudFadeIn 0.15s ease-out;
+}
+
+@keyframes hudFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.spatial-hud-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spatial-hud-modes {
+  flex-wrap: wrap;
+}
+
+/* Box-name badge inside the edition HUD, tinted with the box palette color */
+.spatial-hud-badge-row {
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spatial-hud-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  display: inline-flex;
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(10, 10, 16, 0.92);
+}
+
+.spatial-box-eye {
+  background: var(--surface-13, #252538);
+  border: 1px solid var(--border, #3a3a50);
+  color: var(--text, #ffffff);
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.85;
+  pointer-events: auto;
+  transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.spatial-box-eye:hover {
+  opacity: 1;
+  background: var(--accent, #7c5cff);
+  border-color: var(--accent, #7c5cff);
+  color: #ffffff;
+}
+
+.spatial-box-eye.is-hidden {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: var(--danger, #f87171);
+  color: var(--danger, #f87171);
+  opacity: 1;
+}
+
+.spatial-box-eye.is-hidden:hover {
+  background: var(--danger, #f87171);
+  color: #ffffff;
+}
+
+/* Box hidden from the canvas surface: hides fill, label, and handles
+   so the user can clearly inspect the artwork underneath. Outline is kept
+   as a faint dashed guide, and header badge stays accessible to unhide. */
+.spatial-box.box-hidden {
+  border: 1px dashed var(--box-color, rgba(124, 92, 255, 0.45)) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  opacity: 0.55;
+  pointer-events: auto;
+}
+
+.spatial-box.box-hidden:hover {
+  opacity: 0.95;
+  border-style: solid !important;
+}
+
+.spatial-box.box-hidden .spatial-box-label {
+  display: none !important;
+}
+
+.spatial-box.box-hidden .spatial-box-handle {
+  display: none !important;
+}
+
+.spatial-box.box-hidden .spatial-box-header {
+  opacity: 1 !important;
+}
+
+.hud-pill {
+  background: var(--surface-13, #252538);
+  border: 1px solid var(--border, #2e2e40);
+  color: var(--text, #e6e6f0);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.hud-pill:hover {
+  background: var(--surface-15, #28283a);
+  border-color: var(--accent, #7c5cff);
+}
+
+.hud-pill.active {
+  background: var(--accent, #7c5cff);
+  color: #ffffff;
+  border-color: var(--accent, #7c5cff);
+  font-weight: 600;
+}
+
+.hud-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border, #2e2e40);
+  margin: 0 2px;
+}
+
+/* HUD Input Row */
+.spatial-hud-input-row {
+  width: 100%;
+}
+
+.spatial-hud-input {
+  flex: 1;
+  background: var(--surface-2, #0b0b12);
+  border: 1px solid var(--border, #2e2e40);
+  border-radius: 4px;
+  color: var(--text, #ffffff);
+  font-size: 12px;
+  padding: 6px 8px;
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+
+.spatial-hud-input:focus {
+  border-color: var(--accent, #7c5cff);
+}
+
+.spatial-hud-btn-done,
+.spatial-hud-btn-delete {
+  background: var(--surface-13, #252538);
+  border: 1px solid var(--border, #2e2e40);
+  color: var(--text, #ffffff);
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease;
+}
+
+.spatial-hud-btn-done:hover {
+  background: var(--accent, #7c5cff);
+  border-color: var(--accent, #7c5cff);
+}
+
+.spatial-hud-btn-delete:hover {
+  background: var(--danger, #f87171);
+  border-color: var(--danger, #f87171);
+}
+
+/* Canvas Top Bar (Backdrop indicator & controls) — rendered as a normal
+   flow row ABOVE the canvas (outside the .spatial-canvas-wrapper), so it
+   never covers the artwork. */
+.spatial-canvas-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 6px 0;
+  pointer-events: auto;
+}
+
+.spatial-backdrop-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(18, 18, 28, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
+.spatial-backdrop-tag {
+  color: var(--text-secondary, #a0a0c0);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.spatial-backdrop-tag.blueprint {
+  color: rgba(160, 160, 192, 0.7);
+}
+
+.spatial-backdrop-action-btn {
+  background: var(--surface-13, #252538);
+  border: 1px solid var(--border, #3a3a50);
+  color: var(--text, #ffffff);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.spatial-backdrop-action-btn:hover {
+  background: var(--accent, #7c5cff);
+  border-color: var(--accent, #7c5cff);
+}
+
+/* Empty Blueprint Grid CTA */
+.spatial-grid-empty-cta {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.spatial-empty-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.85;
+}
+
+.spatial-empty-title {
+  color: var(--text, #ffffff);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.01em;
+}
+
+.spatial-empty-desc {
+  color: var(--text-secondary, #9090aa);
+  font-size: 0.82rem;
+  max-width: 340px;
+  margin: 0 0 1rem 0;
+  line-height: 1.4;
+}
+
+.spatial-add-backdrop-btn {
+  background: var(--surface-13, #222235);
+  border: 1px solid var(--border, #3a3a54);
+  color: var(--text, #ffffff);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.spatial-add-backdrop-btn:hover {
+  background: var(--accent, #7c5cff);
+  border-color: var(--accent, #7c5cff);
+  transform: translateY(-1px);
+}
+
+/* Drag-over overlay */
+.spatial-canvas-overlay.drag-over {
+  outline: 2px dashed var(--accent, #7c5cff);
+  outline-offset: -3px;
+}
+
+.spatial-dropzone-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(124, 92, 255, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.spatial-dropzone-badge {
+  background: var(--surface-1, #10101c);
+  border: 2px solid var(--accent, #7c5cff);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Layer 3: Progress Overlay while generating */
+.spatial-canvas-wrapper .canvas-busy-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: var(--scrim, rgba(0, 0, 0, 0.75));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border-radius: inherit;
+  pointer-events: auto;
+}
+
+/* Explicit Clear Boxes Button */
+.clear-boxes-btn.explicit {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  font-weight: 600 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.clear-boxes-btn.explicit:hover {
+  background: rgba(239, 68, 68, 0.28) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  color: #ffffff !important;
+}
+
+.spatial-clear-top-btn {
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.spatial-clear-top-btn:hover {
+  background: rgba(239, 68, 68, 0.35) !important;
+  color: #ffffff !important;
+  border-color: rgba(239, 68, 68, 0.7) !important;
+}
+
+
+
