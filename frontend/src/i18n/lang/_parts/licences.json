@@ -1,0 +1,436 @@
+{
+  "licences.title": {
+    "es": "Licencias",
+    "zh": "许可协议",
+    "ja": "ライセンス",
+    "pt": "Licenças",
+    "ko": "라이선스"
+  },
+  "licences.intro": {
+    "es": "Qué puedes y qué no puedes hacer con DiffusionBear, y en qué proyectos se apoya.",
+    "zh": "你可以用 DiffusionBear 做什么、不能做什么，以及它构建于哪些项目之上。",
+    "ja": "DiffusionBear で行えること、行えないこと、および基になっているプロジェクト。",
+    "pt": "O que você pode e o que não pode fazer com o DiffusionBear, e em quais projetos ele se apoia.",
+    "ko": "DiffusionBear로 할 수 있는 것과 할 수 없는 것, 그리고 기반이 되는 프로젝트입니다."
+  },
+  "licences.source": {
+    "es": "Código fuente:",
+    "zh": "源代码：",
+    "ja": "ソース：",
+    "pt": "Código-fonte:",
+    "ko": "소스:"
+  },
+  "licences.sectionBackend": {
+    "es": "Backend — tiempo de ejecución MLX / mflux (Python)",
+    "zh": "后端 —— MLX / mflux 运行时（Python）",
+    "ja": "バックエンド — MLX / mflux ランタイム（Python）",
+    "pt": "Backend — runtime MLX / mflux (Python)",
+    "ko": "백엔드 — MLX / mflux 런타임(Python)"
+  },
+  "licences.sectionFrontend": {
+    "es": "Frontend — SPA de React / Vite",
+    "zh": "前端 —— React / Vite 单页应用",
+    "ja": "フロントエンド — React / Vite SPA",
+    "pt": "Frontend — SPA em React / Vite",
+    "ko": "프런트엔드 — React / Vite SPA"
+  },
+  "licences.sectionSdxl": {
+    "es": "Motor SDXL — Juggernaut XL Lightning (Python, ejecución sin torch)",
+    "zh": "SDXL 引擎 —— Juggernaut XL Lightning（Python，运行时无需 torch）",
+    "ja": "SDXL エンジン — Juggernaut XL Lightning（Python、torch 不要のランタイム）",
+    "pt": "Motor SDXL — Juggernaut XL Lightning (Python, runtime sem torch)",
+    "ko": "SDXL 엔진 — Juggernaut XL Lightning(Python, torch 없는 런타임)"
+  },
+  "licences.sectionModels": {
+    "es": "Modelos y pesos",
+    "zh": "模型与权重",
+    "ja": "モデルと重み",
+    "pt": "Modelos e pesos",
+    "ko": "모델과 가중치"
+  },
+  "licences.noteBackend": {
+    "es": "Núcleo de generación para FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo y el motor experimental Qwen-Image 2.1.",
+    "zh": "用于 FLUX.2-klein 4B、Krea 2 Turbo、Z-Image Turbo 和实验性 Qwen-Image 2.1 引擎的生成核心。",
+    "ja": "FLUX.2-klein 4B、Krea 2 Turbo、Z-Image Turbo、および実験的な Qwen-Image 2.1 エンジンの生成コア。",
+    "pt": "Núcleo de geração para FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo e o motor experimental Qwen-Image 2.1.",
+    "ko": "FLUX.2-klein 4B, Krea 2 Turbo, Z-Image Turbo 및 실험용 Qwen-Image 2.1 엔진의 생성 코어입니다."
+  },
+  "licences.noteSdxl": {
+    "es": "La conversión de checkpoints usa el entorno principal; el motor SDXL MLX nativo no requiere torch.",
+    "zh": "检查点转换使用主运行时；原生 MLX SDXL 引擎不需要 torch。",
+    "ja": "チェックポイント変換はメインランタイムを使用します。ネイティブ MLX SDXL エンジンに torch は不要です。",
+    "pt": "A conversão de checkpoints usa o ambiente principal; o motor SDXL MLX nativo não requer torch.",
+    "ko": "체크포인트 변환은 기본 런타임을 사용합니다. 네이티브 MLX SDXL 엔진에는 torch가 필요하지 않습니다."
+  },
+  "licences.noteFrontend": {
+    "es": "Interfaz de navegador. Los mismos paquetes que cualquier aplicación Vite moderna.",
+    "zh": "浏览器界面。与现代 Vite 应用相同的软件包。",
+    "ja": "ブラウザ UI。現代の Vite アプリと同じパッケージです。",
+    "pt": "Interface de navegador. Os mesmos pacotes de qualquer app Vite moderno.",
+    "ko": "브라우저 UI입니다. 일반적인 최신 Vite 앱과 동일한 패키지를 사용합니다."
+  },
+  "licences.noteWeights": {
+    "es": "Los archivos de peso se descargan de Hugging Face / las fichas de modelo en el primer uso; DiffusionBear no los incluye ni los redistribuye. Cada uno lleva sus propias condiciones.",
+    "zh": "权重文件在首次使用时从 Hugging Face / 模型卡下载 —— DiffusionBear 既不打包也不再分发它们。每份权重都有自己的条款。",
+    "ja": "重みファイルは初回使用時に Hugging Face / モデルカードからダウンロードされます。DiffusionBear はこれらを同梱・再配布しておらず、それぞれ独自の条件があります。",
+    "pt": "Os arquivos de peso são baixados do Hugging Face / cartões de modelo no primeiro uso — o DiffusionBear não os inclui nem os redistribui. Cada um tem seus próprios termos.",
+    "ko": "가중치 파일은 처음 사용할 때 Hugging Face 또는 모델 카드에서 다운로드됩니다. DiffusionBear는 이를 포함하거나 재배포하지 않으며, 각각 고유한 조건을 따릅니다."
+  },
+  "licences.introSecond": {
+    "es": "Cada paquete de terceros indicado abajo mantiene su propia licencia; nada de lo indicado aquí concede ni revoca esos términos.",
+    "zh": "下面列出的每个第三方软件包都保留自己的许可协议；此处的内容既不授予也不撤销这些条款。",
+    "ja": "以下のサードパーティパッケージはそれぞれのライセンスを保持しています。ここに記載した内容によって、これらの条件が付与されたり破棄されたりするわけではありません。",
+    "pt": "Cada pacote de terceiros abaixo mantém sua própria licença; nada aqui concede nem revoga esses termos.",
+    "ko": "아래의 각 서드파티 패키지는 자체 라이선스를 유지하며, 여기 있는 내용은 그 조건을 부여하거나 철회하지 않습니다."
+  },
+  "licences.thisProject": {
+    "es": "Este proyecto",
+    "zh": "本项目",
+    "ja": "このプロジェクト",
+    "pt": "Este projeto",
+    "ko": "이 프로젝트"
+  },
+  "licences.releasedUnder": {
+    "es": "se distribuye bajo la",
+    "zh": "依据以下协议发布：",
+    "ja": "次のライセンスにより公開されています：",
+    "pt": "é distribuído sob a",
+    "ko": "다음 라이선스로 배포됩니다:"
+  },
+  "licences.mitLicense": {
+    "es": "Licencia MIT",
+    "zh": "MIT 许可协议",
+    "ja": "MIT ライセンス",
+    "pt": "Licença MIT",
+    "ko": "MIT 라이선스"
+  },
+  "licences.copyright": {
+    "es": "Copyright © {year}",
+    "zh": "版权所有 © {year}",
+    "ja": "Copyright © {year}",
+    "pt": "Copyright © {year}",
+    "ko": "저작권 © {year}"
+  },
+  "licences.website": {
+    "es": "Sitio web",
+    "zh": "网站",
+    "ja": "ウェブサイト",
+    "pt": "Site",
+    "ko": "웹사이트"
+  },
+  "licences.aiAuthored": {
+    "es": "Written en gran parte por IA",
+    "zh": "主要由 AI 编写",
+    "ja": "大部分をAIが執筆",
+    "pt": "Escrito em grande parte por IA",
+    "ko": "대부분 AI가 작성"
+  },
+  "licences.aiCredits": {
+    "es": "asistido por {credits} junto con su autor humano. Revisado y probado manualmente.",
+    "zh": "由 {credits} 与其人类作者共同协助完成。经人工审阅和基准测试。",
+    "ja": "人間による著者とともに {credits} が支援。内容を確認し、手作業でベンチマークしました。",
+    "pt": "assistido por {credits} junto com seu autor humano. Revisado e testado manualmente.",
+    "ko": "사람 저자와 함께 {credits}가 지원했습니다. 직접 검토하고 벤치마크했습니다."
+  },
+  "licences.mitScopeBefore": {
+    "es": "La licencia MIT cubre",
+    "zh": "MIT 许可协议仅涵盖",
+    "ja": "MIT ライセンスは次をカバーします：",
+    "pt": "A licença MIT cobre",
+    "ko": "MIT 라이선스는 다음을 포괄합니다:"
+  },
+  "licences.mitScopeEm": {
+    "es": "solo el código fuente de este proyecto",
+    "zh": "本项目的源代码",
+    "ja": "このプロジェクトのソースコードのみ",
+    "pt": "apenas o código-fonte deste projeto",
+    "ko": "이 프로젝트의 소스 코드만"
+  },
+  "licences.mitScopeAfter": {
+    "es": ". Los pesos del modelo no están cubiertos por ella: consulta la tabla de pesos más abajo.",
+    "zh": "。模型权重不在其涵盖范围内 —— 请参阅下方的权重表。",
+    "ja": "。モデルの重みは対象外です。下の重みの表を参照してください。",
+    "pt": ". Os pesos dos modelos não estão cobertos — veja a tabela de pesos abaixo.",
+    "ko": ". 모델 가중치는 포함되지 않습니다 — 아래 가중치 표를 참조하세요."
+  },
+  "licences.colPackage": {
+    "es": "Paquete",
+    "zh": "软件包",
+    "ja": "パッケージ",
+    "pt": "Pacote",
+    "ko": "패키지"
+  },
+  "licences.colModel": {
+    "es": "Modelo",
+    "zh": "模型",
+    "ja": "モデル",
+    "pt": "Modelo",
+    "ko": "모델"
+  },
+  "licences.colLora": {
+    "es": "LoRA",
+    "zh": "LoRA",
+    "ja": "LoRA",
+    "pt": "LoRA",
+    "ko": "LoRA"
+  },
+  "licences.colLicence": {
+    "es": "Licencia",
+    "zh": "许可协议",
+    "ja": "ライセンス",
+    "pt": "Licença",
+    "ko": "라이선스"
+  },
+  "licences.colRepository": {
+    "es": "Repositorio",
+    "zh": "仓库",
+    "ja": "リポジトリ",
+    "pt": "Repositório",
+    "ko": "저장소"
+  },
+  "licences.versions": {
+    "es": "Versiones",
+    "zh": "版本",
+    "ja": "バージョン",
+    "pt": "Versões",
+    "ko": "버전"
+  },
+  "licences.tabAppModels": {
+    "es": "App y modelos",
+    "zh": "应用与模型",
+    "ja": "アプリとモデル",
+    "pt": "App e modelos",
+    "ko": "앱 및 모델"
+  },
+  "licences.tabInstalled": {
+    "es": "Instalados",
+    "zh": "已安装",
+    "ja": "インストール済み",
+    "pt": "Instalados",
+    "ko": "설치됨"
+  },
+  "licences.installedModels": {
+    "es": "Modelos instalados",
+    "zh": "已安装模型",
+    "ja": "インストール済みモデル",
+    "pt": "Modelos instalados",
+    "ko": "설치된 모델"
+  },
+  "licences.installedLoras": {
+    "es": "LoRA instalados",
+    "zh": "已安装 LoRA",
+    "ja": "インストール済みLoRA",
+    "pt": "LoRAs instalados",
+    "ko": "설치된 LoRA"
+  },
+  "licences.installedEmpty": {
+    "es": "Nada instalado todavía.",
+    "zh": "暂无已安装内容。",
+    "ja": "まだ何もインストールされていません。",
+    "pt": "Nada instalado ainda.",
+    "ko": "아직 설치된 항목이 없습니다."
+  },
+  "licences.frontendVersion": {
+    "es": "Interfaz {version}",
+    "zh": "前端 {version}",
+    "ja": "フロントエンド {version}",
+    "pt": "Front-end {version}",
+    "ko": "프런트엔드 {version}"
+  },
+  "licences.backendApi": {
+    "es": " · API del backend {version}",
+    "zh": " · 后端 API {version}",
+    "ja": " · バックエンド API {version}",
+    "pt": " · API do backend {version}",
+    "ko": " · 백엔드 API {version}"
+  },
+  "licences.repoLink": {
+    "es": "repositorio",
+    "zh": "仓库",
+    "ja": "リポジトリ",
+    "pt": "repositório",
+    "ko": "저장소"
+  },
+  "licences.colOutputs": {
+    "es": "Imágenes comerciales",
+    "zh": "商业图像",
+    "ja": "商用画像",
+    "pt": "Imagens comerciais",
+    "ko": "상업적 이미지"
+  },
+  "licences.colWeights": {
+    "es": "Uso comercial de los pesos",
+    "zh": "权重商业使用",
+    "ja": "重みの商用利用",
+    "pt": "Uso comercial dos pesos",
+    "ko": "가중치 상업적 사용"
+  },
+  "licences.usageWarning": {
+    "es": "Las licencias de los modelos cubren los pesos. No aclaran los derechos sobre la imagen: revisa imagen, marcas y copyright antes del uso comercial. No es asesoramiento legal.",
+    "zh": "模型许可涵盖权重，不涉及图像本身的权利：商业使用前请核实肖像、商标和版权。此非法律意见。",
+    "ja": "モデルのライセンスは重みを対象とし、画像自体の権利を定めるものではありません。商用利用前に肖像・商標・著作権を確認してください。法的助言ではありません。",
+    "pt": "As licenças dos modelos cobrem os pesos. Não esclarecem direitos sobre a imagem: verifique imagem, marcas e direitos autorais antes do uso comercial. Isto não é aconselhamento jurídico.",
+    "ko": "모델 라이선스는 가중치를 다룹니다. 이미지 자체의 권리를 정하지 않습니다. 상업적 사용 전에 초상권, 상표권, 저작권을 확인하세요. 법률 자문이 아닙니다."
+  },
+  "licences.rightsYes": {
+    "es": "Sí",
+    "zh": "是",
+    "ja": "はい",
+    "pt": "Sim",
+    "ko": "예"
+  },
+  "licences.rightsNo": {
+    "es": "No",
+    "zh": "否",
+    "ja": "いいえ",
+    "pt": "Não",
+    "ko": "아니요"
+  },
+  "licences.rightsConditional": {
+    "es": "Condicional",
+    "zh": "有条件",
+    "ja": "条件付き",
+    "pt": "Condicional",
+    "ko": "조건부"
+  },
+  "licences.rightsUnclear": {
+    "es": "Consulta la fuente",
+    "zh": "查看来源",
+    "ja": "出典を確認",
+    "pt": "Consulte a fonte",
+    "ko": "출처 확인"
+  },
+  "licences.conditionApache": {
+    "es": "Uso comercial permitido. Conserva la licencia y los avisos si redistribuyes el modelo. La licencia no concede derechos sobre el contenido de la imagen.",
+    "zh": "允许商业使用。再分发模型时保留许可证和声明。许可证不授予图像内容权利。",
+    "ja": "商用利用可。モデルを再配布する場合はライセンスと表示を保持してください。画像内容の権利は付与されません。",
+    "pt": "Uso comercial permitido. Mantenha a licença e os avisos se redistribuir o modelo. A licença não concede direitos sobre o conteúdo da imagem.",
+    "ko": "상업적 사용이 허용됩니다. 모델을 재배포하면 라이선스와 고지를 유지하세요. 라이선스는 이미지 콘텐츠 권리를 부여하지 않습니다."
+  },
+  "licences.conditionFluxNine": {
+    "es": "Las imágenes se pueden vender, pero los pesos no son comerciales. El trabajo remunerado con clientes o el alojamiento comercial requiere una licencia de BFL. Filtros y aviso de IA obligatorios.",
+    "zh": "图像可以出售，但权重为非商业性。付费客户工作或商业托管需要 BFL 许可证。必须使用过滤并披露 AI 生成。",
+    "ja": "画像は販売できますが、重みは非商用です。有償のクライアント作業や商用ホスティングには BFL ライセンスが必要です。フィルターと AI 表示が必須です。",
+    "pt": "As imagens podem ser vendidas, mas os pesos são não comerciais. Trabalho remunerado para clientes ou alojamento comercial exige uma licença BFL. Filtros e aviso de IA obrigatórios.",
+    "ko": "이미지는 판매할 수 있지만 가중치는 비상업적입니다. 유료 고객 작업이나 상업적 호스팅에는 BFL 라이선스가 필요합니다. 필터와 AI 표시가 필요합니다."
+  },
+  "licences.conditionFluxKommunity": {
+    "es": "Imágenes comerciales solo si tú y tus afiliados ingresáis menos de 5 M US$/año. Filtros y aviso de IA obligatorios. La excepción cubre la generación, no la distribución comercial de los pesos.",
+    "zh": "仅当您及关联方年收入低于 500 万美元时，图像可商用。必须使用过滤并披露 AI 生成。该例外涵盖生成图像，不涵盖商业分发权重。",
+    "ja": "あなたと関連会社の年収が 500 万米ドル未満の場合のみ画像を商用利用できます。フィルターと AI 表示が必須です。例外は画像生成に限られ、重みの商用配布には及びません。",
+    "pt": "Imagens comerciais apenas se você e as afiliadas faturaram menos de 5 milhões de US$/ano. Filtros e aviso de IA obrigatórios. A exceção cobre a geração, não a distribuição comercial dos pesos.",
+    "ko": "귀하와 계열사가 연 매출 500만 달러 미만일 때만 이미지를 상업적으로 사용할 수 있습니다. 필터와 AI 표시가 필요합니다. 예외는 이미지 생성에만 적용되며 가중치의 상업적 배포에는 적용되지 않습니다."
+  },
+  "licences.conditionKrea": {
+    "es": "Imágenes comerciales solo si tú y tus afiliados ingresáis menos de 1 M US$/año. Filtrado de contenido y aviso de IA obligatorios. Las imágenes son tuyas.",
+    "zh": "仅当您及关联方年收入低于 100 万美元时，图像可商用。必须进行内容过滤并披露 AI 生成。图像归您所有。",
+    "ja": "あなたと関連会社の年収が 100 万米ドル未満の場合のみ画像を商用利用できます。コンテンツフィルターと AI 表示が必須です。画像はあなたに帰属します。",
+    "pt": "Imagens comerciais apenas se você e as afiliadas faturaram menos de 1 milhão de US$/ano. Filtragem de conteúdo e aviso de IA obrigatórios. As imagens são suas.",
+    "ko": "귀하와 계열사가 연 매출 100만 달러 미만일 때만 이미지를 상업적으로 사용할 수 있습니다. 콘텐츠 필터링과 AI 표시가 필요합니다. 이미지는 귀하의 소유입니다."
+  },
+  "licences.conditionQwenResearch": {
+    "es": "Solo investigación y evaluación. La generación comercial requiere una licencia Qwen aparte. La conversión MLX no concede derechos comerciales.",
+    "zh": "仅限研究和评估。商业生成需要单独的 Qwen 许可证。MLX 转换不授予商业权利。",
+    "ja": "研究・評価のみ。商用生成には別途 Qwen ライセンスが必要です。MLX 変換は商用権を付与しません。",
+    "pt": "Apenas investigação e avaliação. A geração comercial exige uma licença Qwen separada. A conversão MLX não concede direitos comerciais.",
+    "ko": "연구 및 평가 전용입니다. 상업적 생성에는 별도의 Qwen 라이선스가 필요합니다. MLX 변환은 상업적 권리를 부여하지 않습니다."
+  },
+  "licences.conditionFibo": {
+    "es": "Solo no comercial. El uso comercial requiere un acuerdo con Bria. Atribución si compartes el modelo.",
+    "zh": "仅限非商业用途。商业使用需要 Bria 协议。分享模型时需署名。",
+    "ja": "非商用のみ。商用利用には Bria との契約が必要です。モデルを共有する場合は表示が必要です。",
+    "pt": "Apenas não comercial. O uso comercial exige um acordo Bria. Atribuição se partilhar o modelo.",
+    "ko": "비상업적 용도만 가능합니다. 상업적 사용에는 Bria 계약이 필요합니다. 모델을 공유하면 저작자 표시가 필요합니다."
+  },
+  "licences.conditionJuggernautXI": {
+    "es": "No comercial, sin derivados, sin API de pago ni servicio competidor, sin redistribuir los pesos. Se requiere licencia comercial de RunDiffusion.",
+    "zh": "非商业、禁止衍生、禁止付费 API 或竞争服务、禁止再分发权重。需要 RunDiffusion 商业许可证。",
+    "ja": "非商用、派生禁止、有償 API や競合サービスでの利用禁止、重みの再配布禁止。RunDiffusion の商用ライセンスが必要です。",
+    "pt": "Não comercial, sem derivados, sem API paga ou serviço concorrente, sem redistribuição dos pesos. Licença comercial da RunDiffusion necessária.",
+    "ko": "비상업적, 파생물 금지, 유료 API 또는 경쟁 서비스 금지, 가중치 재배포 금지. RunDiffusion 상업 라이선스가 필요합니다."
+  },
+  "licences.conditionPony": {
+    "es": "Se permite vender las imágenes generadas. El alojamiento de inferencia de pago requiere permiso. Los derivados mantienen la misma licencia y atribución.",
+    "zh": "允许出售生成的图像。付费推理托管需要许可。衍生模型须保留相同许可证和署名。",
+    "ja": "生成画像の販売は許可されています。有償の推論ホスティングには許可が必要です。派生モデルは同じライセンスと表示を維持します。",
+    "pt": "É permitido vender as imagens geradas. O alojamento de inferência pago exige autorização. Os derivados mantêm a mesma licença e atribuição.",
+    "ko": "생성된 이미지 판매는 허용됩니다. 유료 추론 호스팅에는 허가가 필요합니다. 파생물은 동일한 라이선스와 저작자 표시를 유지합니다."
+  },
+  "licences.conditionOpenRail": {
+    "es": "Uso comercial permitido sujeto a las restricciones RAIL. Las imágenes son tuyas, pero las restricciones se aplican a la generación.",
+    "zh": "允许商业使用，但须遵守 RAIL 使用限制。图像归您所有，但生成仍受限制。",
+    "ja": "RAIL の利用制限の下で商用利用可。画像はあなたに帰属しますが、生成には制限が適用されます。",
+    "pt": "Uso comercial permitido sujeito às restrições RAIL. As imagens são suas, mas as restrições aplicam-se à geração.",
+    "ko": "RAIL 사용 제한을 조건으로 상업적 사용이 허용됩니다. 이미지는 귀하의 소유이지만 생성에는 제한이 적용됩니다."
+  },
+  "licences.acceptTitle": {
+    "es": "Licencia de {model}",
+    "zh": "许可协议：{model}",
+    "ja": "ライセンス: {model}",
+    "pt": "Licença de {model}",
+    "ko": "라이선스: {model}"
+  },
+  "licences.acceptThisModel": {
+    "es": "este modelo",
+    "zh": "此模型",
+    "ja": "このモデル",
+    "pt": "este modelo",
+    "ko": "이 모델"
+  },
+  "licences.acceptIntro": {
+    "es": "Revisa qué permite la licencia antes de iniciar la descarga. No se descarga nada sin tu aceptación.",
+    "zh": "开始下载前请确认许可协议允许的用途。未接受前不会下载任何内容。",
+    "ja": "ダウンロードを開始する前に、ライセンスで許可されている内容を確認してください。同意するまで何もダウンロードされません。",
+    "pt": "Verifique o que a licença permite antes de iniciar o download. Nada é baixado sem a sua aceitação.",
+    "ko": "다운로드를 시작하기 전에 라이선스가 허용하는 내용을 확인하세요. 동의하기 전에는 아무것도 다운로드되지 않습니다."
+  },
+  "licences.acceptUnverified": {
+    "es": "Licencia no verificada por la aplicación",
+    "zh": "应用未验证此许可协议",
+    "ja": "アプリでは未確認のライセンス",
+    "pt": "Licença não verificada pelo aplicativo",
+    "ko": "앱에서 확인하지 않은 라이선스"
+  },
+  "licences.acceptUnknown": {
+    "es": "La aplicación no tiene un resumen verificado de este modelo. Abre la fuente y lee la licencia antes de continuar.",
+    "zh": "应用没有此模型的已验证摘要。请打开来源并阅读许可协议后再继续。",
+    "ja": "このモデルの確認済み概要はありません。続行する前に配布元を開き、ライセンスを読んでください。",
+    "pt": "O aplicativo não tem um resumo verificado deste modelo. Abra a fonte e leia a licença antes de continuar.",
+    "ko": "이 모델에 대한 확인된 요약이 없습니다. 계속하기 전에 출처를 열고 라이선스를 읽으세요."
+  },
+  "licences.acceptOpenLicence": {
+    "es": "Abrir licencia",
+    "zh": "打开许可协议",
+    "ja": "ライセンスを開く",
+    "pt": "Abrir licença",
+    "ko": "라이선스 열기"
+  },
+  "licences.acceptCheckbox": {
+    "es": "He leído y acepto la licencia de este modelo.",
+    "zh": "我已阅读并接受此模型的许可协议。",
+    "ja": "このモデルのライセンスを読み、同意します。",
+    "pt": "Li e aceito a licença deste modelo.",
+    "ko": "이 모델의 라이선스를 읽고 동의합니다."
+  },
+  "licences.acceptButton": {
+    "es": "Aceptar y descargar",
+    "zh": "接受并下载",
+    "ja": "同意してダウンロード",
+    "pt": "Aceitar e baixar",
+    "ko": "동의하고 다운로드"
+  },
+  "licences.acceptRequired": {
+    "es": "Debes aceptar la licencia antes de descargar.",
+    "zh": "下载前必须接受许可协议。",
+    "ja": "ダウンロードする前にライセンスに同意する必要があります。",
+    "pt": "Você deve aceitar a licença antes de baixar.",
+    "ko": "다운로드하기 전에 라이선스에 동의해야 합니다."
+  },
+  "licences.acceptNotLegal": {
+    "es": "Este resumen no es asesoramiento legal. Prevalece la licencia de la fuente.",
+    "zh": "此摘要不构成法律建议。以来源许可协议为准。",
+    "ja": "この概要は法的助言ではありません。配布元のライセンスが優先されます。",
+    "pt": "Este resumo não é aconselhamento jurídico. A licença da fonte prevalece.",
+    "ko": "이 요약은 법률 자문이 아닙니다. 출처 라이선스가 우선합니다."
+  }
+}

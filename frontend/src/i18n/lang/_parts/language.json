@@ -1,0 +1,23 @@
+{
+  "language.title": {
+    "es": "Idioma de la interfaz",
+    "zh": "界面语言",
+    "ja": "インターフェース言語",
+    "pt": "Idioma da interface",
+    "ko": "인터페이스 언어"
+  },
+  "language.auto": {
+    "es": "Seguir el sistema",
+    "zh": "跟随系统",
+    "ja": "システムに従う",
+    "pt": "Seguir o sistema",
+    "ko": "시스템 따르기"
+  },
+  "language.pending": {
+    "es": "Traducción en curso: la interfaz se muestra en inglés",
+    "zh": "翻译进行中 —— 界面显示为英文",
+    "ja": "翻訳中 — インターフェースは英語で表示されます",
+    "pt": "Tradução em andamento — a interface aparece em inglês",
+    "ko": "번역 진행 중 — 인터페이스는 영어로 표시됩니다"
+  }
+}

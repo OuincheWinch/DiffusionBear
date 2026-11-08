@@ -1,0 +1,47 @@
+{
+  "queue.recoveryTitle": { "es": "Cola recuperable", "zh": "可恢复队列", "ja": "復元可能なキュー", "pt": "Fila recuperável", "ko": "복구 가능한 대기열" },
+  "queue.recoverySubtitle": {
+    "es": "Indicaciones guardadas tras cancelar la cola o tras un cierre inesperado.",
+    "zh": "取消队列或意外关闭后保存的提示词。",
+    "ja": "キューのキャンセルまたは予期しない終了の後に保存されたプロンプトです。",
+    "pt": "Prompts salvos após o cancelamento da fila ou um encerramento inesperado.",
+    "ko": "대기열 취소 또는 예기치 않은 종료 후 저장된 프롬프트입니다."
+  },
+  "queue.promptCount": { "es": "indicación", "zh": "条提示词", "ja": "件のプロンプト", "pt": "prompt", "ko": "개의 프롬프트" },
+  "queue.promptsCount": { "es": "indicaciones", "zh": "条提示词", "ja": "件のプロンプト", "pt": "prompts", "ko": "개의 프롬프트" },
+  "queue.restoreAll": { "es": "Reencolar todo", "zh": "全部重新排队", "ja": "すべて再キューに追加", "pt": "Recolocar tudo na fila", "ko": "모두 다시 대기열에 추가" },
+  "queue.copyAll": { "es": "Copiar todas las indicaciones", "zh": "复制所有提示词", "ja": "すべてのプロンプトをコピー", "pt": "Copiar todos os prompts", "ko": "모든 프롬프트 복사" },
+  "queue.clearAll": { "es": "Borrar todo", "zh": "全部清除", "ja": "すべて消去", "pt": "Limpar tudo", "ko": "모두 지우기" },
+  "queue.clearAndForget": { "es": "Borrar y olvidar", "zh": "清除并忘记", "ja": "消去して忘れる", "pt": "Limpar e esquecer", "ko": "지우고 잊기" },
+  "queue.restore": { "es": "Reencolar", "zh": "重新排队", "ja": "再キューに追加", "pt": "Recolocar na fila", "ko": "다시 대기열에 추가" },
+  "queue.load": { "es": "Cargar", "zh": "加载", "ja": "読み込む", "pt": "Carregar", "ko": "불러오기" },
+  "queue.clearAllConfirm": { "es": "¿Borrar de forma permanente el historial de recuperación?", "zh": "要永久清除恢复历史记录吗？", "ja": "復元履歴を完全に消去しますか？", "pt": "Limpar permanentemente o histórico de recuperação?", "ko": "복구 기록을 영구 삭제할까요?" },
+  "queue.clearAndForgetConfirm": {
+    "es": "¿Borrar Y olvidar?\n\nEsto también elimina los trabajos que siguen en espera, así que ninguno podrá restaurarse en el próximo inicio. No se puede deshacer.",
+    "zh": "要清除并忘记吗？\n\n这也会移除仍在等待的任务，因此下次启动时无法恢复其中任何一个。此操作无法撤销。",
+    "ja": "消去して忘れますか？\n\n待機中のジョブも削除されるため、次の起動時に復元できません。元に戻すことはできません。",
+    "pt": "Limpar E esquecer?\n\nIsso também remove os trabalhos que ainda estão aguardando, então nenhum deles poderá ser restaurado na próxima inicialização. Não é possível desfazer.",
+    "ko": "지우고 잊을까요?\n\n대기 중인 작업도 함께 삭제되므로 다음 시작 시 복구할 수 없습니다. 되돌릴 수 없습니다."
+  },
+  "queue.deleteFailed": { "es": "No se pudo eliminar. Comprueba que el servidor esté en marcha y vuelve a intentarlo.", "zh": "删除失败。请检查服务器是否运行，然后重试。", "ja": "削除に失敗しました。サーバーが起動しているか確認して、もう一度お試しください。", "pt": "Falha ao excluir. Verifique se o servidor está em execução e tente novamente.", "ko": "삭제하지 못했습니다. 서버가 실행 중인지 확인한 뒤 다시 시도하세요." },
+  "queue.restoreFailed": { "es": "No se pudo reencolar.", "zh": "重新排队失败。", "ja": "再キューへの追加に失敗しました。", "pt": "Falha ao recolocar na fila.", "ko": "대기열에 다시 추가하지 못했습니다." },
+  "queue.empty": { "es": "No hay indicaciones pendientes de recuperar.", "zh": "没有待恢复的提示词。", "ja": "復元待ちのプロンプトはありません。", "pt": "Nenhum prompt aguardando recuperação.", "ko": "복구 대기 중인 프롬프트가 없습니다." },
+  "queue.emptyHint": {
+    "es": "Tus generaciones canceladas o interrumpidas se archivarán aquí automáticamente.",
+    "zh": "已取消或被中断的生成会自动归档到这里。",
+    "ja": "キャンセルまたは中断された生成は自動的にここに保存されます。",
+    "pt": "Suas gerações canceladas ou interrompidas serão arquivadas aqui automaticamente.",
+    "ko": "취소되었거나 중단된 생성 결과는 자동으로 여기에 보관됩니다."
+  },
+  "queue.interruptedBadge": { "es": "Interrumpida (fallo/cierre)", "zh": "已中断（崩溃/关闭）", "ja": "中断（クラッシュ/終了）", "pt": "Interrompida (falha/encerramento)", "ko": "중단됨(충돌/종료)" },
+  "queue.cancelledBadge": { "es": "Cancelada", "zh": "已取消", "ja": "キャンセル済み", "pt": "Cancelada", "ko": "취소됨" },
+  "queue.defaultModel": { "es": "modelo predeterminado", "zh": "默认模型", "ja": "デフォルトモデル", "pt": "modelo padrão", "ko": "기본 모델" },
+  "queue.steps": { "es": "pasos", "zh": "步", "ja": "ステップ", "pt": "passos", "ko": "스텝" },
+  "queue.requeueOneTitle": { "es": "Reencolar esta indicación de inmediato", "zh": "立即重新排队这条提示词", "ja": "このプロンプトをすぐに再キューに追加", "pt": "Recolocar este prompt na fila imediatamente", "ko": "이 프롬프트를 즉시 대기열에 추가" },
+  "queue.loadTitle": { "es": "Cargar esta indicación y sus ajustes en el formulario", "zh": "将这条提示词及其设置加载到表单", "ja": "このプロンプトとその設定をフォームに読み込む", "pt": "Carregar este prompt e suas configurações no formulário", "ko": "이 프롬프트와 설정을 양식에 불러오기" },
+  "queue.copyTitle": { "es": "Copiar el texto de la indicación", "zh": "复制提示词文本", "ja": "プロンプトのテキストをコピー", "pt": "Copiar o texto do prompt", "ko": "프롬프트 텍스트 복사" },
+  "queue.deleteOneTitle": { "es": "Eliminar esta indicación de la lista de recuperación de forma permanente", "zh": "从恢复列表中永久删除这条提示词", "ja": "このプロンプトを復元リストから完全に削除", "pt": "Excluir permanentemente este prompt da lista de recuperação", "ko": "이 프롬프트를 복구 목록에서 영구 삭제" },
+  "queue.forgetTitle": { "es": "También borra la cola en espera: no se restaurará nada en el próximo inicio", "zh": "同时清除等待队列：下次启动时不会恢复任何内容", "ja": "待機中のキューも消去します：次の起動時に何も復元されません", "pt": "Também limpa a fila de espera: nada será restaurado na próxima inicialização", "ko": "대기 중인 대기열도 지웁니다: 다음 시작 시 아무것도 복구되지 않습니다" },
+  "queue.copiedAll": { "es": "✓ ¡Copiado!", "zh": "✓ 已复制！", "ja": "✓ コピーしました！", "pt": "✓ Copiado!", "ko": "✓ 복사됨!" },
+  "queue.clipboardFailed": { "es": "No se pudo copiar. El portapapeles no está disponible.", "zh": "无法复制。剪贴板不可用。", "ja": "コピーできませんでした。クリップボードを利用できません。", "pt": "Não foi possível copiar. A área de transferência não está disponível.", "ko": "복사할 수 없습니다. 클립보드를 사용할 수 없습니다." }
+}
