@@ -17,6 +17,9 @@ guidance (verified against primary sources):
 - Z-Image Turbo : Alibaba Tongyi-MAI model card + community best-practice
   guides (huggingface.co/Tongyi-MAI/Z-Image-Turbo) — long factual narrative,
   guidance 0 / no negatives, 6-part camera-first formula, bilingual text
+- MOSS-Image    : OpenMOSS moss-image-prompt-enhancer skill (caption deliverable)
+  — cohesive English caption, spatial relations in words, verbatim quoted
+  visible text in its original language, no quality tags or word padding
 
 Two output formats are supported:
 - output_format="text" (default): engine-shaped narrative/tagged prose prompt.
@@ -283,6 +286,31 @@ ENGINE_PROFILES = {
             "STRICTLY FORBIDDEN: tag-soup lists, generic buzzwords (masterpiece, photorealistic), and negative phrasing."
         ),
     },
+    "moss": {
+        "label": "MOSS-Image 5B (Qwen3.5 Caption)",
+        "length": "60 to 200 words",
+        "max_words": 200,
+        "max_tokens": 320,
+        "instructions": (
+            "Target Engine: MOSS-Image 5B (Qwen3.5 text encoder; trained on long, detailed image captions).\n"
+            "Official prompting style (MOSS-Image prompt enhancer) — ONE COHESIVE DESCRIPTIVE CAPTION:\n"
+            "1. Write cohesive English prose describing what is visible: subject and action, relevant appearance, "
+            "setting, camera and framing, medium, lighting, materials, palette, and mood.\n"
+            "2. Preserve the user's subjects, counts, relationships, medium, style, and exclusions exactly. Resolve "
+            "ordinary creative gaps yourself, but never change the requested style or invent facts.\n"
+            "3. State spatial relations in words ('on the left', 'behind the table', 'in the upper third') — never "
+            "coordinates, boxes, or JSON fields.\n"
+            "4. Visible text: quote the exact words in their original language, with the user's punctuation and "
+            "capitalization, and describe typography and placement. Write real copy, never placeholders such as "
+            "'headline here'.\n"
+            "5. Keep a minimalist brief minimalist; develop a rich brief with concrete detail instead of a generic "
+            "title/hero/footer template.\n"
+            "6. For posters and designed images, give a clear reading order and relative prominence so the text "
+            "stays readable.\n"
+            "STRICTLY FORBIDDEN: quality tags (masterpiece, 8k, best quality), unrequested style changes, "
+            "invisible process notes, and descriptions of how the prompt was built."
+        ),
+    },
 }
 
 
@@ -398,6 +426,8 @@ def _normalize_engine(engine: str) -> str:
         engine_key = "z-image-turbo"
     elif "fibo" in engine_lower:
         engine_key = "fibo2"
+    elif "moss" in engine_lower:
+        engine_key = "moss"
     elif "qwen" in engine_lower:
         engine_key = "qwen"
     return engine_key
@@ -597,9 +627,10 @@ def _looks_like_prompt_leak(text: str) -> bool:
         return True
     lowered = text.lower()
     names_engine = any(t in lowered for t in ("flux.2", "flux2", "klein", "mflux"))
+    # "dit" as a bare substring matched "editorial", "traditional", "conditions"...
     names_architecture = any(
-        t in lowered for t in ("flow-matching", "flow matching", "dit", "t5 text encoder")
-    )
+        t in lowered for t in ("flow-matching", "flow matching", "t5 text encoder")
+    ) or re.search(r"\bdit\b", lowered) is not None
     return names_engine and names_architecture
 
 
@@ -779,6 +810,7 @@ def _generate_raw(
     max_tokens: int,
     output_format: str,
     cancel_event: Optional[threading.Event] = None,
+    allow_downloads: bool = False,
 ) -> str:
     """Run the model and return its raw text.
 
@@ -846,6 +878,9 @@ def enhance_prompt(
         }
 
     engine_key = _normalize_engine(engine)
+    # Long-caption engines need more than the default budget, or the hard cap
+    # cuts the prompt mid-sentence before the profile's word range is reached.
+    max_tokens = max(max_tokens, ENGINE_PROFILES[engine_key].get("max_tokens", 0))
     if output_format == "json":
         # JSON objects are verbose; give the small model enough budget.
         max_tokens = max(max_tokens, 640)
@@ -869,7 +904,9 @@ def enhance_prompt(
 
     t0 = time.time()
     try:
-        raw_output = _generate_raw(messages, max_tokens, output_format, cancel_event)
+        raw_output = _generate_raw(
+            messages, max_tokens, output_format, cancel_event, allow_downloads=allow_downloads
+        )
 
         enhanced = _clean_output(raw_output)
 

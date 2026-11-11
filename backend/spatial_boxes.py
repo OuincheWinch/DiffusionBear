@@ -10,6 +10,7 @@ Adheres strictly to Black Forest Labs' official FLUX.3-klein protocol:
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -268,10 +269,13 @@ def serialize_moss_boxes(
 
         # Transform 0..1000 normalized grid to abs_centralized coordinates
         # Canvas center is (0, 0). Coordinates range from -H/2..H/2 and -W/2..W/2.
-        ymin_c = int(round((y1 / 1000.0 - 0.5) * h))
-        xmin_c = int(round((x1 / 1000.0 - 0.5) * w))
-        ymax_c = int(round((y2 / 1000.0 - 0.5) * h))
-        xmax_c = int(round((x2 / 1000.0 - 0.5) * w))
+        # Enclose fractional pixel edges (floor top/left, ceil bottom/right)
+        # before subtracting the center, as the MOSS-Image compiler does;
+        # rounding could shrink a box by a pixel on each side.
+        ymin_c = math.floor(round(y1 * h / 1000.0, 9)) - int(h) // 2
+        xmin_c = math.floor(round(x1 * w / 1000.0, 9)) - int(w) // 2
+        ymax_c = math.ceil(round(y2 * h / 1000.0, 9)) - int(h) // 2
+        xmax_c = math.ceil(round(x2 * w / 1000.0, 9)) - int(w) // 2
 
         desc = (b.get("desc") or "").strip()
         kind = b.get("kind") or "object"
@@ -294,9 +298,8 @@ def serialize_moss_boxes(
 
         items.append(item_entry)
 
-    # Sort items left-to-right (xmin_c), then top-to-bottom (ymin_c)
-    items.sort(key=lambda it: (it["bbox"][1], it["bbox"][0]))
-
+    # Items keep the order the user drew them in. The left-to-right sort is
+    # FLUX.3-klein's protocol; the MOSS-Image layout compiler never reorders.
     return {
         "summary": {
             "meta": meta or ["scene"],
@@ -329,7 +332,8 @@ def compose_moss_bbox_prompt(
         height=height,
         summary_caption=clean_caption,
     )
-    return json.dumps(layout, ensure_ascii=False)
+    # One compact physical line, matching the MOSS-Image compiler's output.
+    return json.dumps(layout, ensure_ascii=False, separators=(",", ":"))
 
 
 def parse_moss_boxes(

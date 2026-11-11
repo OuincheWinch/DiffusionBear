@@ -134,7 +134,7 @@ DEFAULTS = {
 }
 
 # Engine keys used by prompt_enhancer.ENGINE_PROFILES.
-PROMPT_ENHANCER_KEYS = {"flux2", "sdxl", "krea2", "z-image-turbo", "qwen"}
+PROMPT_ENHANCER_KEYS = {"flux2", "sdxl", "krea2", "z-image-turbo", "qwen", "moss"}
 _PROMPT_ENHANCER_MAX = 8000
 _MAX_SETTINGS_BYTES = 8 * 1024 * 1024
 # Accepted interface languages, mirroring frontend/src/i18n/languages.js. A code
