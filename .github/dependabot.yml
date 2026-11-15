@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # CI actions are pinned to commit SHAs, so Dependabot is what keeps them
+  # current. Without this file those pins would silently rot.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"

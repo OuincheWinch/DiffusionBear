@@ -1,0 +1,12 @@
+{
+ "name": "bear_euler_shift",
+ "label": "Bear fixed-mu Euler (mflux)",
+ "engines": [
+  "mflux"
+ ],
+ "url": "pack:bundled",
+ "sha256": "f435810609fc33f3fb7c1614d25376dc431bc6ee808d95f052ec85cd1d02c0d7",
+ "protected": true,
+ "installed_at": 0,
+ "note": "protected default pack entry; re-extracted at startup"
+}
