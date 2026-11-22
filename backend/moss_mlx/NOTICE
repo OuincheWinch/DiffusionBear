@@ -1,0 +1,36 @@
+Native MLX MOSS-Image architecture
+==================================
+
+The following files in this directory are adapted from the experimental
+MOSS-Image implementation in the mflux project:
+
+  transformer.py
+  block.py
+  rope.py
+  text_embedder.py
+  scheduler.py
+  latent.py
+
+Upstream project:
+  https://github.com/vanch007/mflux
+  Branch: feature/moss-image-sft
+  Commit: b1fe66cc62109f374fe7d713411c589d3810d0c0
+  Date:   2026-10-21
+
+Original mflux project:
+  https://github.com/filipstrand/mflux
+  Copyright (c) 2026 Filip Strand
+  License: MIT (see LICENSE in this directory)
+
+Local adaptations:
+  - Imports changed from the mflux.models.moss_image package namespace to
+    relative imports inside backend/moss_mlx.
+  - Added an mflux Q4 checkpoint loader with explicit key mapping and selective
+    quantization.
+  - Added a mixed-precision FLUX.2 VAE loader using the small MOSS decoder.
+  - Added a local MLX Qwen 3.5 text-encoder path.
+  - Integrated the three-stage memory lifecycle used by DiffusionBear.
+
+The MOSS-Image model weights are not part of this directory and are covered by
+their own upstream licence. See
+backend/data/models/moss-image-sft/ATTRIBUTION.md.

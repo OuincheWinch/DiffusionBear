@@ -1,0 +1,95 @@
+.gallery-spatial-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gallery-spatial-box {
+  position: absolute;
+  border: 2px solid var(--box-color, #ff3d7f);
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 0 28px rgba(0, 0, 0, 0.12);
+  background: color-mix(in srgb, var(--box-color, #ff3d7f) 9%, transparent);
+}
+
+.gallery-spatial-box.is-text {
+  border-style: dashed;
+}
+
+.gallery-spatial-label {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 6px);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--box-color, #ff3d7f);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.gallery-spatial-index {
+  display: inline-grid;
+  place-items: center;
+  min-width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 9px;
+}
+
+.gallery-box-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  background: rgba(10, 12, 18, 0.78);
+  color: #f4f6fb;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.gallery-box-toggle:hover,
+.gallery-box-toggle[aria-pressed="true"] {
+  background: rgba(124, 92, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.gallery-box-toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.gallery-mask-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  border-radius: 6px;
+}

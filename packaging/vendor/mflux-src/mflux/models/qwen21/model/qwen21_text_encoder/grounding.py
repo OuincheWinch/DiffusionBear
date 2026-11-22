@@ -1,0 +1,242 @@
+import json
+import re
+
+import numpy as np
+from PIL import Image, ImageFilter
+
+# Qwen3-VL grounding: the model answers a locate request with a JSON bounding box. The
+# encoder ships the full language model with its own lm_head, so the edit variant can
+# ask it where an object is and turn the answer into an inpaint mask without extra weights.
+GROUNDING_PROMPT = "Outline the position of {query} and output the bbox coordinates in JSON format."
+
+# Condensation of the official Qwen-Image-2.1 prompt-rewrite recipe
+# (QwenLM/Qwen-Image-2.1 prompt_rewrite/prompts/system_prompt_edit.txt, v2): rewrite a
+# terse edit instruction into one detailed descriptive paragraph, keep the edit's
+# language for the prose, keep any quoted text to be painted into the image verbatim,
+# describe what must stay unchanged, and answer as JSON with a rewritten_prompt field.
+REWRITE_PROMPT = (
+    "You rewrite terse image-editing instructions into detailed prompts for an image "
+    "editing model. Look at {images}. Rewrite the instruction "
+    "below into ONE descriptive paragraph of 40-120 words that:\n"
+    "- describes the requested change concretely (color, material, style, position) as "
+    "already applied to the image;\n"
+    "- explicitly states what must stay unchanged (identity, pose, background, "
+    "lighting);\n"
+    "- writes the description in the same language as the instruction; any text that "
+    "should appear IN the image goes in double quotes, verbatim;\n"
+    "- drops meta-commentary, options, and questions.\n"
+    'Answer ONLY with JSON: {{"rewritten_prompt": "..."}}\n\nInstruction: {instruction}'
+)
+
+# Condensation of the official text-to-image rewrite recipe (QwenLM/Qwen-Image-2.1
+# prompt_rewrite/prompts/system_prompt_t2i.txt): one long English paragraph that describes the finished
+# image as seen, keeping everything the request fixed and deciding everything it left open, plus the
+# aspect ratio, answered as JSON with rewritten_prompt and wh_ratio fields.
+REWRITE_T2I_PROMPT = (
+    "You turn a short image request into ONE long English paragraph of 120-200 words that describes the "
+    "finished image as if you were looking at it, and choose the aspect ratio it should be rendered at.\n"
+    "- Keep everything the request fixes unchanged: every text to be shown goes in double quotes, verbatim "
+    "and in its own script; every named object, count, colour and position; the ratio if one is given.\n"
+    "- Decide everything it leaves open. Open with one sentence naming the medium, style, subject and "
+    'background, e.g. "The image is a wide realistic photograph of ...".\n'
+    "- Then walk the frame: give every element a place (upper-left, centre, lower third, in front of, "
+    "behind), its material and the lighting; enumerate instead of summarising and write small counts as "
+    "words; people get posture, expression, hair and clothing; objects by class unless a brand is named; "
+    "shadows, reflections and scale stay physically consistent.\n"
+    "- Never write the ratio, a resolution or instructions into the description; follow requests about the "
+    "job (sharp text, no noise) silently.\n"
+    "- Ratio: the request's if given, otherwise 3:2 for horizontal subjects, 2:3 for vertical ones, 1:1 for a "
+    "single centred emblem or icon, 16:9 for a wide cinematic frame, 9:16 for a phone screen.\n"
+    'Answer ONLY with JSON on one line: {{"rewritten_prompt": "...", "wh_ratio": "3:2"}}\n\nRequest: {request}'
+)
+
+# Post-edit verification: the original and the edited output are shown together; the
+# model answers whether the instruction was applied and everything else was preserved.
+VERIFY_PROMPT = (
+    "<image1> is the original image and <image2> is an edited version of it. The edit "
+    'instruction was: "{instruction}". Compare them and answer ONLY with JSON: '
+    '{{"instruction_applied": true or false, "outside_unchanged": true or false}}. '
+    "instruction_applied means the requested change is clearly visible in <image2>; "
+    "outside_unchanged means everything not targeted by the instruction (subject "
+    "identity, pose, background composition) is preserved."
+)
+
+_BBOX_PATTERN = re.compile(
+    r"\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]"
+)
+
+
+class QwenImage21Grounding:
+    GROUNDING_PROMPT = GROUNDING_PROMPT
+    REWRITE_PROMPT = REWRITE_PROMPT
+    REWRITE_T2I_PROMPT = REWRITE_T2I_PROMPT
+    VERIFY_PROMPT = VERIFY_PROMPT
+
+    @staticmethod
+    def rewrite_request(instruction: str, image_count: int) -> str:
+        # The rewrite sees every reference image: an instruction that names <image2> needs it (#831).
+        images = "<image1>, the image to be edited"
+        if image_count > 1:
+            references = ", ".join(f"<image{i}>" for i in range(2, image_count + 1))
+            images += f", and the reference image{'s' if image_count > 2 else ''} {references}"
+        return REWRITE_PROMPT.format(images=images, instruction=instruction)
+
+    @staticmethod
+    def chat(instruction: str, image_count: int) -> str:
+        # Chat-shaped request over image_count images; the processor expands each
+        # <|image_pad|> placeholder to that image's merged token count.
+        images = "<|vision_start|><|image_pad|><|vision_end|>" * image_count
+        return f"<|im_start|>user\n{images}{instruction}<|im_end|>\n<|im_start|>assistant\n"
+
+    @staticmethod
+    def balanced_json_spans(text: str) -> list[str]:
+        # Substrings that hold a balanced {...} span, in order of appearance (ported
+        # from the official prompt_rewrite answer parser).
+        # Braces inside a JSON string (a description that mentions "}") do not count; quotes are only
+        # tracked inside an object, so apostrophes or quotes in the prose around it do not matter.
+        # An object left open at the end (an unterminated string, a cut-off reply) hides nothing: the scan
+        # resumes just after its opening brace, so a valid object later in the reply is still found.
+        spans, offset = [], 0
+        while offset < len(text):
+            depth, start = 0, -1
+            in_string = escaped = False
+            for i in range(offset, len(text)):
+                ch = text[i]
+                if in_string:
+                    if escaped:
+                        escaped = False
+                    elif ch == "\\":
+                        escaped = True
+                    elif ch == '"':
+                        in_string = False
+                elif ch == '"' and depth > 0:
+                    in_string = True
+                elif ch == "{":
+                    if depth == 0:
+                        start = i
+                    depth += 1
+                elif ch == "}" and depth > 0:
+                    depth -= 1
+                    if depth == 0:
+                        spans.append(text[start : i + 1])
+            if depth == 0:
+                break
+            offset = start + 1
+        return spans
+
+    @staticmethod
+    def _usable_text(value) -> str | None:
+        # A rewritten description is usable when it is a non-empty string without vision placeholders: the
+        # processor would try to expand an <|image_pad|> the rewrite invented and fail.
+        if not isinstance(value, str) or not value.strip():
+            return None
+        if any(token in value for token in ("<|image_pad|>", "<|video_pad|>", "<|vision_start|>", "<|vision_end|>")):
+            return None
+        return value.strip()
+
+    @staticmethod
+    def _ratio(value) -> str | None:
+        # "W:H" with ASCII decimal W, H > 0 (str.isdigit also accepts "²", which int() rejects).
+        if not isinstance(value, str):
+            return None
+        match = re.fullmatch(r"\s*([0-9]+)\s*:\s*([0-9]+)\s*", value)
+        if match is None or int(match.group(1)) == 0 or int(match.group(2)) == 0:
+            return None
+        return value.strip()
+
+    @staticmethod
+    def parse_rewrite(text: str) -> str | None:
+        # The rewrite answer's JSON carries {"rewritten_prompt": "..."} (the official
+        # parser also tolerates a "rewrited_prompt" typo); scan last-first like the
+        # official parser since the object is emitted at the end.
+        for candidate in reversed(QwenImage21Grounding.balanced_json_spans(text)):
+            try:
+                obj = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            rewritten = QwenImage21Grounding._usable_text(obj.get("rewritten_prompt") or obj.get("rewrited_prompt"))
+            if rewritten is not None:
+                return rewritten
+        return None
+
+    @staticmethod
+    def parse_t2i_rewrite(text: str) -> tuple[str, str | None] | None:
+        # (rewritten_prompt, wh_ratio or None); the ratio is kept only when it looks like "W:H" with W, H > 0.
+        for candidate in reversed(QwenImage21Grounding.balanced_json_spans(text)):
+            try:
+                obj = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            rewritten = QwenImage21Grounding._usable_text(obj.get("rewritten_prompt") or obj.get("rewrited_prompt"))
+            if rewritten is not None:
+                return rewritten, QwenImage21Grounding._ratio(obj.get("wh_ratio"))
+        return None
+
+    @staticmethod
+    def parse_verification(text: str) -> tuple[bool, bool] | None:
+        # Returns (instruction_applied, outside_unchanged), or None when the reply
+        # carries no parseable verdict.
+        applied = unchanged = None
+        for candidate in reversed(QwenImage21Grounding.balanced_json_spans(text)):
+            try:
+                obj = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+            if "instruction_applied" in obj:
+                applied = bool(obj["instruction_applied"])
+                unchanged = bool(obj.get("outside_unchanged", True))
+                return applied, unchanged
+        # tolerate a plain-language reply
+        lowered = text.lower()
+        if "instruction_applied" in lowered:
+            # whole field names only, so not_applied or partially_applied cannot pass as a verdict
+            applied = re.search(r'\binstruction_applied"?\s*:\s*true', lowered) is not None
+            unchanged = re.search(r'\b(?:outside_)?unchanged"?\s*:\s*true', lowered) is not None
+            return applied, unchanged
+        return None
+
+    @staticmethod
+    def parse_bbox(text: str) -> tuple[float, float, float, float] | None:
+        # Returns (x1, y1, x2, y2) as fractions of the shown image, or None when the reply
+        # carries no plausible box. Qwen3-VL grounds in 0-1000 coordinates relative to the
+        # shown image, whatever its pixel size.
+        for match in _BBOX_PATTERN.finditer(text):
+            x1, y1, x2, y2 = (float(v) / 1000.0 for v in match.groups())
+            if x2 <= x1 or y2 <= y1 or max(x1, y1, x2, y2) > 1.5:
+                continue
+            clamped = tuple(min(max(v, 0.0), 1.0) for v in (x1, y1, x2, y2))
+            if (clamped[2] - clamped[0]) * (clamped[3] - clamped[1]) < 1e-4:
+                continue
+            return clamped
+        return None
+
+    @staticmethod
+    def rasterize_mask(
+        bbox: tuple[float, float, float, float], size: tuple[int, int], feather_fraction: float = 0.01
+    ) -> Image.Image:
+        # The bounding box as a soft binary mask over the output image: white where the
+        # model should repaint, blurred slightly so the latent blend has no hard seam.
+        # The box is grown by 3% per side first: grounding boxes tend to hug the object
+        # tightly, and an uncovered sliver would keep its original color after inpainting.
+        width, height = size
+        x1, y1, x2, y2 = bbox
+        grow_x, grow_y = 0.03 * (x2 - x1), 0.03 * (y2 - y1)
+        x1, x2 = max(0.0, x1 - grow_x), min(1.0, x2 + grow_x)
+        y1, y2 = max(0.0, y1 - grow_y), min(1.0, y2 + grow_y)
+        mask = Image.new("L", (width, height), 0)
+        inner = Image.new("L", (max(1, int((x2 - x1) * width)), max(1, int((y2 - y1) * height))), 255)
+        mask.paste(inner, (int(x1 * width), int(y1 * height)))
+        feather = max(2, int(min(width, height) * feather_fraction))
+        return mask.filter(ImageFilter.GaussianBlur(feather))
+
+    @staticmethod
+    def to_latent_mask(mask: Image.Image, latent_height: int, latent_width: int) -> np.ndarray:
+        # Block-average the (H, W) mask to the latent grid so a partially covered
+        # 16x16 patch blends proportionally instead of flipping hard.
+        array = np.asarray(mask.resize((latent_width * 16, latent_height * 16), Image.BILINEAR), dtype=np.float32)
+        array = array.reshape(latent_height, 16, latent_width, 16).mean(axis=(1, 3)) / 255.0
+        return array  # (latent_height, latent_width) in [0, 1]

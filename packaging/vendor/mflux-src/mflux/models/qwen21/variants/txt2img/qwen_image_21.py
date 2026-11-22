@@ -1,0 +1,207 @@
+from pathlib import Path
+
+import mlx.core as mx
+from mlx import nn
+
+from mflux.models.common.config import ModelConfig
+from mflux.models.common.config.config import Config
+from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.step_cache.step_cache import StepCache
+from mflux.models.common.vae.vae_util import VAEUtil
+from mflux.models.common.weights.saving.model_saver import ModelSaver
+from mflux.models.qwen21.latent_creator.qwen21_latent_creator import Qwen21LatentCreator
+from mflux.models.qwen21.model.qwen21_scheduler import Qwen21TurboScheduler
+from mflux.models.qwen21.model.qwen21_small_text_encoder.qwen21_small_text_encoder import Qwen21SmallTextEncoder
+from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_prompt_encoder import Qwen21PromptEncoder
+from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_text_encoder import Qwen21TextEncoder
+from mflux.models.qwen21.model.qwen21_transformer.qwen21_transformer import Qwen21Transformer
+from mflux.models.qwen21.model.qwen21_vae.qwen21_vae import Qwen21VAE
+from mflux.models.qwen21.qwen21_initializer import Qwen21Initializer
+from mflux.models.qwen21.weights.qwen21_weight_definition import Qwen21WeightDefinition
+from mflux.utils.exceptions import StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
+from mflux.utils.image_util import ImageUtil
+
+
+class QwenImage21(nn.Module):
+    vae: Qwen21VAE
+    transformer: Qwen21Transformer
+    text_encoder: Qwen21TextEncoder | Qwen21SmallTextEncoder | None
+    small_text_encoder: bool = False
+
+    def __init__(
+        self,
+        quantize: int | None = None,
+        model_path: str | None = None,
+        model_config: ModelConfig = ModelConfig.qwen_image_21(),
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        bake_lora: bool = True,
+        compute_precision: mx.Dtype | None = None,
+        small_text_encoder: bool = False,
+    ):
+        super().__init__()
+        Qwen21Initializer.init(
+            model=self,
+            quantize=quantize,
+            model_path=model_path,
+            model_config=model_config,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
+            bake_lora=bake_lora,
+            compute_precision=compute_precision,
+            small_text_encoder=small_text_encoder,
+        )
+
+    def generate_image(
+        self,
+        seed: int,
+        prompt: str,
+        num_inference_steps: int | None = None,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float = 1.0,
+        image_path: Path | str | None = None,
+        image_strength: float | None = None,
+        scheduler: str = "linear",
+        negative_prompt: str | None = None,
+        step_cache_ratio: float | None = None,
+        teacache_ratio: float | None = None,
+    ) -> GeneratedImage:
+        if teacache_ratio is not None:
+            if step_cache_ratio is not None and step_cache_ratio != teacache_ratio:
+                raise ValueError("Pass step_cache_ratio or its deprecated alias teacache_ratio, not both")
+            step_cache_ratio = teacache_ratio
+        if num_inference_steps is None:
+            num_inference_steps = Qwen21TurboScheduler.default_steps(self.model_config)
+        Qwen21TurboScheduler.check_generate(self.model_config, num_inference_steps, guidance, scheduler)
+        config = Config(
+            width=width,
+            height=height,
+            guidance=guidance,
+            scheduler=Qwen21TurboScheduler.for_model(self.model_config, scheduler),
+            image_path=image_path,
+            image_strength=image_strength,
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+        )
+
+        latents = LatentCreator.create_for_txt2img_or_img2img(
+            seed=seed,
+            width=config.width,
+            height=config.height,
+            img2img=Img2Img(
+                vae=self.vae,
+                latent_creator=Qwen21LatentCreator,
+                sigmas=config.scheduler.sigmas,
+                init_time_step=config.init_time_step,
+                image_path=config.image_path,
+                tiling_config=self.tiling_config,
+            ),
+        )
+        # img2img noise interpolation promotes to fp32; keep the stream in model precision
+        latents = latents.astype(ModelConfig.precision)
+
+        prompt_embeds, prompt_mask = self._encode_prompt(prompt)
+        # like the reference pipeline, a missing (or empty) negative prompt disables true CFG
+        do_true_cfg = config.guidance > 1.0 and bool(negative_prompt)
+        if do_true_cfg:
+            negative_prompt_embeds, negative_prompt_mask = self._encode_prompt(negative_prompt)
+
+        ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
+        ctx.before_loop(latents)
+
+        # Qwen-Image-2.1 scores steps with its own timestep-embedding MLP (the TeaCache
+        # signal); models without a richer signal can omit signal_fn and use sigma.
+        step_cache = StepCache.for_run(
+            config,
+            ratio=step_cache_ratio,
+            signal_fn=self.transformer.time_text_embed,
+        )
+
+        with self.transformer.inference_projections():
+            for t in config.time_steps:
+                try:
+                    latents = config.scheduler.scale_model_input(latents, t)
+                    noise = step_cache.reuse(t)
+                    if noise is None:
+                        noise = self.transformer(
+                            t=t,
+                            config=config,
+                            hidden_states=latents,
+                            encoder_hidden_states=prompt_embeds,
+                            encoder_hidden_states_mask=prompt_mask,
+                        )
+                        if do_true_cfg:
+                            noise_negative = self.transformer(
+                                t=t,
+                                config=config,
+                                hidden_states=latents,
+                                encoder_hidden_states=negative_prompt_embeds,
+                                encoder_hidden_states_mask=negative_prompt_mask,
+                            )
+                            noise = noise_negative + config.guidance * (noise - noise_negative)
+                        step_cache.store(noise)
+
+                    latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
+                    ctx.in_loop(t, latents)
+                    mx.eval(latents)
+
+                except KeyboardInterrupt:  # noqa: PERF203
+                    ctx.interruption(t, latents)
+                    raise StopImageGenerationException(
+                        f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
+                    )
+
+        ctx.after_loop(latents)
+
+        latents = Qwen21LatentCreator.unpack_latents(latents=latents, height=config.height, width=config.width)
+        decoded = VAEUtil.decode(vae=self.vae, latent=latents, tiling_config=self.tiling_config)
+        parameters = {
+            **step_cache.generation_parameters(step_cache_ratio),
+            **self.compute_precision.generation_parameters(),
+        }
+        if self.small_text_encoder:
+            parameters["small_text_encoder"] = True
+        if scheduler != "linear":
+            # The schedule changes the image, so a run that used another one records it for --config-from-conf.
+            parameters["scheduler"] = scheduler
+        return ImageUtil.to_image(
+            decoded_latents=decoded,
+            config=config,
+            seed=seed,
+            prompt=prompt,
+            quantization=self.bits,
+            generation_time=config.time_steps.format_dict["elapsed"],
+            negative_prompt=negative_prompt,
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
+            generation_parameters=parameters,
+        )
+
+    def save_model(self, base_path: str) -> None:
+        if self.small_text_encoder:
+            raise ValueError("A model built with --small-text-encoder cannot be saved; load it without the flag.")
+        ModelSaver.save_model(
+            model=self,
+            bits=self.bits,
+            base_path=base_path,
+            weight_definition=Qwen21WeightDefinition,
+        )
+
+    def _encode_prompt(self, prompt: str) -> tuple[mx.array, mx.array]:
+        if not self.small_text_encoder:
+            return Qwen21PromptEncoder.encode_prompt(
+                prompt=prompt,
+                prompt_cache=self.prompt_cache,
+                tokenizer=self.tokenizers["qwen21"],
+                text_encoder=self.text_encoder,
+            )
+        if prompt in self.prompt_cache:
+            return self.prompt_cache[prompt]
+        if self.text_encoder is None:
+            raise RuntimeError("The text encoder was released by the memory saver; reload the model for a new prompt.")
+        prompt_embeds, _ = self.text_encoder.encode(prompt, [], self.processor)
+        encoded = (prompt_embeds, mx.ones(prompt_embeds.shape[:2], dtype=mx.int32))
+        self.prompt_cache[prompt] = encoded
+        return encoded

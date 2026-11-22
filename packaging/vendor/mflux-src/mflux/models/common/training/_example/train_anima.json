@@ -1,0 +1,162 @@
+{
+  "model": "anima-base",
+  "data": "images/",
+  "seed": 42,
+  "steps": 30,
+  "guidance": 4.0,
+  "quantize": null,
+  "max_resolution": 512,
+  "low_ram": false,
+  "gradient_checkpointing": true,
+  "cache_limit_gb": 2,
+  "training_loop": {
+    "num_epochs": 25,
+    "batch_size": 1
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "learning_rate": 0.0001
+  },
+  "checkpoint": {
+    "save_frequency": 100,
+    "output_path": "train_anima"
+  },
+  "monitoring": {
+    "preview_width": 512,
+    "preview_height": 512,
+    "plot_frequency": 50,
+    "generate_image_frequency": 100
+  },
+  "lora_layers": {
+    "targets": [
+      {
+        "module_path": "blocks.{block}.self_attn.q_proj",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.self_attn.k_proj",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.self_attn.v_proj",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.self_attn.output_proj",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.cross_attn.q_proj",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.cross_attn.k_proj",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.cross_attn.v_proj",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.cross_attn.output_proj",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.mlp.layer1",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.mlp.layer2",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.adaln_modulation_self_attn.1",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.adaln_modulation_self_attn.2",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.adaln_modulation_cross_attn.1",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.adaln_modulation_cross_attn.2",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.adaln_modulation_mlp.1",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      },
+      {
+        "module_path": "blocks.{block}.adaln_modulation_mlp.2",
+        "blocks": {
+          "start": 0,
+          "end": 28
+        },
+        "rank": 16
+      }
+    ]
+  }
+}

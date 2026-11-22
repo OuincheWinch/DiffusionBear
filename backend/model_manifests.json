@@ -1,0 +1,1647 @@
+{
+  "app_version": "0.5.0",
+  "models": {
+    "flux2-klein-4b": {
+      "repo": "mlx-community/flux2-klein-4b-4bit",
+      "revision": "860e87183ceb29e39627c0612ebd66d8ea66e68c",
+      "files": {
+        "text_encoder/0.safetensors": {
+          "size": 2135435122,
+          "sha256": "c2d90b9bcb81b6f4205033e592af5117b13bda0e2ef1e4c5d910920d20102234"
+        },
+        "text_encoder/1.safetensors": {
+          "size": 127582140,
+          "sha256": "6f9fd41251913a84119daf7ddb3620f37f7ab65d1bcfdffcd33e858cb36774f7"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 51369,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 4168,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 11422650,
+          "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 703,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 2145323732,
+          "sha256": "3a75fc123a9ceb583b0d0202cc37166da3e1fc0ac8cd4a430987ceaf8e845b27"
+        },
+        "transformer/1.safetensors": {
+          "size": 34727761,
+          "sha256": "06998c075c1d9543f17f1cc7ae7170c365cdb3c09a1f78056804a252bb168fd5"
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 26945,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 165107943,
+          "sha256": "efd1802b013d6b17f30946574b1d23c89b8c8e8181876220c00089efac6a0a2c"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 17584,
+          "sha256": null
+        }
+      }
+    },
+    "flux2-klein-9b": {
+      "repo": "mlx-community/flux2-klein-9b-4bit",
+      "revision": "f0c62655b9da432932ba24d4bfce8a96800cf0bd",
+      "files": {
+        "text_encoder/0.safetensors": {
+          "size": 2138739359,
+          "sha256": "2050f247d1168d697f2a21f14cd326ba00edcd98aa6a20e5de696c0b0034aa88"
+        },
+        "text_encoder/1.safetensors": {
+          "size": 2119029370,
+          "sha256": "4f800449ddcfd11ee8d436664e7ae17aef5935860192cd6ba005bdd9f05aa478"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 51369,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 4168,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 11422650,
+          "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 703,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 2143173629,
+          "sha256": "9907eded27da95dacc904879e438e0fed75e897dfce758714ff1efd9a2446eb3"
+        },
+        "transformer/1.safetensors": {
+          "size": 2085643481,
+          "sha256": "f00716ba6eb8d1f8a285ad4020e3be44f837ffae27052b2b47a3e0526895e196"
+        },
+        "transformer/2.safetensors": {
+          "size": 877964238,
+          "sha256": "46f4d6eced84fba5841cfae7d1b68e0731d3ce58d0665076da5c924b0ec8eb2e"
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 37361,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 165107943,
+          "sha256": "efd1802b013d6b17f30946574b1d23c89b8c8e8181876220c00089efac6a0a2c"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 17584,
+          "sha256": null
+        }
+      }
+    },
+    "flux3-klein": {
+      "repo": "zimageapp/FLUX-3-Klein-MLX-Q4",
+      "revision": "c64c4f75d6356a60da85c4be091ffacfdaecf241",
+      "files": {
+        "ae.safetensors": {
+          "size": 336211292,
+          "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3"
+        },
+        "config.json": {
+          "size": 1131,
+          "sha256": null
+        },
+        "conversion.json": {
+          "size": 213463,
+          "sha256": null
+        },
+        "model.safetensors": {
+          "size": 3121249215,
+          "sha256": "db998bfc3335c142431d0d291e6ceaff62eac49f290b2742a9de87538e212afa"
+        },
+        "package-manifest.json": {
+          "size": 3414,
+          "sha256": null
+        },
+        "source-manifest.json": {
+          "size": 582,
+          "sha256": null
+        },
+        "text_encoder/chat_template.json": {
+          "size": 5502,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 1505,
+          "sha256": null
+        },
+        "text_encoder/generation_config.json": {
+          "size": 269,
+          "sha256": null
+        },
+        "text_encoder/merges.txt": {
+          "size": 1671839,
+          "sha256": null
+        },
+        "text_encoder/model.safetensors": {
+          "size": 2499527455,
+          "sha256": "5212cc6b605efbcdbe0f5608a8976f8da7b733fbaa7d137865758bc3357b30ee"
+        },
+        "text_encoder/tokenizer.json": {
+          "size": 7032403,
+          "sha256": null
+        },
+        "text_encoder/tokenizer_config.json": {
+          "size": 10868,
+          "sha256": null
+        },
+        "text_encoder/vocab.json": {
+          "size": 2776833,
+          "sha256": null
+        },
+        "transformer/config.json": {
+          "size": 436,
+          "sha256": null
+        },
+        "vae/config.json": {
+          "size": 808,
+          "sha256": null
+        }
+      }
+    },
+    "moss-image-sft": {
+      "repo": "mflux-community/moss-image-sft-mflux-q4",
+      "revision": "bc3b8a2c0bfa5919d9ba18101633dca007a9a6b6",
+      "files": {
+        "mflux_model.json": {
+          "size": 476,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 7756,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 19989325,
+          "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 1123,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 2146933289,
+          "sha256": "25acda7df03ca9dbace99a99c97bb712568a96a1e2b3af8fc92b726c8f9a79ba"
+        },
+        "transformer/1.safetensors": {
+          "size": 712519668,
+          "sha256": "5442188eca4b2f26707244a68fa38ad0e318d52a081fda34aaabf97fb701ec1e"
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 50578,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 122421194,
+          "sha256": "26595d90242fa0690ccf3ae35ab38d18335146ce384f3d03b2c65e67fbf1f8cb"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 17547,
+          "sha256": null
+        }
+      },
+      "te_mlx_repo": "Ouinche/moss-image-qwen3.5-te-mlx-q8g64",
+      "te_mlx_sibling": "qwen3_5-te-q8g64",
+      "te_files": {
+        "config.json": {
+          "size": 1946,
+          "sha256": null
+        },
+        "model.safetensors": {
+          "size": 10012555489,
+          "sha256": "939ce86e6d3f9a4c4533350875f9cc86fa87148e32ddc79c82b5ba7eefb7d617"
+        },
+        "tokenizer.json": {
+          "size": 19989325,
+          "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+        },
+        "tokenizer_config.json": {
+          "size": 1123,
+          "sha256": null
+        }
+      }
+    },
+    "moss-image-base": {
+      "repo": "OpenMOSS-Team/MOSS-Image-Base",
+      "revision": "85975793d8b3d432f1b6e27f352abaa4c2a4c0d3",
+      "files": {
+        "model_index.json": {
+          "size": 412,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 494,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 2813,
+          "sha256": null
+        },
+        "text_encoder/model-00001-of-00004.safetensors": {
+          "size": 4973910744,
+          "sha256": "abfaa3d3a8612508c85ee8f6da9c734b862f10298b903765c4ad384177c32b0b"
+        },
+        "text_encoder/model-00002-of-00004.safetensors": {
+          "size": 4988364288,
+          "sha256": "9112637fa6bf4d07bafd6ae268852b18d3d0c1242f4ee901c5579006e5bd4894"
+        },
+        "text_encoder/model-00003-of-00004.safetensors": {
+          "size": 4954202112,
+          "sha256": "956f1ef51d0cfe610b0d22987c0b7821c36e3ce228abceccef523518bcf079dc"
+        },
+        "text_encoder/model-00004-of-00004.safetensors": {
+          "size": 1869001848,
+          "sha256": "9e21d20e8adde88c3e0b65d4a0d251f143d98ee9d52db36b4348361091e4e208"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 64641,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 7756,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 19989325,
+          "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 1123,
+          "sha256": null
+        },
+        "transformer/config.json": {
+          "size": 240,
+          "sha256": null
+        },
+        "transformer/diffusion_pytorch_model-00001-of-00003.safetensors": {
+          "size": 4991978016,
+          "sha256": "ae085fba123b6df67daf90aa9698fadee60c73e45bcaf3f3043d15f34e7a1804"
+        },
+        "transformer/diffusion_pytorch_model-00002-of-00003.safetensors": {
+          "size": 4983137016,
+          "sha256": "806e876d80c7fba560663a3a95580e6c7033da3f9ea3c52765245ef0e1818f75"
+        },
+        "transformer/diffusion_pytorch_model-00003-of-00003.safetensors": {
+          "size": 189549184,
+          "sha256": "5f319b72c40324294007c270d78112425627b537fcd8769b3c00f9f070e506a9"
+        },
+        "transformer/diffusion_pytorch_model.safetensors.index.json": {
+          "size": 40298,
+          "sha256": null
+        },
+        "vae/config.json": {
+          "size": 838,
+          "sha256": null
+        },
+        "vae/diffusion_pytorch_model.safetensors": {
+          "size": 249521372,
+          "sha256": "c3bdf94dc67ec69b30ea9fe1fa8340085679cae64d019f7c7e4a9921f1a7f17a"
+        }
+      }
+    },
+    "flux1-schnell": {
+      "repo": "mflux-community/flux-1-schnell-mflux-q4",
+      "revision": "df1dada0a0e25bb8df6e1f7e4664959bf9ab86ce",
+      "files": {
+        "manifest.json": {
+          "size": 78,
+          "sha256": null
+        },
+        "text_encoder/0.safetensors": {
+          "size": 69436741,
+          "sha256": "3177675c6487af86601c4c44bad8f26729bd568b032afa367fabb17d75081157"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 25037,
+          "sha256": null
+        },
+        "text_encoder_2/0.safetensors": {
+          "size": 2145878333,
+          "sha256": "879c9b3a00b330b2406452bf77444b6c860fe34c596dd64bd2c41fb3a4879501"
+        },
+        "text_encoder_2/1.safetensors": {
+          "size": 533312140,
+          "sha256": "ada72140a8e2deeaddf403dcb93e9ab47764363b2bf4b54f618fce9ccb7361a8"
+        },
+        "text_encoder_2/model.safetensors.index.json": {
+          "size": 44072,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 3642073,
+          "sha256": null
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 389,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer.json": {
+          "size": 2424069,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer_config.json": {
+          "size": 2465,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 2123862823,
+          "sha256": "b71d9a07456ab15cbeead1969619839696c4b937e6e7dd00beefe7c7ebbce970"
+        },
+        "transformer/1.safetensors": {
+          "size": 2141393739,
+          "sha256": "9608fecd55bae4c131cec39ca3222fe0cc37d5dbeeda1c31be1fb7f8730be01c"
+        },
+        "transformer/2.safetensors": {
+          "size": 2130572511,
+          "sha256": "cf07d037994f2c689f4b54af1f2a6d9275a38a3e24e953b1e7131b0110a0cde3"
+        },
+        "transformer/3.safetensors": {
+          "size": 297640198,
+          "sha256": "85cafc12647dfc110011e1c936c0dadc173167d987eb20cc06c14aa4ed0bfcbb"
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 146326,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 164654179,
+          "sha256": "88d1caebda2c0350c6c68a4e91e90e30a1d456c275ef5e4b4c886f47ce1898a6"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 17386,
+          "sha256": null
+        }
+      }
+    },
+    "juggernaut-xl-lightning": {
+      "repo": "RunDiffusion/Juggernaut-XL-Lightning",
+      "revision": "9c35e7ca1112b7e567ae7b24400b83935909916d",
+      "files": {
+        "Juggernaut_RunDiffusionPhoto2_Lightning_4Steps.safetensors": {
+          "size": 7105348284,
+          "sha256": "c8df560d2992ac04299412be6a36fa53a4e7a1b74f27b94867ad3f84f4b425a5"
+        },
+        "model_index.json": {
+          "size": 671,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 558,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 560,
+          "sha256": null
+        },
+        "text_encoder_2/config.json": {
+          "size": 570,
+          "sha256": null
+        },
+        "tokenizer/merges.txt": {
+          "size": 524619,
+          "sha256": null
+        },
+        "tokenizer/special_tokens_map.json": {
+          "size": 472,
+          "sha256": null
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 737,
+          "sha256": null
+        },
+        "tokenizer/vocab.json": {
+          "size": 1059962,
+          "sha256": null
+        },
+        "tokenizer_2/merges.txt": {
+          "size": 524619,
+          "sha256": null
+        },
+        "tokenizer_2/special_tokens_map.json": {
+          "size": 460,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer_config.json": {
+          "size": 725,
+          "sha256": null
+        },
+        "tokenizer_2/vocab.json": {
+          "size": 1059962,
+          "sha256": null
+        },
+        "unet/config.json": {
+          "size": 1773,
+          "sha256": null
+        },
+        "vae/config.json": {
+          "size": 602,
+          "sha256": null
+        }
+      }
+    },
+    "realvis-xl-v5-lightning": {
+      "repo": "SG161222/RealVisXL_V5.0_Lightning",
+      "revision": "f4454158cedaab9f0688c199561d6c92525f3a85",
+      "files": {
+        "RealVisXL_V5.0_Lightning_fp16.safetensors": {
+          "size": 6938065512,
+          "sha256": "fabcadd9330dcc4f9702063428d40b9d4d07168d8acefc819b8d1d9db466b3ec"
+        },
+        "RealVisXL_V5.0_Lightning_fp32.safetensors": {
+          "size": 13875766984,
+          "sha256": "963559c9659571c889af1b5d5af6697aeecf4ff13f2eee8e956e3ece51a05931"
+        },
+        "model_index.json": {
+          "size": 708,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 526,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 584,
+          "sha256": null
+        },
+        "text_encoder/model.fp16.safetensors": {
+          "size": 246144152,
+          "sha256": "0a873801e35a008b17e228189a83a8b41e068ffe7bde7c1105e8c6e947758bc5"
+        },
+        "text_encoder/model.safetensors": {
+          "size": 492265168,
+          "sha256": "8bea904268d19b5a2d46d3d17c0aedc1b3d1706fc4327b64da1f46db1aecc62b"
+        },
+        "text_encoder_2/config.json": {
+          "size": 594,
+          "sha256": null
+        },
+        "text_encoder_2/model.fp16.safetensors": {
+          "size": 1389382176,
+          "sha256": "dfa429b268cd3f6297927f1fd3eacac04781b17ab4caa97892a461ff41400a5e"
+        },
+        "text_encoder_2/model.safetensors": {
+          "size": 2778702264,
+          "sha256": "4b7c9b2c9668d61f13594e9043f7ef75712f952e0621b57c8ffc4d5504e4ab82"
+        },
+        "tokenizer/merges.txt": {
+          "size": 573514,
+          "sha256": null
+        },
+        "tokenizer/special_tokens_map.json": {
+          "size": 496,
+          "sha256": null
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 734,
+          "sha256": null
+        },
+        "tokenizer/vocab.json": {
+          "size": 1109372,
+          "sha256": null
+        },
+        "tokenizer_2/merges.txt": {
+          "size": 573514,
+          "sha256": null
+        },
+        "tokenizer_2/special_tokens_map.json": {
+          "size": 484,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer_config.json": {
+          "size": 893,
+          "sha256": null
+        },
+        "tokenizer_2/vocab.json": {
+          "size": 1109372,
+          "sha256": null
+        },
+        "unet/config.json": {
+          "size": 1850,
+          "sha256": null
+        },
+        "unet/diffusion_pytorch_model-00001-of-00002.safetensors": {
+          "size": 9988139160,
+          "sha256": "74d381bc3512f41b53d61f12220a631faded08ebc36f9a133b8e40dc4959a31b"
+        },
+        "unet/diffusion_pytorch_model-00002-of-00002.safetensors": {
+          "size": 281938304,
+          "sha256": "4073392b6ba308c5efd21b9f98550b3e7e4dbe521cad7a8c74b320e8c62701fc"
+        },
+        "unet/diffusion_pytorch_model.fp16.safetensors": {
+          "size": 5135149760,
+          "sha256": "1143cd2aaf65d24af34b5699d090aed724f6c0978c2ec5a5f56821ccb36260ce"
+        },
+        "unet/diffusion_pytorch_model.safetensors.index.json": {
+          "size": 202851,
+          "sha256": null
+        },
+        "vae/config.json": {
+          "size": 807,
+          "sha256": null
+        },
+        "vae/diffusion_pytorch_model.fp16.safetensors": {
+          "size": 167335342,
+          "sha256": "6353737672c94b96174cb590f711eac6edf2fcce5b6e91aa9d73c5adc589ee48"
+        },
+        "vae/diffusion_pytorch_model.safetensors": {
+          "size": 334643268,
+          "sha256": "78f6189c8492013e3cac81637a1f657f790a237387f8a9dfd6bfa5fee28eb646"
+        }
+      }
+    },
+    "realvis-xl-v5": {
+      "repo": "SG161222/RealVisXL_V5.0",
+      "revision": "ac93e0dda1f6d448cae19bbfab8c5e720a5e48bc",
+      "files": {
+        "RealVisXL_V5.0_fp16.safetensors": {
+          "size": 6938065488,
+          "sha256": "6a35a7855770ae9820a3c931d4964c3817b6d9e3c6f9c4dabb5b3a94e5643b80"
+        },
+        "RealVisXL_V5.0_fp32.safetensors": {
+          "size": 13875783240,
+          "sha256": "49527024b637885df831335102f0b167f40ebb0c6b7599fab585c7fdc98a007b"
+        },
+        "model_index.json": {
+          "size": 708,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 526,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 584,
+          "sha256": null
+        },
+        "text_encoder/model.fp16.safetensors": {
+          "size": 246144152,
+          "sha256": "0a873801e35a008b17e228189a83a8b41e068ffe7bde7c1105e8c6e947758bc5"
+        },
+        "text_encoder/model.safetensors": {
+          "size": 492265168,
+          "sha256": "8bea904268d19b5a2d46d3d17c0aedc1b3d1706fc4327b64da1f46db1aecc62b"
+        },
+        "text_encoder_2/config.json": {
+          "size": 594,
+          "sha256": null
+        },
+        "text_encoder_2/model.fp16.safetensors": {
+          "size": 1389382176,
+          "sha256": "dfa429b268cd3f6297927f1fd3eacac04781b17ab4caa97892a461ff41400a5e"
+        },
+        "text_encoder_2/model.safetensors": {
+          "size": 2778702264,
+          "sha256": "4b7c9b2c9668d61f13594e9043f7ef75712f952e0621b57c8ffc4d5504e4ab82"
+        },
+        "tokenizer/merges.txt": {
+          "size": 573514,
+          "sha256": null
+        },
+        "tokenizer/special_tokens_map.json": {
+          "size": 496,
+          "sha256": null
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 734,
+          "sha256": null
+        },
+        "tokenizer/vocab.json": {
+          "size": 1109372,
+          "sha256": null
+        },
+        "tokenizer_2/merges.txt": {
+          "size": 573514,
+          "sha256": null
+        },
+        "tokenizer_2/special_tokens_map.json": {
+          "size": 484,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer_config.json": {
+          "size": 893,
+          "sha256": null
+        },
+        "tokenizer_2/vocab.json": {
+          "size": 1109372,
+          "sha256": null
+        },
+        "unet/config.json": {
+          "size": 1850,
+          "sha256": null
+        },
+        "unet/diffusion_pytorch_model-00001-of-00002.safetensors": {
+          "size": 9988139160,
+          "sha256": "46e2c18ef9131caaf26a0a5039ca999cf7128204a10c1c085cdbc2a859f9e270"
+        },
+        "unet/diffusion_pytorch_model-00002-of-00002.safetensors": {
+          "size": 281938304,
+          "sha256": "f0c982d309238340e38250b14cfecbe62e287516b8e5b18a6ae872d12eb00e6e"
+        },
+        "unet/diffusion_pytorch_model.fp16.safetensors": {
+          "size": 5135149760,
+          "sha256": "ea10386073d39ffdde9fda426745b3f5e9dcd2af204c128ece0f4ea84570ffee"
+        },
+        "unet/diffusion_pytorch_model.safetensors.index.json": {
+          "size": 202851,
+          "sha256": null
+        },
+        "vae/config.json": {
+          "size": 807,
+          "sha256": null
+        },
+        "vae/diffusion_pytorch_model.fp16.safetensors": {
+          "size": 167335342,
+          "sha256": "6353737672c94b96174cb590f711eac6edf2fcce5b6e91aa9d73c5adc589ee48"
+        },
+        "vae/diffusion_pytorch_model.safetensors": {
+          "size": 334643268,
+          "sha256": "78f6189c8492013e3cac81637a1f657f790a237387f8a9dfd6bfa5fee28eb646"
+        }
+      }
+    },
+    "juggernaut-xi": {
+      "repo": "RunDiffusion/Juggernaut-XI-v11",
+      "revision": "f836518c7a75f47a9e26bc661ff9509ef2ceb7c0",
+      "files": {
+        "Juggernaut-XI-byRunDiffusion.safetensors": {
+          "size": 7105350536,
+          "sha256": "33e58e86686f6b386c526682b5da9228ead4f91d994abd4b053442dc5b42719e"
+        },
+        "model_index.json": {
+          "size": 712,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 579,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 584,
+          "sha256": null
+        },
+        "text_encoder_2/config.json": {
+          "size": 594,
+          "sha256": null
+        },
+        "tokenizer/merges.txt": {
+          "size": 573514,
+          "sha256": null
+        },
+        "tokenizer/special_tokens_map.json": {
+          "size": 496,
+          "sha256": null
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 770,
+          "sha256": null
+        },
+        "tokenizer/vocab.json": {
+          "size": 1109372,
+          "sha256": null
+        },
+        "tokenizer_2/merges.txt": {
+          "size": 573514,
+          "sha256": null
+        },
+        "tokenizer_2/special_tokens_map.json": {
+          "size": 484,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer_config.json": {
+          "size": 758,
+          "sha256": null
+        },
+        "tokenizer_2/vocab.json": {
+          "size": 1109372,
+          "sha256": null
+        },
+        "unet/config.json": {
+          "size": 1845,
+          "sha256": null
+        },
+        "vae/config.json": {
+          "size": 633,
+          "sha256": null
+        }
+      }
+    },
+    "Pony": {
+      "repo": "stablediffusionapi/Pony-Diffusion-V6-XL",
+      "revision": "e4aa34ab663e915113703e0e3ea365a14f0d0e46",
+      "files": {
+        "model_index.json": {
+          "size": 671,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 676,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 560,
+          "sha256": null
+        },
+        "text_encoder/model.fp16.safetensors": {
+          "size": 246144152,
+          "sha256": "a0bc4387a2e1056f9561633887196c213c6c0180e7d65701e2236b00d12f35ff"
+        },
+        "text_encoder_2/config.json": {
+          "size": 570,
+          "sha256": null
+        },
+        "text_encoder_2/model.fp16.safetensors": {
+          "size": 1389382176,
+          "sha256": "430b1997dfeb35634e430f6f3f7ffd1ef60efe5a31e83ae51f823cada2e42996"
+        },
+        "tokenizer/merges.txt": {
+          "size": 524619,
+          "sha256": null
+        },
+        "tokenizer/special_tokens_map.json": {
+          "size": 472,
+          "sha256": null
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 704,
+          "sha256": null
+        },
+        "tokenizer/vocab.json": {
+          "size": 1059962,
+          "sha256": null
+        },
+        "tokenizer_2/merges.txt": {
+          "size": 524619,
+          "sha256": null
+        },
+        "tokenizer_2/special_tokens_map.json": {
+          "size": 460,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer_config.json": {
+          "size": 855,
+          "sha256": null
+        },
+        "tokenizer_2/vocab.json": {
+          "size": 1059962,
+          "sha256": null
+        },
+        "unet/config.json": {
+          "size": 1772,
+          "sha256": null
+        },
+        "unet/diffusion_pytorch_model.fp16.safetensors": {
+          "size": 5135149760,
+          "sha256": "b251cd0ece07b6c69b5eff40c6037dc901dbc84b3e67e7498ab4bf22ddcee3c4"
+        },
+        "vae/config.json": {
+          "size": 800,
+          "sha256": null
+        },
+        "vae/diffusion_pytorch_model.fp16.safetensors": {
+          "size": 167335342,
+          "sha256": "6353737672c94b96174cb590f711eac6edf2fcce5b6e91aa9d73c5adc589ee48"
+        }
+      }
+    },
+    "z-image-turbo": {
+      "repo": "filipstrand/Z-Image-Turbo-mflux-4bit",
+      "revision": "b3a8f31115a11f2f9e2fa0bfbc8d78dcc3e6568b",
+      "files": {
+        "text_encoder/0.safetensors": {
+          "size": 2135435096,
+          "sha256": "5857538440e94dbe89f44ee3bb192aad7fd8d0559fb2f3cbe05807e5dda1ab67"
+        },
+        "text_encoder/1.safetensors": {
+          "size": 127582112,
+          "sha256": "e03b87c090d445a66f6d35c6cc5d6e6fc897ba2bd2e76e16387bf524f954da2d"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 51337,
+          "sha256": null
+        },
+        "tokenizer/added_tokens.json": {
+          "size": 707,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 4168,
+          "sha256": null
+        },
+        "tokenizer/merges.txt": {
+          "size": 1671853,
+          "sha256": null
+        },
+        "tokenizer/special_tokens_map.json": {
+          "size": 613,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 11422654,
+          "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 5404,
+          "sha256": null
+        },
+        "tokenizer/vocab.json": {
+          "size": 2776833,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 2140225941,
+          "sha256": "49d6d45165cbf65e387f4fdcacf0ae25b84b39ecdd382bba846e86cc3d9d4b65"
+        },
+        "transformer/1.safetensors": {
+          "size": 1323528964,
+          "sha256": "6a47e761ae3a772d2e1b07a214ac7d15b85aeb9664018ad44463fc549b94a8b5"
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 61611,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 164654116,
+          "sha256": "d4309faa3683186faccb490afe237cae63c599b3e4fbb5ce9ef90393bb775a80"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 17383,
+          "sha256": null
+        }
+      }
+    },
+    "krea2-turbo": {
+      "repo": "Ouinche/krea2-turbo-mflux-q4-full",
+      "revision": "8f231a2db029543776bdf04f3c11027f623fe790",
+      "files": {
+        "0.safetensors": {
+          "size": 2142209936,
+          "sha256": "294800e65afa7d727ef1a1402dfea86fd22c55e15a7631cce63ec84774041582"
+        },
+        "1.safetensors": {
+          "size": 2141976393,
+          "sha256": "ebeba87f73c97778a8975a72f15a8349d4483117d41fa7733da724bf4f7fe6b7"
+        },
+        "2.safetensors": {
+          "size": 2141976439,
+          "sha256": "30a895386a1fc4159402a24353d69195b87d30904149edaabb9ccae7aab7bf15"
+        },
+        "3.safetensors": {
+          "size": 787372770,
+          "sha256": "c324675dced018804b17c41a52a99bb1ff4edd8836b44c610edf5de7cd475ded"
+        },
+        "model.safetensors.index.json": {
+          "size": 49163,
+          "sha256": null
+        },
+        "text_encoder/0.safetensors": {
+          "size": 2263036677,
+          "sha256": "3fd31c38c3a4a95c4c5927d3c4562cd0e50bfee3d8a888b23e6d32f362ee9167"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 70305,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 11422650,
+          "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 664,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 507149539,
+          "sha256": "b2002a24b9a8227646065a1bd169729968402bda24d83b86fb8981124d324e76"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 13512,
+          "sha256": null
+        }
+      }
+    },
+    "qwen-image-2.1": {
+      "repo": "mlx-community/Qwen-Image-2.1-mflux-q4",
+      "revision": "746a58556820933a2df5c75887a2570f1ad200c0",
+      "files": {
+        "processor/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "processor/tokenizer.json": {
+          "size": 11422650,
+          "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+        },
+        "processor/tokenizer_config.json": {
+          "size": 417,
+          "sha256": null
+        },
+        "text_encoder/0.safetensors": {
+          "size": 2138739328,
+          "sha256": "c1cb30320ce8a482d353dd821f8123f15b773ddb00981580142c1a1434326c9f"
+        },
+        "text_encoder/1.safetensors": {
+          "size": 2119029339,
+          "sha256": "5f611e1d8ac0a245f80a79a03b1bfbe0e0ab4164462b8ed2579d16a225a0d601"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 51332,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 2128887354,
+          "sha256": "ce0e8ab688a5cec5111972d7231c7fcc672e10f71602d24825ef375d1a8b8764"
+        },
+        "transformer/1.safetensors": {
+          "size": 1878195881,
+          "sha256": "e13feedb023521119a7d5d01c7f16b8ea66970157df3f6e6716bfbe76007a0ab"
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 49743,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 1323975289,
+          "sha256": "4ef2508826e6a0679ae43160073df9249061237a82e745bfb196c3505f0543f6"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 15704,
+          "sha256": null
+        }
+      }
+    },
+    "qwen-image-2.1-turbo": {
+      "repo": "mflux-community/qwen-image-2-1-turbo-mflux-q4",
+      "revision": "84970354375db04f65d3cd23ee7890ca11956e37",
+      "files": {
+        ".gitattributes": {
+          "size": 1580,
+          "sha256": null
+        },
+        "README.md": {
+          "size": 3161,
+          "sha256": null
+        },
+        "manifest.json": {
+          "size": 78,
+          "sha256": null
+        },
+        "model_index.json": {
+          "size": 578,
+          "sha256": null
+        },
+        "processor/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "processor/preprocessor_config.json": {
+          "size": 478,
+          "sha256": null
+        },
+        "processor/tokenizer.json": {
+          "size": 11422650,
+          "sha256": null
+        },
+        "processor/tokenizer_config.json": {
+          "size": 733,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 486,
+          "sha256": null
+        },
+        "text_encoder/0.safetensors": {
+          "size": 2138745710,
+          "sha256": null
+        },
+        "text_encoder/1.safetensors": {
+          "size": 2145597798,
+          "sha256": null
+        },
+        "text_encoder/2.safetensors": {
+          "size": 843423318,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 1541,
+          "sha256": null
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 95963,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 2123573901,
+          "sha256": null
+        },
+        "transformer/1.safetensors": {
+          "size": 2024999549,
+          "sha256": null
+        },
+        "transformer/config.json": {
+          "size": 369,
+          "sha256": null
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 48913,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 675508216,
+          "sha256": null
+        },
+        "vae/config.json": {
+          "size": 2171,
+          "sha256": null
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 15902,
+          "sha256": null
+        }
+      }
+    },
+    "qwen-image-edit": {
+      "repo": "mflux-community/qwen-image-edit-mflux-q4",
+      "revision": "3fe2dfd3b4cd541fb382dcc3f0c672b180c32bad",
+      "files": {
+        "manifest.json": {
+          "size": 78,
+          "sha256": null
+        },
+        "text_encoder/0.safetensors": {
+          "size": 2080974747,
+          "sha256": "5e6d2fdc14422d05b1f39f593c4cee3b7abf63e92430126751a040bc69803c69"
+        },
+        "text_encoder/1.safetensors": {
+          "size": 2136050811,
+          "sha256": "9cf5397fde9b5cb45319e013a0d174671362adb52f55f6b7b7c605f317c18e40"
+        },
+        "text_encoder/2.safetensors": {
+          "size": 2059005283,
+          "sha256": "bde0893f65c180ac292978c843b00caec618e047d412bb1bc4fde19adff1cce1"
+        },
+        "text_encoder/3.safetensors": {
+          "size": 2136050873,
+          "sha256": "2056e1d07792f2111d532d3dd78a37a413fc35470b1987952ab70f1b2d4497b6"
+        },
+        "text_encoder/4.safetensors": {
+          "size": 2059005365,
+          "sha256": "881491784912be6a2f6cef72d4a418f757191a7a836971b5ca700b62fd13316c"
+        },
+        "text_encoder/5.safetensors": {
+          "size": 2136050879,
+          "sha256": "dd2df1035e8c5d567d120ec8c3bbc5f7a04486341782af15639d70b92a238a84"
+        },
+        "text_encoder/6.safetensors": {
+          "size": 2141371242,
+          "sha256": "80a80a6ce3fe2b1f8e530a62fadbf0f6bad7b0b47aa32121d7bb4a497239cf59"
+        },
+        "text_encoder/7.safetensors": {
+          "size": 745924546,
+          "sha256": "62e58a15b2857db8c8afde378f8a1bd67b50f543bc6e6447f19d83c84f6e0af8"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 49676,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 11417006,
+          "sha256": "444a80c37c7f34f485c050cf374595a0cb7d88735459cf0505fd204453c33178"
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 269,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 2133769837,
+          "sha256": "dd36ec71c41535f1d833bfa81ff3671b44f4a09e984089dcf357267b525ed153"
+        },
+        "transformer/1.safetensors": {
+          "size": 2142940122,
+          "sha256": "e8d5cbe5989b6ed5f5fc2459d975837e3442db4e1ec97f1a48e07f6fcc51c5cd"
+        },
+        "transformer/2.safetensors": {
+          "size": 2103978086,
+          "sha256": "aa8a2a964fe2d4a8f2ae0940f3cbb93f1257c8452aa13dcfffc60c24745bf765"
+        },
+        "transformer/3.safetensors": {
+          "size": 2121682323,
+          "sha256": "810ef726d9e41040349d1669cd51ac60d43415edce1a3ff522eec1c43b029a71"
+        },
+        "transformer/4.safetensors": {
+          "size": 2142940082,
+          "sha256": "cb890ae40e2033eaf869cd8f77a2d76c595f465cad89572faab788d5fa7aa7ec"
+        },
+        "transformer/5.safetensors": {
+          "size": 2103978128,
+          "sha256": "e511db8f4744b6f4649415dafe4e22b0ad2f8c622cdb4c208a5851b8aba9715c"
+        },
+        "transformer/6.safetensors": {
+          "size": 449954284,
+          "sha256": "ed929f5a3584a28da733c0a7496996cfbfe2554b39471d8855b83b1e045c0645"
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 241738,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 253586133,
+          "sha256": "3e808ad0f16eb143c2676eb93d229e15c82d0a7497aa523d000ff75b5a67dad9"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 13512,
+          "sha256": null
+        }
+      }
+    },
+    "fibo2-turbo": {
+      "repo": "Ouinche/FIBO2-Edit-Turbo-MLX-4bit",
+      "revision": "ab667f4ff58168feb84ac5ff45c7471d60f8ec92",
+      "files": {
+        "fonts/LICENSE-Aileron.txt": {
+          "size": 673,
+          "sha256": null
+        },
+        "fonts/LICENSE-DejaVu.txt": {
+          "size": 3844,
+          "sha256": null
+        },
+        "model_index.json": {
+          "size": 438,
+          "sha256": null
+        },
+        "processor/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "processor/processor_config.json": {
+          "size": 1218,
+          "sha256": null
+        },
+        "processor/tokenizer.json": {
+          "size": 11422650,
+          "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+        },
+        "processor/tokenizer_config.json": {
+          "size": 734,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 486,
+          "sha256": null
+        },
+        "text_encoder/added_tokens.json": {
+          "size": 707,
+          "sha256": null
+        },
+        "text_encoder/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "text_encoder/chat_template.json": {
+          "size": 5502,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 7137,
+          "sha256": null
+        },
+        "text_encoder/generation_config.json": {
+          "size": 269,
+          "sha256": null
+        },
+        "text_encoder/merges.txt": {
+          "size": 1671853,
+          "sha256": null
+        },
+        "text_encoder/model.safetensors": {
+          "size": 3093767283,
+          "sha256": "90eeb02604181dbcccd0a30a1f550a4a8928ca7dcbee4aee1449239306cfdfca"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 64742,
+          "sha256": null
+        },
+        "text_encoder/preprocessor_config.json": {
+          "size": 782,
+          "sha256": null
+        },
+        "text_encoder/special_tokens_map.json": {
+          "size": 613,
+          "sha256": null
+        },
+        "text_encoder/tokenizer.json": {
+          "size": 11422654,
+          "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+        },
+        "text_encoder/tokenizer_config.json": {
+          "size": 5445,
+          "sha256": null
+        },
+        "text_encoder/video_preprocessor_config.json": {
+          "size": 817,
+          "sha256": null
+        },
+        "text_encoder/vocab.json": {
+          "size": 2776833,
+          "sha256": null
+        },
+        "transformer/config.json": {
+          "size": 682,
+          "sha256": null
+        },
+        "transformer/diffusion_pytorch_model-00001-of-00002.safetensors": {
+          "size": 2489373403,
+          "sha256": "28817ef0000c8c61801fe3c1fb64f6eea2432d2e36e8902f2ff095782f8b9334"
+        },
+        "transformer/diffusion_pytorch_model-00002-of-00002.safetensors": {
+          "size": 2089814879,
+          "sha256": "350e9059e2738c82309e0f5affbe2db3c101a8f3648f6f99ec72c8d39a59e1b6"
+        },
+        "transformer/diffusion_pytorch_model.safetensors.index.json": {
+          "size": 152143,
+          "sha256": null
+        },
+        "vae/config.json": {
+          "size": 185,
+          "sha256": null
+        },
+        "vae/diffusion_pytorch_model.safetensors": {
+          "size": 336213546,
+          "sha256": "898a7c8e7d2d431cf8c61ef250a6113e707ee3f7155e54cd14f162b5b5751868"
+        }
+      }
+    },
+    "dreamlite-mobile": {
+      "repo": "carlofkl/DreamLite-mobile",
+      "revision": "a48c656c291fe98f74a0405961c9e4e3eee5d6c8",
+      "files": {
+        ".gitattributes": {
+          "size": 1641,
+          "sha256": null
+        },
+        "README.md": {
+          "size": 1271,
+          "sha256": null
+        },
+        "model_index.json": {
+          "size": 525,
+          "sha256": null
+        },
+        "processor/added_tokens.json": {
+          "size": 707,
+          "sha256": null
+        },
+        "processor/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "processor/merges.txt": {
+          "size": 1671853,
+          "sha256": null
+        },
+        "processor/preprocessor_config.json": {
+          "size": 782,
+          "sha256": null
+        },
+        "processor/special_tokens_map.json": {
+          "size": 613,
+          "sha256": null
+        },
+        "processor/tokenizer.json": {
+          "size": 11422654,
+          "sha256": null
+        },
+        "processor/tokenizer_config.json": {
+          "size": 5445,
+          "sha256": null
+        },
+        "processor/video_preprocessor_config.json": {
+          "size": 817,
+          "sha256": null
+        },
+        "processor/vocab.json": {
+          "size": 2776833,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 481,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 1546,
+          "sha256": null
+        },
+        "text_encoder/generation_config.json": {
+          "size": 213,
+          "sha256": null
+        },
+        "text_encoder/model.safetensors": {
+          "size": 4255140312,
+          "sha256": "7de1838c87a5349b016c26a1c3f7d2bc400a3d485f95ef39a7059ffd734977a0"
+        },
+        "tokenizer/added_tokens.json": {
+          "size": 707,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "tokenizer/merges.txt": {
+          "size": 1671853,
+          "sha256": null
+        },
+        "tokenizer/special_tokens_map.json": {
+          "size": 613,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 11422654,
+          "sha256": null
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 5404,
+          "sha256": null
+        },
+        "tokenizer/vocab.json": {
+          "size": 2776833,
+          "sha256": null
+        },
+        "unet/config.json": {
+          "size": 1972,
+          "sha256": null
+        },
+        "unet/diffusion_pytorch_model.safetensors": {
+          "size": 780074688,
+          "sha256": "d3b46c229731e4c0c967176fdead58dd24bd3c29132c7f1c2204442cfeb99dc7"
+        },
+        "vae/config.json": {
+          "size": 634,
+          "sha256": null
+        },
+        "vae/diffusion_pytorch_model.safetensors": {
+          "size": 4903270,
+          "sha256": "e175c3284b8514a2ecb1a70f004b0b09320decd6842e77dfebbdb5dbbdf0312b"
+        }
+      }
+    },
+    "anima-turbo": {
+      "repo": "mflux-community/anima-turbo-mflux-q4",
+      "revision": "754fc9aa77d9929a6ecb6b08fcd0aab3a164fd48",
+      "files": {
+        ".gitattributes": {
+          "size": 1580,
+          "sha256": null
+        },
+        "README.md": {
+          "size": 2894,
+          "sha256": null
+        },
+        "mflux_model.json": {
+          "size": 453,
+          "sha256": null
+        },
+        "text_encoder/0.safetensors": {
+          "size": 1192133524,
+          "sha256": "d42cf688adc353253b85877bd63972d93c895c71c69b816a5fa49da84de4a3b9"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 17872,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 4116,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 11422650,
+          "sha256": null
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 695,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer.json": {
+          "size": 2424069,
+          "sha256": null
+        },
+        "tokenizer_2/tokenizer_config.json": {
+          "size": 2369,
+          "sha256": null
+        },
+        "transformer/0.safetensors": {
+          "size": 1649776161,
+          "sha256": "8d66e112348423cd7da1ff7a84cdeeb29210a0fb08669ec105f638121ab28f2b"
+        },
+        "transformer/model.safetensors.index.json": {
+          "size": 74850,
+          "sha256": null
+        },
+        "vae/0.safetensors": {
+          "size": 253586147,
+          "sha256": "5d40e9de9c08e84357cefbb64d0e9f21f91cabedd01e31a00194bfec1aeebf87"
+        },
+        "vae/model.safetensors.index.json": {
+          "size": 13512,
+          "sha256": null
+        }
+      }
+    },
+    "kromoss": {
+      "repo": "Ouinche/kromoss-mlx-q4",
+      "revision": "d3322f9d8911feed9543370d79c99723449df28c",
+      "files": {
+        "8-steps-dmd2-lora.safetensors": {
+          "size": 1189176800,
+          "sha256": "7683fe1fb51f73f5d690f24dd6b7f46f31ab9a9873729a854ac5c9a420ffe6f2"
+        },
+        "model_index.json": {
+          "size": 412,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 494,
+          "sha256": null
+        },
+        "tokenizer/chat_template.jinja": {
+          "size": 7756,
+          "sha256": null
+        },
+        "tokenizer/tokenizer.json": {
+          "size": 19989325,
+          "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+        },
+        "tokenizer/tokenizer_config.json": {
+          "size": 1123,
+          "sha256": null
+        },
+        "transformer/config.json": {
+          "size": 240,
+          "sha256": null
+        },
+        "transformer/model-q4-g64.safetensors": {
+          "size": 2859453422,
+          "sha256": "f124a2dda8d8d37d7fadeb1b364d53a5e562fd3bab112f4d0f26d13589389535"
+        },
+        "vae/config.json": {
+          "size": 838,
+          "sha256": null
+        },
+        "vae/diffusion_pytorch_model.safetensors": {
+          "size": 249521372,
+          "sha256": "c3bdf94dc67ec69b30ea9fe1fa8340085679cae64d019f7c7e4a9921f1a7f17a"
+        }
+      },
+      "te_mlx_repo": "Ouinche/moss-image-qwen3.5-te-mlx-q8g64",
+      "te_mlx_sibling": "qwen3_5-te-q8g64",
+      "te_files": {
+        "config.json": {
+          "size": 1946,
+          "sha256": null
+        },
+        "model.safetensors": {
+          "size": 10012555489,
+          "sha256": "939ce86e6d3f9a4c4533350875f9cc86fa87148e32ddc79c82b5ba7eefb7d617"
+        },
+        "tokenizer.json": {
+          "size": 19989325,
+          "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+        },
+        "tokenizer_config.json": {
+          "size": 1123,
+          "sha256": null
+        }
+      }
+    },
+    "rmbg-3.0": {
+      "repo": "Ouinche/RMBG-3.0-MLX-4bit",
+      "revision": "dcf0ab83424cacd25da35971c8c9b6702a19c332",
+      "files": {
+        "fonts/LICENSE-Aileron.txt": {
+          "size": 673,
+          "sha256": null
+        },
+        "fonts/LICENSE-DejaVu.txt": {
+          "size": 3844,
+          "sha256": null
+        },
+        "model_index.json": {
+          "size": 438,
+          "sha256": null
+        },
+        "processor/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "processor/processor_config.json": {
+          "size": 1218,
+          "sha256": null
+        },
+        "processor/tokenizer.json": {
+          "size": 11422650,
+          "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+        },
+        "processor/tokenizer_config.json": {
+          "size": 734,
+          "sha256": null
+        },
+        "scheduler/scheduler_config.json": {
+          "size": 486,
+          "sha256": null
+        },
+        "text_encoder/added_tokens.json": {
+          "size": 707,
+          "sha256": null
+        },
+        "text_encoder/chat_template.jinja": {
+          "size": 5292,
+          "sha256": null
+        },
+        "text_encoder/chat_template.json": {
+          "size": 5502,
+          "sha256": null
+        },
+        "text_encoder/config.json": {
+          "size": 7137,
+          "sha256": null
+        },
+        "text_encoder/generation_config.json": {
+          "size": 269,
+          "sha256": null
+        },
+        "text_encoder/merges.txt": {
+          "size": 1671853,
+          "sha256": null
+        },
+        "text_encoder/model.safetensors": {
+          "size": 3093767283,
+          "sha256": "90eeb02604181dbcccd0a30a1f550a4a8928ca7dcbee4aee1449239306cfdfca"
+        },
+        "text_encoder/model.safetensors.index.json": {
+          "size": 64742,
+          "sha256": null
+        },
+        "text_encoder/preprocessor_config.json": {
+          "size": 782,
+          "sha256": null
+        },
+        "text_encoder/special_tokens_map.json": {
+          "size": 613,
+          "sha256": null
+        },
+        "text_encoder/tokenizer.json": {
+          "size": 11422654,
+          "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+        },
+        "text_encoder/tokenizer_config.json": {
+          "size": 5445,
+          "sha256": null
+        },
+        "text_encoder/video_preprocessor_config.json": {
+          "size": 817,
+          "sha256": null
+        },
+        "text_encoder/vocab.json": {
+          "size": 2776833,
+          "sha256": null
+        },
+        "transformer/config.json": {
+          "size": 623,
+          "sha256": null
+        },
+        "transformer/model.safetensors": {
+          "size": 4579190304,
+          "sha256": "fd9685bba2788d31a672b5161bb13709d60db13641e8065a3a5b29ca968fc2ed"
+        },
+        "vae/config.json": {
+          "size": 185,
+          "sha256": null
+        },
+        "vae/diffusion_pytorch_model.safetensors": {
+          "size": 336213546,
+          "sha256": "898a7c8e7d2d431cf8c61ef250a6113e707ee3f7155e54cd14f162b5b5751868"
+        }
+      }
+    }
+  }
+}
