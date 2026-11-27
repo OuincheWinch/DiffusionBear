@@ -1,0 +1,2 @@
+d58f3cd26a614447d66b6572e894b9ec729edcbd83f4b3ebfe9ca814b04da065  DiffusionBear-0.5.2-arm64.zip
+b4a2e61983e19e8b4a31e7bee8a542e29d5ed616b36b469e5648e441abb57dc3  DiffusionBear-0.5.2-arm64.dmg

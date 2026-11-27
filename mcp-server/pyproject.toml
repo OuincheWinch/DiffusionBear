@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diffusionbear-mcp"
+version = "0.5.2"
+description = "MCP (Model Context Protocol) server for DiffusionBear — local AI image generation on Apple Silicon via the loopback REST API"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "mcp>=1.8.0,<2.0.0",  # v1 API: mcp.server.fastmcp.FastMCP (v2 renames it)
+    "httpx>=0.27",
+]
+
+[project.scripts]
+diffusionbear-mcp = "diffusionbear_mcp.server:main"
+
+[tool.setuptools.packages.find]
+include = ["diffusionbear_mcp*"]

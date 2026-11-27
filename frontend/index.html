@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>DiffusionBear</title>
+    <meta property="og:title" content="DiffusionBear — Local AI Image Generation on Apple Silicon" />
+    <meta property="og:description" content="Local-first AI image generation and editing studio for Apple Silicon Macs, powered by MLX." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og-image.png" />
+    <script>
+      // Set the theme before the bundle runs.
+      //
+      // The authoritative value lives in settings.json, behind a fetch that cannot
+      // possibly finish before first paint. Without this line every load renders dark
+      // and then flips, which on a light desktop is the single most visible way to get
+      // theming wrong.
+      //
+      // localStorage here is a MIRROR of the backend setting, not a second source of
+      // truth: it is written only after a successful POST, and `useTheme` reconciles
+      // against the backend on every load. If it is absent or stale, the OS preference
+      // wins and the app corrects itself -- so a stale mirror costs at most one flash,
+      // and never a wrong persisted choice.
+      (function () {
+        try {
+          var stored = localStorage.getItem("diffusionbear.theme");
+          var mode = (stored === "light" || stored === "dark")
+            ? stored
+            : (window.matchMedia &&
+               window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", mode);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+    <script>
+      // One-click remote connection: a #key=<API key> fragment stores the key in
+      // localStorage before the bundle runs, then the fragment is stripped so the
+      // key never stays in the URL bar, history or any server log. The fragment
+      // is the right channel because the browser never sends it to the server.
+      (function () {
+        try {
+          var m = /^#key=([A-Za-z0-9_\-\.]+)$/.exec(window.location.hash || "");
+          if (m) {
+            localStorage.setItem("DIFFUSIONBEAR_API_KEY", decodeURIComponent(m[1]));
+            history.replaceState(null, "", window.location.pathname + window.location.search);
+          }
+        } catch (e) {
+          // Non-fatal: the key field in Settings remains the fallback.
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

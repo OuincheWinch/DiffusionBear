@@ -1,0 +1,35 @@
+{
+  "id": "45f47322daf040e4a5dd8c8c1fde6bf3",
+  "prompt": "A studio photograph of a pair of vintage pink plastic shutter shades, resting  on a  stone pedestal. facing the viewer. The retro novelty sunglasses feature a completely molded pink frame with horizontal, parallel plastic slats running across both eye areas instead of lenses (Venetian-blind style, no glass). Bright, natural lighting catches the glossy finish of the lightweight plastic, showing the textured slats, bridge, and temples in sharp focus. Slight shadows are cast underneath the slats onto the surface, cinematic lighting, 4k. Soft diffused lighting, seamless off-white backdrop with bear from Image 1 as a vintage poster on the wall, the word “MOSS x DiffusionBear\" engraved on the stone base. Crisp fabric texture, subtle shadow, high detail.",
+  "negative_prompt": "nsfw, worst quality, bad anatomy, watermark, jpeg artifact",
+  "sampler": "moss_dataspace_dmd",
+  "scheduler": "flow_match_euler_discrete",
+  "width": 1024,
+  "height": 768,
+  "steps": 4,
+  "guidance": 1.0,
+  "seed": 1003,
+  "quantization": null,
+  "loras": [
+    {
+      "path": "data/lora_files/moss_distill/darask0-4step/lora.safetensors",
+      "scale": 1.0
+    }
+  ],
+  "generation_time": 795.05,
+  "load_time": 1.5,
+  "created_at": 1792615380.455873,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear -  www.ouinche.com - https://github.com/OuincheWinch/DiffusionBear",
+  "tags": [],
+  "file": "45f47322daf040e4a5dd8c8c1fde6bf3.png",
+  "model": "OpenMOSS-Team/MOSS-Image-SFT",
+  "engine": "moss",
+  "reference_images": [],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": false,
+  "tiled_vae": false,
+  "adapter_dir": "data/lora_files/moss_distill/darask0-4step"
+}

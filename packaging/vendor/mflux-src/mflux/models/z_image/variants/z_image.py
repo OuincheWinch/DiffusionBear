@@ -1,0 +1,298 @@
+from pathlib import Path
+
+import mlx.core as mx
+from mlx import nn
+
+from mflux.models.common.config.config import Config
+from mflux.models.common.config.model_config import ModelConfig
+from mflux.models.common.latent_creator.latent_creator import Img2Img, LatentCreator
+from mflux.models.common.pid_decoder.pid_decoder import pid_decode_latents
+from mflux.models.common.vae.vae_util import VAEUtil
+from mflux.models.common.weights.saving.model_saver import ModelSaver
+from mflux.models.z_image.latent_creator import ZImageLatentCreator
+from mflux.models.z_image.model.z_image_text_encoder.prompt_encoder import PromptEncoder
+from mflux.models.z_image.model.z_image_text_encoder.small_text_encoder import ZImageSmallTextEncoder
+from mflux.models.z_image.model.z_image_text_encoder.text_encoder import TextEncoder
+from mflux.models.z_image.model.z_image_transformer.transformer import ZImageTransformer
+from mflux.models.z_image.model.z_image_vae.vae import VAE
+from mflux.models.z_image.weights.z_image_weight_definition import ZImageWeightDefinition
+from mflux.models.z_image.z_image_initializer import ZImageInitializer
+from mflux.utils.apple_silicon import AppleSiliconUtil
+from mflux.utils.exceptions import StopImageGenerationException
+from mflux.utils.generated_image import GeneratedImage
+from mflux.utils.image_util import ImageUtil
+
+
+class ZImage(nn.Module):
+    vae: VAE
+    text_encoder: TextEncoder | ZImageSmallTextEncoder
+    small_text_encoder: bool = False
+    ssd_stream: bool = False
+    transformer: ZImageTransformer
+
+    def __init__(
+        self,
+        quantize: int | None = None,
+        model_path: str | None = None,
+        lora_paths: list[str] | None = None,
+        lora_scales: list[float] | None = None,
+        bake_lora: bool = True,
+        model_config: ModelConfig = ModelConfig.z_image_turbo(),
+        float32: bool = False,
+        compute_precision: mx.Dtype | None = None,
+        small_text_encoder: bool = False,
+        ssd_stream: bool = False,
+    ):
+        super().__init__()
+        ZImageInitializer.init(
+            model=self,
+            quantize=quantize,
+            model_path=model_path,
+            lora_paths=lora_paths,
+            lora_scales=lora_scales,
+            bake_lora=bake_lora,
+            model_config=model_config,
+            float32=float32,
+            compute_precision=compute_precision,
+            small_text_encoder=small_text_encoder,
+            ssd_stream=ssd_stream,
+        )
+
+    def generate_image(
+        self,
+        seed: int,
+        prompt: str,
+        num_inference_steps: int = 4,
+        height: int = 1024,
+        width: int = 1024,
+        guidance: float | None = None,
+        image_path: Path | str | None = None,
+        image_strength: float | None = None,
+        scheduler: str | None = None,
+        negative_prompt: str | None = None,
+        pid_decode: bool = False,
+        pid_degrade_sigma: float = 0.0,
+    ) -> GeneratedImage:
+        supports_guidance = bool(self.model_config.supports_guidance)
+        if not supports_guidance:
+            guidance = 0.0
+
+        if scheduler is None:
+            scheduler = "flow_match_euler_discrete" if supports_guidance else "linear"
+
+        # 0. Create a new config based on the model type and input parameters
+        config = Config(
+            width=width,
+            height=height,
+            guidance=guidance,
+            scheduler=scheduler,
+            image_path=image_path,
+            image_strength=image_strength,
+            model_config=self.model_config,
+            num_inference_steps=num_inference_steps,
+        )
+        # 1. Create the initial latents
+        latents = LatentCreator.create_for_txt2img_or_img2img(
+            seed=seed,
+            width=config.width,
+            height=config.height,
+            img2img=Img2Img(
+                vae=self.vae,
+                latent_creator=ZImageLatentCreator,
+                image_path=config.image_path,
+                sigmas=config.scheduler.sigmas,
+                init_time_step=config.init_time_step,
+                tiling_config=self.tiling_config,
+            ),
+        )
+        text_encodings, negative_encodings = self._encode_prompts(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            guidance=config.guidance,
+        )
+
+        # 3. Create callback context and call before_loop
+        ctx = self.callbacks.start(seed=seed, prompt=prompt, config=config)
+        ctx.before_loop(latents)
+        # A compiled trace would not see the weights the streamer installs and removes around each block.
+        predict = self._predict(self.transformer, compile_predict=not self.ssd_stream)
+
+        for t in config.time_steps:
+            try:
+                # 4.t Predict the noise
+                sigma_t = config.scheduler.sigmas[t].reshape((1,))
+                timestep = mx.ones_like(sigma_t) - sigma_t
+                noise = predict(
+                    latents=latents,
+                    timestep=timestep,
+                    sigmas=config.scheduler.sigmas,
+                    text_encodings=text_encodings,
+                    negative_encodings=negative_encodings,
+                    guidance=config.guidance,
+                )
+
+                # 5.t Take one denoise step
+                latents = config.scheduler.step(noise=noise, timestep=t, latents=latents)
+
+                # 6.t Call subscribers in-loop
+                ctx.in_loop(t, latents)
+
+                # (Optional) Evaluate to enable progress tracking
+                mx.eval(latents)
+
+            except KeyboardInterrupt:  # noqa: PERF203
+                ctx.interruption(t, latents)
+                raise StopImageGenerationException(
+                    f"Stopping image generation at step {t + 1}/{config.num_inference_steps}"
+                )
+
+        # 7. Call subscribers after loop
+        # The predict closure holds the transformer. Delete it so that --low-ram can free the transformer before decode.
+        del predict
+        ctx.after_loop(latents)
+
+        # 8. Decode the latents and return the image
+        decoded = self._decode_latents(
+            latents=latents,
+            config=config,
+            prompt=prompt,
+            seed=seed,
+            pid_decode=pid_decode,
+            degrade_sigma=pid_degrade_sigma,
+        )
+        return ImageUtil.to_image(
+            decoded_latents=decoded,
+            config=config,
+            seed=seed,
+            prompt=prompt,
+            quantization=self.bits,
+            lora_paths=self.lora_paths,
+            lora_scales=self.lora_scales,
+            image_path=config.image_path,
+            image_strength=config.image_strength,
+            generation_time=config.time_steps.format_dict["elapsed"],
+            negative_prompt=negative_prompt,
+            pid_decode=pid_decode,
+            pid_degrade_sigma=pid_degrade_sigma,
+            generation_parameters={
+                **({"float32": True} if self.float32 else {}),
+                **self.compute_precision.generation_parameters(),
+            },
+        )
+
+    def _encode_prompts(
+        self,
+        *,
+        prompt: str,
+        negative_prompt: str | None,
+        guidance: float,
+    ) -> tuple[mx.array, mx.array | None]:
+        text_encodings = PromptEncoder.encode_prompt(
+            prompt=prompt,
+            tokenizer=self.tokenizers["z_image"],
+            text_encoder=self.text_encoder,
+        )
+        if guidance <= 1.0:
+            return text_encodings, None
+        negative_text = negative_prompt if negative_prompt and negative_prompt.strip() else " "
+        negative_encodings = PromptEncoder.encode_prompt(
+            prompt=negative_text,
+            tokenizer=self.tokenizers["z_image"],
+            text_encoder=self.text_encoder,
+        )
+        return text_encodings, negative_encodings
+
+    def _decode_latents(
+        self,
+        *,
+        latents: mx.array,
+        config: Config,
+        prompt: str,
+        seed: int,
+        pid_decode: bool = False,
+        degrade_sigma: float = 0.0,
+    ) -> mx.array:
+        unpacked = ZImageLatentCreator.unpack_latents(latents, config.height, config.width)
+        if pid_decode:
+            return pid_decode_latents(
+                vae=self.vae, latent=unpacked, caption=prompt, seed=seed, degrade_sigma=degrade_sigma
+            )
+        return VAEUtil.decode(vae=self.vae, latent=unpacked, tiling_config=self.tiling_config)
+
+    def save_model(self, base_path: str) -> None:
+        if self.small_text_encoder:
+            raise ValueError(
+                "save_model() is not supported with small_text_encoder: it would write the Qwen3-1.7B student "
+                "where Z-Image's Qwen3-4B text encoder belongs. Build the model without it to save it."
+            )
+        if self.ssd_stream:
+            # The streamed layers are placeholders between calls, so a save would write a checkpoint without them.
+            raise ValueError("A model loaded with ssd_stream=True cannot be saved. Load it without --ssd-stream.")
+        ModelSaver.save_model(
+            model=self,
+            bits=self.bits,
+            base_path=base_path,
+            weight_definition=ZImageWeightDefinition,
+        )
+
+    @staticmethod
+    def _predict(transformer: ZImageTransformer, compile_predict: bool = True):
+        def predict(
+            latents: mx.array,
+            timestep: mx.array,
+            sigmas: mx.array,
+            text_encodings: mx.array,
+            negative_encodings: mx.array | None,
+            guidance: float,
+        ) -> mx.array:
+            noise = transformer(
+                timestep=timestep,
+                x=latents,
+                cap_feats=text_encodings,
+                sigmas=sigmas,
+            )
+            if negative_encodings is None:
+                return noise
+            negative_noise = transformer(
+                timestep=timestep,
+                x=latents,
+                cap_feats=negative_encodings,
+                sigmas=sigmas,
+            )
+            return noise + guidance * (noise - negative_noise)
+
+        if not compile_predict:
+            return predict
+
+        # Warmup + compilation for M1/M2 (MLX 0.32+ improved compilation)
+        # Run first 2 steps eagerly to establish shapes, then compile.
+        #
+        # NOTE: shape-specialised on purpose. Shapeless compilation cannot infer output
+        # shapes for a `Split` whose axis length is only known at runtime; Krea 2 hit
+        # exactly that and died at denoise step 3 with
+        # "[Primitive::output_shapes] Split cannot infer output shapes."
+        warmup_steps = 2
+        step_counter = [0]
+        predict_ref = [predict]
+
+        def warmup_predict(
+            latents: mx.array,
+            timestep: mx.array,
+            sigmas: mx.array,
+            text_encodings: mx.array,
+            negative_encodings: mx.array | None,
+            guidance: float,
+        ) -> mx.array:
+            result = predict_ref[0](
+                latents, timestep, sigmas, text_encodings,
+                negative_encodings, guidance
+            )
+            step_counter[0] += 1
+            if step_counter[0] == warmup_steps:
+                predict_ref[0] = mx.compile(predict_ref[0])
+            return result
+
+        # Use warmup_predict initially; it will swap to compiled after warmup
+        if AppleSiliconUtil.is_m1_or_m2():
+            return warmup_predict
+        return mx.compile(predict)

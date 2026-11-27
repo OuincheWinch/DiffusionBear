@@ -1,0 +1,53 @@
+{
+  "id": "cb1b6cba98f14289a32f14f7d365a900",
+  "prompt": "{\"summary\": {\"meta\": [\"scene\"], \"canvas\": \"single\", \"caption\": \"A close-up studio photograph of a pair of vintage pink plastic shutter shades, resting  on a  stone pedestal. The retro novelty sunglasses feature a completely molded pink frame with horizontal, parallel plastic slats running across both eye areas instead of lenses (Venetian-blind style, no glass). Bright, natural lighting catches the glossy finish of the lightweight plastic, showing the textured slats, bridge, and temples in sharp focus. Slight shadows are cast underneath the slats onto the surface, cinematic lighting, 4k. Soft diffused lighting, seamless off-white backdrop, the word “MOSS x DiffusionBear\\\" engraved on the stone base. Crisp fabric texture, subtle shadow, high detail.\"}, \"items\": [{\"label\": \"object\", \"caption\": \"Logo from Image 1 posterized on the with wall\", \"bbox\": [-357, -512, 21, 512]}], \"bbox_coord_space\": \"abs_centralized\", \"bbox_format\": \"yxyx\"}",
+  "negative_prompt": "nsfw, worst quality, bad anatomy, watermark, jpeg artifact",
+  "sampler": "moss_dataspace_dmd",
+  "scheduler": "flow_match_euler_discrete",
+  "width": 1024,
+  "height": 768,
+  "steps": 4,
+  "guidance": 1.0,
+  "seed": 1003,
+  "quantization": null,
+  "loras": [
+    {
+      "path": "data/lora_files/moss_distill/darask0-4step/lora.safetensors",
+      "scale": 1.0
+    }
+  ],
+  "generation_time": 415.19,
+  "load_time": 0.43,
+  "created_at": 1792612885.777038,
+  "software": "DiffusionBear",
+  "generator": "DiffusionBear",
+  "artist": "DiffusionBear -  www.ouinche.com - https://github.com/OuincheWinch/DiffusionBear",
+  "tags": [],
+  "file": "cb1b6cba98f14289a32f14f7d365a900.png",
+  "model": "OpenMOSS-Team/MOSS-Image-SFT",
+  "engine": "moss",
+  "reference_images": [
+    "d21d25a469af_DiffusionBear_LOGO.png"
+  ],
+  "stealth": false,
+  "format": "png",
+  "fast_vae": false,
+  "tiled_vae": false,
+  "spatial_boxes": [
+    {
+      "uid": "box_1792612364276_ntxv2",
+      "id": "wall_1",
+      "bbox": [
+        35,
+        0,
+        527,
+        1000
+      ],
+      "desc": "Logo from Image 1 posterized on the with wall",
+      "kind": "object",
+      "action": "add",
+      "lang": "En"
+    }
+  ],
+  "adapter_dir": "data/lora_files/moss_distill/darask0-4step"
+}

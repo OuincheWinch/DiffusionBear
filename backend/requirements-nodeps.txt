@@ -1,0 +1,4 @@
+# Installed with `pip install --no-deps -r backend/requirements-nodeps.txt`.
+# mlx-vlm's runtime imports (mlx, PIL, numpy, transformers, huggingface-hub, jinja2)
+# are covered by requirements.txt; its declared deps are training/eval/audio bloat.
+mlx-vlm==0.8.1

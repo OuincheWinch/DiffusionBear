@@ -1,0 +1,1892 @@
+{
+  "settings.tab.preferences": {
+    "es": "Preferencias",
+    "zh": "首选项",
+    "ja": "環境設定",
+    "pt": "Preferências",
+    "ko": "환경설정"
+  },
+  "settings.tab.enhancer": {
+    "es": "Prompts del mejorador (experimental)",
+    "zh": "提示词增强器的提示（实验性）",
+    "ja": "プロンプト強化のプロンプト（実験的）",
+    "pt": "Prompts do aprimorador (experimental)",
+    "ko": "개선기 프롬프트(실험 기능)"
+  },
+  "settings.tab.enhancerTitle": {
+    "es": "Mejorador de prompts — prompts del sistema (experimental)",
+    "zh": "提示词增强器 —— 系统提示词（实验性）",
+    "ja": "プロンプト強化 — システムプロンプト（実験的）",
+    "pt": "Aprimorador de prompts — prompts de sistema (experimental)",
+    "ko": "프롬프트 개선기 — 시스템 프롬프트(실험 기능)"
+  },
+  "settings.tab.enhancerDesc": {
+    "es": "Personaliza el prompt del sistema que usa el LLM local (Qwen2.5-1.5B-Instruct mediante MLX) cuando haces clic en Mejorar. Un prompt editable por motor: FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo y Z-Image Turbo. Las anulaciones guardadas se aplican de inmediato. El contrato impuesto es una salida solo de prompt dentro del límite de longitud de cada motor (sin preámbulo ni explicación), pero la función en sí es experimental.",
+    "zh": "自定义本地 LLM（通过 MLX 运行的 Qwen2.5-1.5B-Instruct）在点击 增强时所使用的系统提示词。每个引擎一个可编辑提示词 —— FLUX.2 Klein、SDXL Lightning、Krea 2 Turbo 和 Z-Image Turbo。保存的覆盖会立即生效。强制约束是在各引擎的长度上限内仅输出提示词（无前言、无解释），但该功能本身仍属实验性。",
+    "ja": "強化をクリックしたときにローカル LLM（MLX 経由の Qwen2.5-1.5B-Instruct）が使うシステムプロンプトをカスタマイズします。エンジンごとに1つ編集可能で、FLUX.2 Klein、SDXL Lightning、Krea 2 Turbo、Z-Image Turbo に対応します。保存した上書きはすぐに反映されます。強制される契約は、各エンジンの文字数上限内でのプロンプトのみの出（前置きも説明もなし）ですが、機能自体は実験的です。",
+    "pt": "Personalize o prompt de sistema que o LLM local (Qwen2.5-1.5B-Instruct via MLX) usa quando você clica em Aprimorar. Um prompt editável por mecanismo — FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo e Z-Image Turbo. As substituições salvas passam a valer imediatamente. O contrato imposto é saída apenas de prompt, dentro do limite de tamanho de cada mecanismo (sem preâmbulo, sem explicação), mas o recurso em si é experimental.",
+    "ko": "개선을 클릭할 때 로컬 LLM(MLX를 통해 실행되는 Qwen2.5-1.5B-Instruct)이 사용하는 시스템 프롬프트를 사용자 지정합니다. 엔진마다 하나씩 편집할 수 있습니다 — FLUX.2 Klein, SDXL Lightning, Krea 2 Turbo, Z-Image Turbo. 저장한 재정의는 즉시 적용됩니다. 강제되는 계약은 각 엔진의 길이 제한 내 프롬프트 전용 출력(서론이나 설명 없음)이며, 기능 자체는 실험 단계입니다."
+  },
+  "settings.section.defaultsTitle": {
+    "es": "Valores predeterminados y personalización",
+    "zh": "默认值与个性化",
+    "ja": "既定値とパーソナライズ",
+    "pt": "Padrões e personalização",
+    "ko": "기본값 및 개인화"
+  },
+  "settings.section.defaultsDesc": {
+    "es": "Preferencias de generación predeterminadas para las imágenes nuevas, además del crédito de autor incrustado en cada resultado.",
+    "zh": "新图像的默认生成偏好，以及嵌入到每个输出中的作者署名。",
+    "ja": "新しい画像の既定の生成設定と、すべての出力に埋め込まれる作者クレジット。",
+    "pt": "Preferências padrão de geração para novas imagens, além do crédito de autor embutido em cada saída.",
+    "ko": "새 이미지에 적용되는 기본 생성 환경설정과 모든 출력에 포함되는 작가 크레딧."
+  },
+  "settings.section.engineTitle": {
+    "es": "Motor y GPU",
+    "zh": "引擎与 GPU",
+    "ja": "エンジンとGPU",
+    "pt": "Motor e GPU",
+    "ko": "엔진 및 GPU"
+  },
+  "settings.section.engineDesc": {
+    "es": "Uso de Metal en vivo, presupuestos de memoria conectada, canalizaciones mflux/SDXL residentes y la cuenta atrás de liberación automática.",
+    "zh": "实时 Metal 使用情况、连线内存预算常驻的 mflux/SDXL 管线，以及空闲自动释放倒计时。",
+    "ja": "Metal のリアルタイム使用量、ワイドメモリ制限、常駐中の mflux/SDXL パイプライン、アイドル時の自動解放までのカウントダウン。",
+    "pt": "Uso de Metal ao vivo, limites de memória conectada, pipelines mflux/SDXL residentes e a contagem para liberação automática.",
+    "ko": "실시간 Metal 사용량, 유선 메모리 한도, 상주 중인 mflux/SDXL 파이프라인, 유휴 시 자동 해제 카운트다운."
+  },
+  "settings.section.workspaceTitle": {
+    "es": "Carpetas de trabajo",
+    "zh": "工作文件夹",
+    "ja": "作業フォルダー",
+    "pt": "Pastas de trabalho",
+    "ko": "작업 폴더"
+  },
+  "settings.section.workspaceDesc": {
+    "es": "Elige dónde viven la galería/configuración y los modelos. Las carpetas se vinculan tal cual; no se copia nada. Es necesario reiniciar.",
+    "zh": "选择图库/设置和模型的存放位置。所选文件夹将按原样链接，不会复制任何内容。需要重启。",
+    "ja": "ギャラリー/設定とモデルの保存先を選択します。フォルダーはそのままリンクされ、コピーは行いません。再起動が必要です。",
+    "pt": "Escolha onde ficam a galeria/configurações e os modelos. As pastas são vinculadas como estão; nada é copiado. Reinício necessário.",
+    "ko": "갤러리/설정과 모델이 저장될 위치를 선택하세요. 폴더는 그대로 연결되며 아무것도 복사되지 않습니다. 재시작이 필요합니다."
+  },
+  "settings.workspace.dataLabel": {
+    "es": "Carpeta de datos",
+    "zh": "数据文件夹",
+    "ja": "データフォルダー",
+    "pt": "Pasta de dados",
+    "ko": "데이터 폴더"
+  },
+  "settings.workspace.dataDesc": {
+    "es": "Galería, configuración, cargas, registro de LoRA y tokens de API.",
+    "zh": "图库、设置、上传、LoRA 注册表和 API 令牌。",
+    "ja": "ギャラリー、設定、アップロード、LoRA レジストリ、API トークン。",
+    "pt": "Galeria, configurações, uploads, registro de LoRA e tokens de API.",
+    "ko": "갤러리, 설정, 업로드, LoRA 레지스트리 및 API 토큰."
+  },
+  "settings.workspace.assetLabel": {
+    "es": "Carpeta de modelos",
+    "zh": "模型文件夹",
+    "ja": "モデルフォルダー",
+    "pt": "Pasta de modelos",
+    "ko": "모델 폴더"
+  },
+  "settings.workspace.assetDesc": {
+    "es": "Pesos de modelos y archivos LoRA.",
+    "zh": "模型权重和 LoRA 文件。",
+    "ja": "モデルの重みと LoRA ファイル。",
+    "pt": "Pesos dos modelos e arquivos LoRA.",
+    "ko": "모델 가중치와 LoRA 파일."
+  },
+  "settings.workspace.current": {
+    "es": "Actual",
+    "zh": "当前",
+    "ja": "現在",
+    "pt": "Atual",
+    "ko": "현재"
+  },
+  "settings.workspace.afterRestart": {
+    "es": "Después de reiniciar",
+    "zh": "重启后",
+    "ja": "再起動後",
+    "pt": "Após reiniciar",
+    "ko": "재시작 후"
+  },
+  "settings.workspace.pending": {
+    "es": "Pendiente",
+    "zh": "待应用",
+    "ja": "保留中",
+    "pt": "Pendente",
+    "ko": "대기 중"
+  },
+  "settings.workspace.choose": {
+    "es": "Elegir carpeta…",
+    "zh": "选择文件夹…",
+    "ja": "フォルダーを選択…",
+    "pt": "Escolher pasta…",
+    "ko": "폴더 선택…"
+  },
+  "settings.workspace.useDefault": {
+    "es": "Usar predeterminada",
+    "zh": "使用默认",
+    "ja": "既定を使用",
+    "pt": "Usar padrão",
+    "ko": "기본값 사용"
+  },
+  "settings.workspace.noCopy": {
+    "es": "No se copia, mueve ni elimina ningún archivo. La carpeta elegida se usa tal cual.",
+    "zh": "不会复制、移动或删除任何文件。所选文件夹将按原样使用。",
+    "ja": "ファイルのコピー、移動、削除は行いません。選択したフォルダーをそのまま使用します。",
+    "pt": "Nenhum arquivo é copiado, movido ou excluído. A pasta escolhida é usada como está.",
+    "ko": "파일을 복사, 이동 또는 삭제하지 않습니다. 선택한 폴더를 그대로 사용합니다."
+  },
+  "settings.workspace.restartRequired": {
+    "es": "Reinicia DiffusionBear para aplicar las nuevas carpetas.",
+    "zh": "重启 DiffusionBear 以应用新文件夹。",
+    "ja": "新しいフォルダーを適用するには DiffusionBear を再起動してください。",
+    "pt": "Reinicie o DiffusionBear para aplicar as novas pastas.",
+    "ko": "새 폴더를 적용하려면 DiffusionBear를 재시작하세요."
+  },
+  "settings.workspace.updated": {
+    "es": "Carpeta de trabajo guardada. Reinicia para aplicar.",
+    "zh": "工作文件夹已保存。重启后生效。",
+    "ja": "作業フォルダーを保存しました。適用するには再起動してください。",
+    "pt": "Pasta de trabalho salva. Reinicie para aplicar.",
+    "ko": "작업 폴더를 저장했습니다. 적용하려면 재시작하세요."
+  },
+  "settings.workspace.resetDone": {
+    "es": "Carpeta predeterminada restaurada. Reinicia para aplicar.",
+    "zh": "已恢复默认文件夹。重启后生效。",
+    "ja": "既定のフォルダーを復元しました。適用するには再起動してください。",
+    "pt": "Pasta padrão restaurada. Reinicie para aplicar.",
+    "ko": "기본 폴더를 복원했습니다. 적용하려면 재시작하세요."
+  },
+  "settings.workspace.pickData": {
+    "es": "Elegir la carpeta de datos",
+    "zh": "选择数据文件夹",
+    "ja": "データフォルダーを選択",
+    "pt": "Escolher a pasta de dados",
+    "ko": "데이터 폴더 선택"
+  },
+  "settings.workspace.pickAsset": {
+    "es": "Elegir la carpeta de modelos",
+    "zh": "选择模型文件夹",
+    "ja": "モデルフォルダーを選択",
+    "pt": "Escolher a pasta de modelos",
+    "ko": "모델 폴더 선택"
+  },
+  "settings.section.modelsTitle": {
+    "es": "Gestión de modelos",
+    "zh": "模型管理",
+    "ja": "モデルの管理",
+    "pt": "Gerenciamento de modelos",
+    "ko": "모델 관리"
+  },
+  "settings.section.samplersTitle": {
+    "es": "Samplers personalizados",
+    "zh": "自定义采样器",
+    "ja": "カスタムサンプラー",
+    "pt": "Samplers personalizados",
+    "ko": "커스텀 샘플러"
+  },
+  "settings.section.samplersDesc": {
+    "es": "Declara tus propios samplers: elige un archivo .py local o descarga uno desde una URL y aparecerá en las opciones avanzadas de la página de generación. Nuestro sampler por defecto sigue presente y seleccionado, no se puede desinstalar y se re-extrae automáticamente si falta o está dañado.",
+    "zh": "声明你自己的采样器：选择本地 .py 文件或从 URL 下载，它会出现在生成页面的高级选项中。默认采样器始终存在并保持选中，无法卸载，缺失或损坏时会自动重新提取。",
+    "ja": "独自のサンプラーを宣言できます: ローカルの .py ファイルを選ぶか URL からダウンロードすると、生成ページの詳細な選択肢に表示されます。既定のサンプラーは常に存在して選択されたままになり、削除はできず、欠落や破損時には自動的に再展開されます。",
+    "pt": "Declare seus próprios samplers: escolha um arquivo .py local ou baixe um a partir de uma URL, e ele aparecerá nas opções avançadas da página de geração. O sampler padrão continua presente e selecionado, não pode ser desinstalado e é reextraído automaticamente se estiver ausente ou danificado.",
+    "ko": "자신만의 샘플러를 선언하세요: 로컬 .py 파일을 선택하거나 URL에서 내려받으면 생성 페이지의 고급 선택지에 표시됩니다. 기본 샘플러는 항상 존재하고 선택된 상태로 유지되며, 제거할 수 없고, 없거나 손상된 경우 자동으로 다시 추출됩니다."
+  },
+  "settings.samplers.desc": {
+    "es": "El archivo .py debe exponer un dict SAMPLER con clases por motor (mflux: BaseScheduler; sdxl: protocolo set_timesteps/step; moss: subclase de MOSSImageScheduler). El código se ejecuta localmente: instala solo fuentes de confianza.",
+    "zh": "该 .py 文件必须暴露一个 SAMPLER 字典，包含各引擎的类（mflux: BaseScheduler；sdxl: set_timesteps/step 协议；moss: MOSSImageScheduler 子类）。代码在本地运行：只安装你信任的来源。",
+    "ja": ".py ファイルはエンジンごとのクラスを含む SAMPLER 辞書を公開する必要があります (mflux: BaseScheduler、sdxl: set_timesteps/step プロトコル、moss: MOSSImageScheduler のサブクラス)。コードはローカルで実行されます: 信頼できるソースのみインストールしてください。",
+    "pt": "O arquivo .py deve expor um dict SAMPLER com classes por motor (mflux: BaseScheduler; sdxl: protocolo set_timesteps/step; moss: subclasse de MOSSImageScheduler). O código roda localmente: instale apenas fontes de confiança.",
+    "ko": ".py 파일은 엔진별 클래스를 포함한 SAMPLER 딕셔너리를 노출해야 합니다 (mflux: BaseScheduler, sdxl: set_timesteps/step 프로토콜, moss: MOSSImageScheduler 서브클래스). 코드는 로컬에서 실행됩니다: 신뢰할 수 있는 출처만 설치하세요."
+  },
+  "settings.samplers.urlPlaceholder": {
+    "es": "https://…/mi_sampler.py",
+    "zh": "https://…/my_sampler.py",
+    "ja": "https://…/my_sampler.py",
+    "pt": "https://…/meu_sampler.py",
+    "ko": "https://…/my_sampler.py"
+  },
+  "settings.samplers.pickFile": {
+    "es": "Elegir un archivo .py…",
+    "zh": "选择 .py 文件…",
+    "ja": ".py ファイルを選択…",
+    "pt": "Escolher um arquivo .py…",
+    "ko": ".py 파일 선택…"
+  },
+  "settings.samplers.pickTitle": {
+    "es": "Seleccionar un sampler",
+    "zh": "选择采样器",
+    "ja": "サンプラーを選択",
+    "pt": "Selecionar um sampler",
+    "ko": "샘플러 선택"
+  },
+  "settings.samplers.namePlaceholder": {
+    "es": "nombre (opcional)",
+    "zh": "名称（可选）",
+    "ja": "名前（任意）",
+    "pt": "nome (opcional)",
+    "ko": "이름(선택 사항)"
+  },
+  "settings.samplers.install": {
+    "es": "Instalar",
+    "zh": "安装",
+    "ja": "インストール",
+    "pt": "Instalar",
+    "ko": "설치"
+  },
+  "settings.samplers.installing": {
+    "es": "Instalando…",
+    "zh": "正在安装……",
+    "ja": "インストール中…",
+    "pt": "A instalar…",
+    "ko": "설치 중…"
+  },
+  "settings.samplers.installed": {
+    "es": "Sampler {name} instalado ({engines})",
+    "zh": "采样器 {name} 已安装（{engines}）",
+    "ja": "サンプラー {name} をインストールしました（{engines}）",
+    "pt": "Sampler {name} instalado ({engines})",
+    "ko": "샘플러 {name} 설치됨({engines})"
+  },
+  "settings.samplers.removed": {
+    "es": "Sampler {name} eliminado",
+    "zh": "采样器 {name} 已移除",
+    "ja": "サンプラー {name} を削除しました",
+    "pt": "Sampler {name} removido",
+    "ko": "샘플러 {name} 제거됨"
+  },
+  "settings.samplers.empty": {
+    "es": "No hay samplers personalizados declarados.",
+    "zh": "没有已声明的自定义采样器。",
+    "ja": "カスタムサンプラーは宣言されていません。",
+    "pt": "Nenhum sampler personalizado declarado.",
+    "ko": "선언된 커스텀 샘플러가 없습니다."
+  },
+  "settings.samplers.protected": {
+    "es": "por defecto",
+    "zh": "默认",
+    "ja": "デフォルト",
+    "pt": "padrão",
+    "ko": "기본"
+  },
+  "settings.samplers.protectedTitle": {
+    "es": "Parte del pack por defecto: no se puede desinstalar, se restaura automáticamente.",
+    "zh": "属于默认包：无法卸载，自动恢复。",
+    "ja": "既定パックの一部です: 削除はできず、自動的に復元されます。",
+    "pt": "Parte do pacote padrão: não pode ser desinstalado e é restaurado automaticamente.",
+    "ko": "기본 팩의 일부입니다: 제거할 수 없으며 자동으로 복원됩니다."
+  },
+  "settings.samplers.broken": {
+    "es": "archivo ausente o modificado",
+    "zh": "文件缺失或被修改",
+    "ja": "ファイルが欠落または変更されています",
+    "pt": "arquivo ausente ou modificado",
+    "ko": "파일 없음 또는 수정됨"
+  },
+  "settings.samplers.remove": {
+    "es": "Quitar",
+    "zh": "移除",
+    "ja": "削除",
+    "pt": "Remover",
+    "ko": "제거"
+  },
+  "settings.samplers.defaultHint": {
+    "es": "Krea 2 Turbo rechaza schedulers externos: los samplers personalizados quedan desactivados ahí.",
+    "zh": "Krea 2 Turbo 拒绝外部调度器：自定义采样器在该处不可用。",
+    "ja": "Krea 2 Turbo は外部スケジューラを拒否します: カスタムサンプラーはそこで無効のままです。",
+    "pt": "Krea 2 Turbo rejeita schedulers externos: os samplers personalizados ficam desativados aí.",
+    "ko": "Krea 2 Turbo는 외부 스케줄러를 거부합니다: 커스텀 샘플러는 사용할 수 없습니다."
+  },
+  "settings.samplers.kreaHint": {
+    "es": "Un sampler dañado vuelve al predeterminado del motor (la generación nunca falla por él).",
+    "zh": "损坏的采样器会回退到引擎默认值（生成绝不会因此失败）。",
+    "ja": "壊れたサンプラーはエンジンの既定値にフォールバックします（生成が失敗することはありません）。",
+    "pt": "Um sampler danificado volta para o padrão do motor (a geração nunca falha por causa dele).",
+    "ko": "손상된 샘플러는 엔진 기본값으로 대체됩니다(생성이 실패하지 않습니다)."
+  },
+  "settings.section.modelsDesc": {
+    "es": "Estado de instalación y espacio en disco de cada motor. Elimina pesos para liberar espacio; se vuelven a descargar bajo demanda.",
+    "zh": "每个引擎的安装状态和磁盘占用。删除权重可释放空间，需要时会重新下载。",
+    "ja": "各エンジンのインストール状況とディスク使用量。重みを削除して空き容量を確保できます。必要に応じて再ダウンロードされます。",
+    "pt": "Status de instalação e espaço em disco de cada motor. Remova os pesos para liberar espaço; eles são baixados novamente sob demanda.",
+    "ko": "각 엔진의 설치 상태와 디스크 사용량. 가중치를 삭제하여 공간을 확보할 수 있으며, 필요할 때 다시 다운로드됩니다."
+  },
+  "settings.section.queueTitle": {
+    "es": "Cola y trabajos pendientes",
+    "zh": "队列与待处理任务",
+    "ja": "キューと保留中のジョブ",
+    "pt": "Fila e trabalhos pendentes",
+    "ko": "대기열 및 대기 중인 작업"
+  },
+  "settings.section.queueDesc": {
+    "es": "Observa la cola de generación y vuelve a encolar los prompts que se interrumpieron o cancelaron.",
+    "zh": "查看生成队列，并将被中断或取消的提示词重新排队。",
+    "ja": "生成キューを確認し、中断・キャンセルされたプロンプトを再キューに追加します。",
+    "pt": "Acompanhe a fila de geração e recoloque na fila os prompts que foram interrompidos ou cancelados.",
+    "ko": "생성 대기열을 확인하고 중단되었거나 취소된 프롬프트를 다시 대기열에 추가합니다."
+  },
+  "settings.section.storageTitle": {
+    "es": "Almacenamiento",
+    "zh": "存储",
+    "ja": "ストレージ",
+    "pt": "Armazenamento",
+    "ko": "저장 공간"
+  },
+  "settings.section.storageDesc": {
+    "es": "Qué hay en el disco y qué lo ocupa. Solo lectura: este panel nunca borra nada ni marca nada como recuperable.",
+    "zh": "磁盘上有哪些内容以及各占多少空间。只读：此面板不会删除任何内容，也不会将任何内容标记为可回收。",
+    "ja": "ディスク上にあるものと、その内訳。只読です。このパネルは何も削除せず、再利用可能としてマークすることもありません。",
+    "pt": "O que está no disco e o que ocupa cada item. Somente leitura: este painel nunca exclui nada nem marca nada como recuperável.",
+    "ko": "디스크에 있는 항목과 각각의 사용량입니다. 읽기 전용으로, 이 패널은 무엇도 삭제하지 않으며 재사용 가능으로 표시하지도 않습니다."
+  },
+  "settings.section.hfCacheTitle": {
+    "es": "Caché de Hugging Face",
+    "zh": "Hugging Face 缓存",
+    "ja": "Hugging Face キャッシュ",
+    "pt": "Cache do Hugging Face",
+    "ko": "Hugging Face 캐시"
+  },
+  "settings.section.hfCacheDesc": {
+    "es": "Copia local de cada repositorio de modelos descargado. Borra entradas para recuperar espacio en disco.",
+    "zh": "每个已下载模型仓库的本地副本。清除条目可释放磁盘空间。",
+    "ja": "ダウンロード済みの各モデルリポジトリのローカルコピー。エントリを削除するとディスク容量を回収できます。",
+    "pt": "Cópia local de cada repositório de modelo baixado. Limpe entradas para recuperar espaço em disco.",
+    "ko": "다운로드된 각 모델 저장소의 로컬 복사본. 항목을 지우면 디스크 공간을 회수할 수 있습니다."
+  },
+  "settings.section.secretsTitle": {
+    "es": "Gestión de secretos",
+    "zh": "凭据管理",
+    "ja": "機密情報の管理",
+    "pt": "Gerenciamento de segredos",
+    "ko": "비밀 정보 관리"
+  },
+  "settings.section.secretsDescBefore": {
+    "es": "Las claves de API y los tokens los guarda el backend en archivos locales dentro de",
+    "zh": "API 密钥和令牌由后端保存到本地文件，位置为",
+    "ja": "API キーとトークンはバックエンドが以下のローカルファイルに保存します：",
+    "pt": "As chaves de API e os tokens são salvos pelo backend em arquivos locais em",
+    "ko": "API 키와 토큰은 백엔드가 다음 위치의 로컬 파일에 저장합니다:"
+  },
+  "settings.section.secretsDescAfter": {
+    "es": "por ejemplo",
+    "zh": "例如",
+    "ja": "例：",
+    "pt": "por exemplo",
+    "ko": "예:"
+  },
+  "settings.section.secretsDescTail": {
+    "es": "Nunca se envían a los clientes del navegador, nunca se registran en el registro y la API nunca las expone: solo se usan en el servidor para autenticar las peticiones salientes a Civitai / Hugging Face.",
+    "zh": "它们绝不会发送给浏览器客户端，绝不会写入日志，API 也绝不暴露它们 —— 仅在服务端用于向 Civitai / Hugging Face 发出请求时进行身份验证。",
+    "ja": "ブラウザのクライアントには一切送信されず、ログにも記録されず、APIからも公開されません。サーバー上で Civitai / Hugging Face への外向きリクエストを認証するためにのみ使用されます。",
+    "pt": "Nunca são enviadas aos clientes do navegador, nunca são registradas em log e nunca são expostas pela API — são usadas apenas no servidor para autenticar as requisições de saída para Civitai / Hugging Face.",
+    "ko": "브라우저 클라이언트로 전송되지 않고, 로그에 남지 않으며, API로 노출되지도 않습니다. 서버에서 Civitai / Hugging Face로 나가는 요청을 인증하는 데에만 사용됩니다."
+  },
+  "settings.queue.tokenFallback": {
+    "es": "Nota: los repositorios de Hugging Face con acceso restringido también recurren al token guardado en",
+    "zh": "注意：受限的 Hugging Face 仓库也会使用保存在以下位置的令牌：",
+    "ja": "注意：ゲート制限のある Hugging Face リポジトリも以下の保存済みトークンを使用します：",
+    "pt": "Observação: repositórios do Hugging Face com restrição também usam o token salvo em",
+    "ko": "참고: 접근이 제한된 Hugging Face 저장소도 다음 위치에 저장된 토큰을 사용합니다:"
+  },
+  "settings.defaults.artistCredit": {
+    "es": "Crédito de autor",
+    "zh": "作者署名",
+    "ja": "作者クレジット",
+    "pt": "Crédito do autor",
+    "ko": "작가 크레딧"
+  },
+  "settings.defaults.artistHint": {
+    "es": "Incrustado en los metadatos EXIF / Civitai de cada imagen generada. Si se deja vacío se usa «DiffusionBear».",
+    "zh": "嵌入到每张生成图像的 EXIF / Civitai 元数据中。留空则使用“DiffusionBear”。",
+    "ja": "生成されたすべての画像の EXIF / Civitai メタデータに埋め込まれます。空の場合は「DiffusionBear」が使われます。",
+    "pt": "Incrustado nos metadados EXIF / Civitai de cada imagem gerada. Se vazio, usa \"DiffusionBear\".",
+    "ko": "생성된 모든 이미지의 EXIF / Civitai 메타데이터에 포함됩니다. 비워 두면 \"DiffusionBear\"을 사용합니다."
+  },
+  "settings.defaults.saveArtist": {
+    "es": "Guardar autor",
+    "zh": "保存作者",
+    "ja": "作者を保存",
+    "pt": "Salvar autor",
+    "ko": "작가 저장"
+  },
+  "settings.defaults.outputFormat": {
+    "es": "Formato de salida predeterminado",
+    "zh": "默认输出格式",
+    "ja": "既定の出力形式",
+    "pt": "Formato de saída padrão",
+    "ko": "기본 출력 형식"
+  },
+  "settings.defaults.formatPng": {
+    "es": "PNG (sin pérdidas)",
+    "zh": "PNG（无损）",
+    "ja": "PNG（可逆圧縮）",
+    "pt": "PNG (sem perdas)",
+    "ko": "PNG(무손실)"
+  },
+  "settings.defaults.formatJpeg": {
+    "es": "JPEG (más ligero)",
+    "zh": "JPEG（体积更小）",
+    "ja": "JPEG（小さい）",
+    "pt": "JPEG (menor)",
+    "ko": "JPEG(더 작음)"
+  },
+  "settings.defaults.stealth": {
+    "es": "Stealth predeterminado (sin metadatos)",
+    "zh": "默认隐身（不写入元数据）",
+    "ja": "既定でステルス（メタデータなし）",
+    "pt": "Stealth padrão (sem metadados)",
+    "ko": "기본 스텔스(메타데이터 없음)"
+  },
+  "settings.defaults.saveOutput": {
+    "es": "Guardar preferencias de salida",
+    "zh": "保存输出偏好",
+    "ja": "出力設定を保存",
+    "pt": "Salvar preferências de saída",
+    "ko": "출력 환경설정 저장"
+  },
+  "settings.defaults.globalFallbacks": {
+    "es": "Valores de respaldo globales",
+    "zh": "全局回退值",
+    "ja": "グローバルな既定値",
+    "pt": "Padrões globais",
+    "ko": "전역 기본값"
+  },
+  "settings.defaults.globalHint": {
+    "es": "Se aplican solo cuando un modelo no tiene un valor explícito propio. Fast-VAE (TAESD/TAEF) sacrifica algo de fidelidad a cambio de una decodificación VAE mucho más rápida.",
+    "zh": "仅当模型没有明确的单模型覆盖值时才使用。Fast-VAE（TAESD/TAEF）牺牲少量保真度，换取快得多的 VAE 解码。",
+    "ja": "モデルに明示的な個別設定がない場合のみ適用されます。Fast-VAE（TAESD/TAEF）はわずかに忠実度を犠牲にして、VAE デコードを大きく高速化します。",
+    "pt": "Aplicados apenas quando um modelo não tem uma substituição explícita própria. Fast-VAE (TAESD/TAEF) troca um pouco de fidelidade por uma decodificação de VAE muito mais rápida.",
+    "ko": "모델에 명시적인 개별 재정의가 없을 때만 적용됩니다. Fast-VAE(TAESD/TAEF)는 약간의 충실도를 양보하는 대신 VAE 디코딩을 훨씬 빠르게 만듭니다."
+  },
+  "settings.defaults.defaultSampler": {
+    "es": "Muestreador predeterminado",
+    "zh": "默认采样器",
+    "ja": "既定のサンプラー",
+    "pt": "Amostrador padrão",
+    "ko": "기본 샘플러"
+  },
+  "settings.defaults.modelDefaultOption": {
+    "es": "(predeterminado del modelo)",
+    "zh": "（模型默认值）",
+    "ja": "（モデルの既定値）",
+    "pt": "(padrão do modelo)",
+    "ko": "(모델 기본값)"
+  },
+  "settings.defaults.deepCacheInterval": {
+    "es": "Intervalo de DeepCache en SDXL",
+    "zh": "SDXL DeepCache 间隔",
+    "ja": "SDXL DeepCache の間隔",
+    "pt": "Intervalo do DeepCache no SDXL",
+    "ko": "SDXL DeepCache 간격"
+  },
+  "settings.defaults.fastVae": {
+    "es": "VAE rápida (todos los motores)",
+    "zh": "快速 VAE（所有引擎）",
+    "ja": "高速VAE（すべてのエンジン）",
+    "pt": "VAE rápida (todos os motores)",
+    "ko": "빠른 VAE(모든 엔진)"
+  },
+  "settings.defaults.saveGlobal": {
+    "es": "Guardar los valores globales",
+    "zh": "保存全局默认值",
+    "ja": "グローバル既定値を保存",
+    "pt": "Salvar padrões globais",
+    "ko": "전역 기본값 저장"
+  },
+  "settings.defaults.perModelTitle": {
+    "es": "Valores predeterminados por modelo",
+    "zh": "按模型的默认值",
+    "ja": "モデルごとの既定値",
+    "pt": "Padrões por modelo",
+    "ko": "모델별 기본값"
+  },
+  "settings.defaults.perModelHint": {
+    "es": "Se cargan automáticamente al cambiar de modelo en el formulario Generar. Deja un campo en blanco o a 0 para conservar el valor integrado del modelo.",
+    "zh": "在“生成”表单中切换模型时会自动加载。留空或填 0 则保留模型自带值。",
+    "ja": "生成フォームでモデルを切り替えると自動的に読み込まれます。フィールドを空欄または 0 のままにすると、モデルに組み込まれた値を維持します。",
+    "pt": "Carregados automaticamente ao trocar de modelo no formulário Gerar. Deixe um campo em branco ou 0 para manter o valor embutido do modelo.",
+    "ko": "생성 양식에서 모델을 전환할 때 자동으로 로드됩니다. 필드를 비워 두거나 0으로 두면 모델에 내장된 값을 유지합니다."
+  },
+  "settings.defaults.customBadge": {
+    "es": "personalizado",
+    "zh": "自定义",
+    "ja": "カスタム",
+    "pt": "personalizado",
+    "ko": "사용자 지정"
+  },
+  "settings.defaults.steps": {
+    "es": "Pasos",
+    "zh": "步数",
+    "ja": "ステップ",
+    "pt": "Passos",
+    "ko": "스텝"
+  },
+  "settings.defaults.guidance": {
+    "es": "Guía",
+    "zh": "引导强度",
+    "ja": "ガイダンス",
+    "pt": "Orientação",
+    "ko": "가이던스"
+  },
+  "settings.defaults.sampler": {
+    "es": "Muestreador",
+    "zh": "采样器",
+    "ja": "サンプラー",
+    "pt": "Amostrador",
+    "ko": "샘플러"
+  },
+  "settings.defaults.defaultOption": {
+    "es": "(predeterminado)",
+    "zh": "（默认）",
+    "ja": "（既定）",
+    "pt": "(padrão)",
+    "ko": "(기본값)"
+  },
+  "settings.defaults.deepCacheSdxl": {
+    "es": "DeepCache (SDXL)",
+    "zh": "DeepCache（SDXL）",
+    "ja": "DeepCache（SDXL）",
+    "pt": "DeepCache (SDXL)",
+    "ko": "DeepCache(SDXL)"
+  },
+  "settings.defaults.fastVaeShort": {
+    "es": "Fast-VAE",
+    "zh": "Fast-VAE",
+    "ja": "Fast-VAE",
+    "pt": "Fast-VAE",
+    "ko": "Fast-VAE"
+  },
+  "settings.defaults.width": {
+    "es": "Ancho",
+    "zh": "宽度",
+    "ja": "幅",
+    "pt": "Largura",
+    "ko": "너비"
+  },
+  "settings.defaults.height": {
+    "es": "Altura",
+    "zh": "高度",
+    "ja": "高さ",
+    "pt": "Altura",
+    "ko": "높이"
+  },
+  "settings.defaults.defaultPlaceholder": {
+    "es": "predeterminado",
+    "zh": "默认",
+    "ja": "既定",
+    "pt": "padrão",
+    "ko": "기본값"
+  },
+  "settings.defaults.saveForModel": {
+    "es": "Guardar los valores de este modelo",
+    "zh": "保存此模型的默认值",
+    "ja": "このモデルの既定値を保存",
+    "pt": "Salvar os padrões deste modelo",
+    "ko": "이 모델의 기본값 저장"
+  },
+  "settings.defaults.resetFeedback": {
+    "es": "Valores del modelo restablecidos",
+    "zh": "已重置模型默认值",
+    "ja": "モデルの既定値をリセットしました",
+    "pt": "Padrões do modelo redefinidos",
+    "ko": "모델 기본값이 초기화되었습니다"
+  },
+  "settings.defaults.resetBuiltin": {
+    "es": "Restablecer a los valores integrados",
+    "zh": "恢复为内置值",
+    "ja": "組み込み値にリセット",
+    "pt": "Redefinir para os valores embutidos",
+    "ko": "내장 값으로 초기화"
+  },
+  "settings.defaults.savedFeedback": {
+    "es": "Preferencias guardadas",
+    "zh": "偏好已保存",
+    "ja": "設定を保存しました",
+    "pt": "Preferências salvas",
+    "ko": "환경설정이 저장되었습니다"
+  },
+  "settings.engine.tuningNumbersError": {
+    "es": "Todos los valores de ajuste deben ser números (0 desactiva).",
+    "zh": "所有调优值必须是数字（0 表示禁用）。",
+    "ja": "チューニング値はすべて数値である必要があります（0 は無効化）。",
+    "pt": "Todos os valores de ajuste devem ser números (0 desativa).",
+    "ko": "모든 조정 값은 숫자여야 합니다(0은 비활성화)."
+  },
+  "settings.engine.tuningRangeError": {
+    "es": "Los valores deben ser ≥ 0.",
+    "zh": "数值必须 ≥ 0。",
+    "ja": "値は 0 以上である必要があります。",
+    "pt": "Os valores devem ser ≥ 0.",
+    "ko": "값은 0 이상이어야 합니다."
+  },
+  "settings.engine.loading": {
+    "es": "Cargando el estado del motor…",
+    "zh": "正在加载引擎状态……",
+    "ja": "エンジンの状態を読み込み中…",
+    "pt": "Carregando o status do motor…",
+    "ko": "엔진 상태를 불러오는 중…"
+  },
+  "settings.engine.metalCard": {
+    "es": "Metal / GPU",
+    "zh": "Metal / GPU",
+    "ja": "Metal / GPU",
+    "pt": "Metal / GPU",
+    "ko": "Metal / GPU"
+  },
+  "settings.engine.gaugeGpu": {
+    "es": "GPU",
+    "zh": "GPU",
+    "ja": "GPU",
+    "pt": "GPU",
+    "ko": "GPU"
+  },
+  "settings.engine.gaugeMemory": {
+    "es": "Memoria",
+    "zh": "内存",
+    "ja": "メモリ",
+    "pt": "Memória",
+    "ko": "메모리"
+  },
+  "settings.engine.gaugeMaxWorkingSet": {
+    "es": "Conjunto de trabajo máx.",
+    "zh": "最大工作集",
+    "ja": "最大ワーキングセット",
+    "pt": "Conjunto de trabalho máx.",
+    "ko": "최대 작업 세트"
+  },
+  "settings.engine.gaugePeakMemory": {
+    "es": "Memoria máxima",
+    "zh": "峰值内存",
+    "ja": "ピークメモリ",
+    "pt": "Memória de pico",
+    "ko": "최대 메모리"
+  },
+  "settings.engine.peakMemoryTitle": {
+    "es": "Máxima memoria conectada alcanzada en esta sesión",
+    "zh": "本次会话达到的连线内存峰值",
+    "ja": "このセッションで到達したワイドメモリの最大値",
+    "pt": "Maior memória conectada atingida nesta sessão",
+    "ko": "이번 세션에서 도달한 최대 유선 메모리"
+  },
+  "settings.engine.gaugeCache": {
+    "es": "Caché",
+    "zh": "缓存",
+    "ja": "キャッシュ",
+    "pt": "Cache",
+    "ko": "캐시"
+  },
+  "settings.engine.cacheTitle": {
+    "es": "caché del asignador de mlx",
+    "zh": "mlx 分配器缓存",
+    "ja": "mlx アロケーターのキャッシュ",
+    "pt": "cache do alocador do mlx",
+    "ko": "mlx 할당기 캐시"
+  },
+  "settings.engine.gaugeWiredLimit": {
+    "es": "Límite conectado",
+    "zh": "连线内存上限",
+    "ja": "ワイドメモリ上限",
+    "pt": "Limite conectado",
+    "ko": "유선 메모리 한도"
+  },
+  "settings.engine.gaugeKreaWired": {
+    "es": "krea2 conectado",
+    "zh": "krea2 连线内存",
+    "ja": "krea2 ワイドメモリ",
+    "pt": "krea2 conectado",
+    "ko": "krea2 유선 메모리"
+  },
+  "settings.engine.unbounded": {
+    "es": "sin límite",
+    "zh": "无限制",
+    "ja": "無制限",
+    "pt": "sem limite",
+    "ko": "무제한"
+  },
+  "settings.engine.mfluxCard": {
+    "es": "Canalizaciones de mflux",
+    "zh": "mflux 管线",
+    "ja": "mflux パイプライン",
+    "pt": "Pipelines do mflux",
+    "ko": "mflux 파이프라인"
+  },
+  "settings.engine.modelFallback": {
+    "es": "modelo",
+    "zh": "模型",
+    "ja": "モデル",
+    "pt": "modelo",
+    "ko": "모델"
+  },
+  "settings.engine.residentInMemory": {
+    "es": "residente en la memoria unificada",
+    "zh": "常驻于统一内存",
+    "ja": "ユニファイドメモリに常駐",
+    "pt": "residente na memória unificada",
+    "ko": "통합 메모리에 상주"
+  },
+  "settings.engine.autoReleaseIn": {
+    "es": "liberación automática en {time}",
+    "zh": "{time} 后自动释放",
+    "ja": "{time} 後に自動解放",
+    "pt": "liberação automática em {time}",
+    "ko": "{time} 후 자동 해제"
+  },
+  "settings.engine.noPipelineResident": {
+    "es": "Ninguna canalización residente (recarga en frío en la próxima generación)",
+    "zh": "没有常驻管线（下次生成时冷加载）",
+    "ja": "常駐中のパイプラインなし（次回の生成でコールドロード）",
+    "pt": "Nenhum pipeline residente (recarregamento a frio na próxima geração)",
+    "ko": "상주 중인 파이프라인 없음(다음 생성 시 콜드 로드)"
+  },
+  "settings.engine.gaugeIdlePolicy": {
+    "es": "Política de inactividad",
+    "zh": "空闲策略",
+    "ja": "アイドル方針",
+    "pt": "Política de inatividade",
+    "ko": "유휴 정책"
+  },
+  "settings.engine.gaugePromptCache": {
+    "es": "Caché de prompts",
+    "zh": "提示词缓存",
+    "ja": "プロンプトキャッシュ",
+    "pt": "Cache de prompts",
+    "ko": "프롬프트 캐시"
+  },
+  "settings.engine.gaugeWatchdog": {
+    "es": "Vigilante",
+    "zh": "看门狗",
+    "ja": "ウォッチドッグ",
+    "pt": "Watchdog",
+    "ko": "워치독"
+  },
+  "settings.engine.armed": {
+    "es": "armado",
+    "zh": "已启用",
+    "ja": "復帰中",
+    "pt": "armado",
+    "ko": "준비됨"
+  },
+  "settings.engine.cold": {
+    "es": "en frío",
+    "zh": "冷态",
+    "ja": "コールド",
+    "pt": "a frio",
+    "ko": "콜드"
+  },
+  "settings.engine.sdxlCard": {
+    "es": "Demonio de SDXL",
+    "zh": "SDXL 守护进程",
+    "ja": "SDXL デーモン",
+    "pt": "Daemon do SDXL",
+    "ko": "SDXL 데몬"
+  },
+  "settings.engine.engineFallback": {
+    "es": "motor",
+    "zh": "引擎",
+    "ja": "エンジン",
+    "pt": "motor",
+    "ko": "엔진"
+  },
+  "settings.engine.alive": {
+    "es": "activo",
+    "zh": "运行中",
+    "ja": "稼働中",
+    "pt": "ativo",
+    "ko": "활성"
+  },
+  "settings.engine.daemonNotRunning": {
+    "es": "Demonio no en marcha (se inicia bajo demanda)",
+    "zh": "守护进程未运行（按需启动）",
+    "ja": "デーモン未稼働（必要時に起動します）",
+    "pt": "Daemon não em execução (iniciado sob demanda)",
+    "ko": "데몬이 실행 중이 아님(필요할 때 시작됨)"
+  },
+  "settings.engine.hideDaemonLog": {
+    "es": "Ocultar el registro del demonio",
+    "zh": "隐藏守护进程日志",
+    "ja": "デーモンログを隠す",
+    "pt": "Ocultar o log do daemon",
+    "ko": "데몬 로그 숨기기"
+  },
+  "settings.engine.showDaemonLog": {
+    "es": "Final del registro del demonio",
+    "zh": "守护进程日志末尾",
+    "ja": "デーモンログの末尾",
+    "pt": "Final do log do daemon",
+    "ko": "데몬 로그 끝부분"
+  },
+  "settings.engine.tuningCard": {
+    "es": "Ajuste del tiempo de ejecución",
+    "zh": "运行时调优",
+    "ja": "ランタイムチューニング",
+    "pt": "Ajuste do runtime",
+    "ko": "런타임 조정"
+  },
+  "settings.engine.tuningNote": {
+    "es": "Los valores guardados se aplican en la siguiente generación (o en la siguiente rearmación por inactividad) sin reiniciar nada.",
+    "zh": "保存的值会在下次生成（或下次空闲重新启用）时生效，无需重启任何组件。",
+    "ja": "保存した値は、次回の生成時（または次回のアイドル復帰時）に適用され、再起動は不要です。",
+    "pt": "Os valores salvos entram em vigor na próxima geração (ou no próximo rearme por inatividade), sem reiniciar nada.",
+    "ko": "저장한 값은 다음 생성(또는 다음 유휴 재활성화) 시 적용되며, 재시작이 필요 없습니다."
+  },
+  "settings.engine.tuneWired": {
+    "es": "Límite conectado",
+    "zh": "连线内存上限",
+    "ja": "ワイドメモリ上限",
+    "pt": "Limite conectado",
+    "ko": "유선 메모리 한도"
+  },
+  "settings.engine.tuneWiredTitle": {
+    "es": "Límite de memoria conectada del asignador de Metal para FLUX.2 / SDXL (MLX_WIRED_LIMIT_GB). 0 = sin límite.",
+    "zh": "FLUX.2 / SDXL 的 Metal 分配器连线内存上限（MLX_WIRED_LIMIT_GB）。0 = 无限制。",
+    "ja": "FLUX.2 / SDXL の Metal アロケーターのワイドメモリ上限（MLX_WIRED_LIMIT_GB）。0 = 無制限。",
+    "pt": "Limite de memória conectada do alocador do Metal para FLUX.2 / SDXL (MLX_WIRED_LIMIT_GB). 0 = sem limite.",
+    "ko": "FLUX.2 / SDXL의 Metal 할당기 유선 메모리 한도(MLX_WIRED_LIMIT_GB). 0 = 무제한."
+  },
+  "settings.engine.tuneKrea": {
+    "es": "krea2 conectado",
+    "zh": "krea2 连线内存",
+    "ja": "krea2 ワイドメモリ",
+    "pt": "krea2 conectado",
+    "ko": "krea2 유선 메모리"
+  },
+  "settings.engine.tuneKreaTitle": {
+    "es": "Presupuesto de memoria conectada de krea2 (13B q4) (MLX_KREA_WIRED_LIMIT_GB). 0 = sin límite.",
+    "zh": "krea2（13B q4）的连线内存预算（MLX_KREA_WIRED_LIMIT_GB）。0 = 无限制。",
+    "ja": "krea2（13B q4）のワイドメモリ予算（MLX_KREA_WIRED_LIMIT_GB）。0 = 無制限。",
+    "pt": "Orçamento de memória conectada do krea2 (13B q4) (MLX_KREA_WIRED_LIMIT_GB). 0 = sem limite.",
+    "ko": "krea2(13B q4) 유선 메모리 예산(MLX_KREA_WIRED_LIMIT_GB). 0 = 무제한."
+  },
+  "settings.engine.tuneMfluxIdle": {
+    "es": "inactividad de mflux",
+    "zh": "mflux 空闲",
+    "ja": "mflux アイドル",
+    "pt": "inatividade do mflux",
+    "ko": "mflux 유휴"
+  },
+  "settings.engine.tuneMfluxIdleTitle": {
+    "es": "Segundos de inactividad antes de liberar automáticamente la canalización de mflux. 0 = mantenerla residente.",
+    "zh": "自动释放 mflux 管线前的空闲秒数。0 = 保持常驻。",
+    "ja": "mflux パイプラインを自動解放するまでのアイドル秒数。0 = 常駐を維持。",
+    "pt": "Segundos de inatividade antes de liberar o pipeline do mflux. 0 = manter residente.",
+    "ko": "mflux 파이프라인을 자동 해제하기 전 유휴 시간(초). 0 = 상주 유지."
+  },
+  "settings.engine.tuneSdxlIdle": {
+    "es": "inactividad de sdxl",
+    "zh": "sdxl 空闲",
+    "ja": "sdxl アイドル",
+    "pt": "inatividade do sdxl",
+    "ko": "sdxl 유휴"
+  },
+  "settings.engine.tuneSdxlIdleTitle": {
+    "es": "Segundos de inactividad antes de cerrar el demonio de SDXL. 0 = mantenerlo activo.",
+    "zh": "关闭 SDXL 守护进程前的空闲秒数。0 = 保持运行。",
+    "ja": "SDXL デーモンを終了するまでのアイドル秒数。0 = 稼働を維持。",
+    "pt": "Segundos de inatividade antes de encerrar o daemon do SDXL. 0 = manter ativo.",
+    "ko": "SDXL 데몬을 종료하기 전 유휴 시간(초). 0 = 활성 유지."
+  },
+  "settings.engine.tuneQwenIdle": {
+    "es": "inactividad de qwen",
+    "zh": "qwen 空闲",
+    "ja": "qwen アイドル",
+    "pt": "inatividade do qwen",
+    "ko": "qwen 유휴"
+  },
+  "settings.engine.tuneQwenIdleTitle": {
+    "es": "Segundos de inactividad antes de cerrar el demonio de Qwen. 0 = mantenerlo activo.",
+    "zh": "关闭 Qwen 守护进程前的空闲秒数。0 = 保持运行。",
+    "ja": "Qwen デーモンを終了するまでのアイドル秒数。0 = 稼働を維持。",
+    "pt": "Segundos de inatividade antes de encerrar o daemon do Qwen. 0 = manter ativo.",
+    "ko": "Qwen 데몬을 종료하기 전 유휴 시간(초). 0 = 활성 유지."
+  },
+  "settings.engine.tuneCacheMode": {
+    "es": "Memoria Metal",
+    "zh": "Metal 内存",
+    "ja": "Metal メモリ",
+    "pt": "Memória Metal",
+    "ko": "Metal 메모리"
+  },
+  "settings.engine.tuneCacheModeTitle": {
+    "es": "Equilibrado: caché Metal limitada durante la generación, picos más bajos pero más lento (SDXL aprox. +27 %). Rápido: sin límite, más rápido pero con picos de memoria más altos. La caché se vacía tras cada generación en ambos modos.",
+    "zh": "均衡：生成期间限制 Metal 缓存，峰值更低但更慢（SDXL 约 +27%）。快速：不限制，更快但内存峰值更高。两种模式下每次生成后都会清空缓存。",
+    "ja": "バランス：生成中は Metal キャッシュを制限し、ピークは低いが遅くなります（SDXL で約 +27%）。高速：制限なし、速いがメモリのピークが高くなります。どちらのモードでも生成ごとにキャッシュを解放します。",
+    "pt": "Equilibrado: cache Metal limitado durante a geração, picos menores mas mais lento (SDXL cerca de +27%). Rápido: sem limite, mais rápido mas com picos de memória maiores. O cache é esvaziado após cada geração nos dois modos.",
+    "ko": "균형: 생성 중 Metal 캐시를 제한하여 피크는 낮지만 느립니다(SDXL 약 +27%). 빠름: 제한 없음, 더 빠르지만 메모리 피크가 높습니다. 두 모드 모두 생성할 때마다 캐시를 비웁니다."
+  },
+  "settings.engine.cacheModeBalanced": {
+    "es": "Equilibrado (sin desbordar)",
+    "zh": "均衡（不溢出）",
+    "ja": "バランス（あふれない）",
+    "pt": "Equilibrado (sem estouro)",
+    "ko": "균형(넘치지 않음)"
+  },
+  "settings.engine.cacheModeFast": {
+    "es": "Rápido (picos de memoria)",
+    "zh": "快速（内存峰值）",
+    "ja": "高速（メモリのピーク）",
+    "pt": "Rápido (picos de memória)",
+    "ko": "빠름(메모리 피크)"
+  },
+  "settings.engine.tuneComputePrecision": {
+    "es": "Precisión de cálculo",
+    "zh": "计算精度",
+    "ja": "計算精度",
+    "pt": "Precisão de cálculo",
+    "ko": "연산 정밀도"
+  },
+  "settings.engine.tuneComputePrecisionTitle": {
+    "es": "BF16 por defecto (renderizado nativo exacto). Cambiar a FP16 acelera notablemente la generación (20–68 % más rápido) y reduce la RAM — especialmente beneficioso en Apple M1.",
+    "zh": "默认使用标准精度（原生精确渲染）。切换为快速半精度可显著提速（约 20–68%）并降低内存占用，在 M1 上尤为明显。",
+    "ja": "初期設定は標準精度（ネイティブの正確な描画）。高速ハーフ精度へ切り替えると生成が大幅に高速化（約 20〜68%）しメモリも削減でき、特に M1 で効果的です。",
+    "pt": "BF16 por padrão (renderização nativa exata). Alternar para FP16 acelera bastante a geração (20–68% mais rápido) e reduz a RAM — especialmente vantajoso no Apple M1.",
+    "ko": "기본값은 표준 정밀도(네이티브 정확 렌더링)입니다. 고속 반정밀도로 전환하면 생성 속도가 크게 향상(20–68% 단축)되고 메모리가 절약되며 특히 M1에서 효과적입니다."
+  },
+  "settings.engine.computePrecisionAuto": {
+    "es": "BF16",
+    "zh": "标准",
+    "ja": "標準",
+    "pt": "BF16",
+    "ko": "표준"
+  },
+  "settings.engine.computePrecisionFloat16": {
+    "es": "FP16 ⚡",
+    "zh": "半精度 ⚡",
+    "ja": "高速 ⚡",
+    "pt": "FP16 ⚡",
+    "ko": "반정밀 ⚡"
+  },
+  "settings.engine.tuneSsdStream": {
+    "es": "Transmisión SSD",
+    "zh": "磁盘流式加载",
+    "ja": "ストレージ逐次読み込み",
+    "pt": "Streaming SSD",
+    "ko": "저장소 스트리밍"
+  },
+  "settings.engine.tuneSsdStreamTitle": {
+    "es": "Desactivado por defecto (pesos en RAM). Transmite las capas desde el SSD durante la inferencia para reducir el pico de memoria — recomendado para Mac de 8 GB (Z-Image Turbo, Qwen-Image 2.1).",
+    "zh": "默认关闭（权重常驻内存）。推理期间从固态硬盘流式读取模型层以降低内存峰值，推荐 8 GB 内存设备开启。",
+    "ja": "初期設定ではオフ（重みをメモリに常駐）。推論中にストレージから層を順次読み込みメモリピークを抑えます。8 GB 環境におすすめです。",
+    "pt": "Desativado por padrão (pesos na RAM). Transmite as camadas do SSD durante a inferência para reduzir o pico de memória — recomendado para Macs de 8 GB (Z-Image Turbo, Qwen-Image 2.1).",
+    "ko": "기본값은 꺼짐(가중치를 메모리에 상주)입니다. 추론 중 저장소에서 계층을 순차적으로 읽어 메모리 피크를 낮추며 8 GB 환경에 권장됩니다."
+  },
+  "settings.engine.ssdStreamOff": {
+    "es": "RAM",
+    "zh": "内存",
+    "ja": "メモリ",
+    "pt": "RAM",
+    "ko": "메모리"
+  },
+  "settings.engine.ssdStreamOn": {
+    "es": "SSD ⚡",
+    "zh": "固态硬盘 ⚡",
+    "ja": "ストレージ ⚡",
+    "pt": "SSD ⚡",
+    "ko": "디스크 ⚡"
+  },
+  "settings.engine.tuneFlux2SmallTe": {
+    "es": "Codificador de texto ligero FLUX.2-9B (2,57 GB)",
+    "zh": "轻量文本编码器（2.57 GB）",
+    "ja": "軽量テキストエンコーダー（2.57 GB）",
+    "pt": "Codificador de texto leve FLUX.2-9B (2,57 GB)",
+    "ko": "경량 텍스트 인코더 (2.57 GB)"
+  },
+  "settings.engine.tuneFlux2SmallTeTitle": {
+    "es": "Opcional: sustituye el codificador 9B completo por la versión podada Q4-G64 (2,57 GB en lugar de 9,50 GB, coseno 0,9997). Las instalaciones existentes siguen funcionando sin descargar nada.",
+    "zh": "可选：将完整编码器替换为精简 4 位版本（2.57 GB 对比 9.50 GB，余弦相似度 0.9997）。现有安装无需下载任何内容即可继续使用。",
+    "ja": "任意：完全版エンコーダーを軽量 4 ビット版（9.50 GB から 2.57 GB、コサイン類似度 0.9997）へ切り替えます。既存の環境では何もダウンロードせずそのまま動作します。",
+    "pt": "Opcional: substitui o codificador 9B completo pela versão podada Q4-G64 (2,57 GB vs 9,50 GB, cosseno 0,9997). Instalações existentes continuam funcionando sem baixar nada.",
+    "ko": "선택 사항: 전체 인코더를 경량 4비트 버전(9.50 GB 대신 2.57 GB, 코사인 0.9997)으로 전환합니다. 기존 설치 환경은 아무것도 다운로드하지 않고 계속 작동합니다."
+  },
+  "settings.engine.flux2SmallTeOff": {
+    "es": "Completo",
+    "zh": "完整",
+    "ja": "完全版",
+    "pt": "Completo",
+    "ko": "전체"
+  },
+  "settings.engine.flux2SmallTeOn": {
+    "es": "Ligero ⚡",
+    "zh": "轻量 ⚡",
+    "ja": "軽量 ⚡",
+    "pt": "Leve ⚡",
+    "ko": "경량 ⚡"
+  },
+  "settings.engine.flux2SmallTeDownload": {
+    "es": "Descargar (2,57 GB)",
+    "zh": "下载（2.57 GB）",
+    "ja": "ダウンロード（2.57 GB）",
+    "pt": "Baixar (2,57 GB)",
+    "ko": "다운로드 (2.57 GB)"
+  },
+  "settings.engine.flux2SmallTeDownloading": {
+    "es": "Descargando…",
+    "zh": "正在下载……",
+    "ja": "ダウンロード中…",
+    "pt": "Baixando…",
+    "ko": "다운로드 중…"
+  },
+  "settings.engine.saving": {
+    "es": "Guardando…",
+    "zh": "保存中……",
+    "ja": "保存中…",
+    "pt": "Salvando…",
+    "ko": "저장 중…"
+  },
+  "settings.engine.save": {
+    "es": "Guardar",
+    "zh": "保存",
+    "ja": "保存",
+    "pt": "Salvar",
+    "ko": "저장"
+  },
+  "settings.engine.saved": {
+    "es": "Guardado ✓",
+    "zh": "已保存 ✓",
+    "ja": "保存しました ✓",
+    "pt": "Salvo ✓",
+    "ko": "저장됨 ✓"
+  },
+  "settings.engine.zeroHint": {
+    "es": "0 = desactivado / nunca se libera automáticamente",
+    "zh": "0 = 禁用 / 永不自动释放",
+    "ja": "0 = 無効 / 自動解放しない",
+    "pt": "0 = desativado / nunca liberar automaticamente",
+    "ko": "0 = 비활성화 / 자동 해제 안 함"
+  },
+  "settings.engine.storageCard": {
+    "es": "Almacenamiento",
+    "zh": "存储",
+    "ja": "ストレージ",
+    "pt": "Armazenamento",
+    "ko": "저장 공간"
+  },
+  "settings.engine.gaugeGenerated": {
+    "es": "Generadas",
+    "zh": "已生成",
+    "ja": "生成済み",
+    "pt": "Geradas",
+    "ko": "생성됨"
+  },
+  "settings.engine.imagesCount": {
+    "es": "{count} imágenes",
+    "zh": "{count} 张图像",
+    "ja": "{count} 枚",
+    "pt": "{count} imagens",
+    "ko": "이미지 {count}장"
+  },
+  "settings.engine.gaugeSize": {
+    "es": "Tamaño",
+    "zh": "大小",
+    "ja": "サイズ",
+    "pt": "Tamanho",
+    "ko": "크기"
+  },
+  "settings.engine.gaugeTaef": {
+    "es": "TAEF",
+    "zh": "TAEF",
+    "ja": "TAEF",
+    "pt": "TAEF",
+    "ko": "TAEF"
+  },
+  "settings.engine.noneLoaded": {
+    "es": "ninguno cargado",
+    "zh": "未加载",
+    "ja": "未読み込み",
+    "pt": "nenhum carregado",
+    "ko": "로드되지 않음"
+  },
+  "settings.engine.gaugeSettingsFile": {
+    "es": "Archivo de configuración",
+    "zh": "设置文件",
+    "ja": "設定ファイル",
+    "pt": "Arquivo de configurações",
+    "ko": "설정 파일"
+  },
+  "settings.engine.present": {
+    "es": "presente",
+    "zh": "存在",
+    "ja": "あり",
+    "pt": "presente",
+    "ko": "있음"
+  },
+  "settings.engine.absent": {
+    "es": "ausente",
+    "zh": "不存在",
+    "ja": "なし",
+    "pt": "ausente",
+    "ko": "없음"
+  },
+  "settings.engine.now": {
+    "es": "ahora",
+    "zh": "当前",
+    "ja": "現在",
+    "pt": "agora",
+    "ko": "지금"
+  },
+  "settings.models.loading": {
+    "es": "Cargando el registro de modelos…",
+    "zh": "正在加载模型注册表……",
+    "ja": "モデルレジストリを読み込み中…",
+    "pt": "Carregando o registro de modelos…",
+    "ko": "모델 레지스트리 불러오는 중…"
+  },
+  "settings.models.colModel": {
+    "es": "Modelo",
+    "zh": "模型",
+    "ja": "モデル",
+    "pt": "Modelo",
+    "ko": "모델"
+  },
+  "settings.models.colState": {
+    "es": "Estado",
+    "zh": "状态",
+    "ja": "状態",
+    "pt": "Estado",
+    "ko": "상태"
+  },
+  "settings.models.colOnDisk": {
+    "es": "En disco",
+    "zh": "磁盘占用",
+    "ja": "ディスク上",
+    "pt": "Em disco",
+    "ko": "디스크 사용"
+  },
+  "settings.models.colActions": {
+    "es": "Acciones",
+    "zh": "操作",
+    "ja": "操作",
+    "pt": "Ações",
+    "ko": "작업"
+  },
+  "settings.models.installed": {
+    "es": "✓ instalado",
+    "zh": "✓ 已安装",
+    "ja": "✓ インストール済み",
+    "pt": "✓ instalado",
+    "ko": "✓ 설치됨"
+  },
+  "settings.models.notInstalled": {
+    "es": "no instalado",
+    "zh": "未安装",
+    "ja": "未インストール",
+    "pt": "não instalado",
+    "ko": "설치되지 않음"
+  },
+  "settings.models.customDefaults": {
+    "es": "valores personalizados",
+    "zh": "自定义默认值",
+    "ja": "カスタム既定値",
+    "pt": "padrões personalizados",
+    "ko": "사용자 지정 기본값"
+  },
+  "settings.models.removeTitle": {
+    "es": "Eliminar los pesos del disco (protección: se niega durante la generación o la descarga)",
+    "zh": "从磁盘删除权重（有保护：生成或下载期间拒绝执行）",
+    "ja": "ディスクから重みを削除（保護：生成・ダウンロード中は拒否されます）",
+    "pt": "Remover os pesos do disco (proteção: recusa durante a geração ou o download)",
+    "ko": "디스크에서 가중치 삭제(보호: 생성 또는 다운로드 중에는 거부됨)"
+  },
+  "settings.models.deleting": {
+    "es": "Eliminando…",
+    "zh": "正在删除……",
+    "ja": "削除中…",
+    "pt": "Removendo…",
+    "ko": "삭제 중…"
+  },
+  "settings.models.unlinkPath": {
+    "es": "Desvincular la ruta",
+    "zh": "取消路径关联",
+    "ja": "パスのリンクを解除",
+    "pt": "Desvincular o caminho",
+    "ko": "경로 연결 해제"
+  },
+  "settings.models.remove": {
+    "es": "Eliminar",
+    "zh": "删除",
+    "ja": "削除",
+    "pt": "Remover",
+    "ko": "제거"
+  },
+  "settings.models.confirmUnlink": {
+    "es": "¿Desvincular la ruta local configurada para «{model}» (los archivos permanecen en el disco)?\n\nPuedes volver a descargarlo más tarde desde la pestaña Generar.",
+    "zh": "要取消“{model}”已配置的本地路径关联吗（文件仍保留在磁盘上）？\n\n你可以稍后在“生成”标签页重新下载。",
+    "ja": "「{model}」に設定されたローカルパスのリンクを解除しますか（ファイルはディスクに残ります）？\n\n後で「生成」タブから再ダウンロードできます。",
+    "pt": "Desvincular o caminho local configurado para \"{model}\" (os arquivos permanecem no disco)?\n\nVocê pode baixá-lo novamente depois na aba Gerar.",
+    "ko": "\"{model}\"에 설정된 로컬 경로의 연결을 해제할까요?(파일은 디스크에 남습니다)\n\n나중에 생성 탭에서 다시 다운로드할 수 있습니다."
+  },
+  "settings.models.confirmRemove": {
+    "es": "¿Eliminar del disco los pesos gestionados de «{model}»?\n\nPuedes volver a descargarlo más tarde desde la pestaña Generar.",
+    "zh": "要从磁盘删除“{model}”的托管权重吗？\n\n你可以稍后在“生成”标签页重新下载。",
+    "ja": "「{model}」の管理されている重みをディスクから削除しますか？\n\n後で「生成」タブから再ダウンロードできます。",
+    "pt": "Remover do disco os pesos gerenciados de \"{model}\"?\n\nVocê pode baixá-lo novamente depois na aba Gerar.",
+    "ko": "\"{model}\"의 관리되는 가중치를 디스크에서 삭제할까요?\n\n나중에 생성 탭에서 다시 다운로드할 수 있습니다."
+  },
+  "settings.engine.autoDerived": {
+    "es": "Automático ({gb} GB derivado)",
+    "zh": "自动（派生 {gb} GB）",
+    "ja": "自動（推定 {gb} GB）",
+    "pt": "Automático ({gb} GB derivado)",
+    "ko": "자동（{gb} GB 근낼）"
+  },
+  "settings.tab.api": {
+    "es": "API",
+    "zh": "API",
+    "ja": "API",
+    "pt": "API",
+    "ko": "API"
+  },
+  "settings.api.title": {
+    "es": "Claves API",
+    "zh": "API 密钥",
+    "ja": "API キー",
+    "pt": "Chaves API",
+    "ko": "API 키"
+  },
+  "settings.api.desc": {
+    "es": "Crea y revoca claves para agentes, dispositivos y navegadores. La clave de entorno sigue válida.",
+    "zh": "为代理、设备和浏览器创建或撤销密钥。环境密钥保持有效。",
+    "ja": "エージェント、デバイス、ブラウザ用のキーを作成・失効します。環境キーは有効なままです。",
+    "pt": "Crie e revogue chaves para agentes, dispositivos e navegadores. A chave de ambiente continua válida.",
+    "ko": "에이전트, 기기, 브라우저용 키를 만들거나 폐기합니다. 환경 키는 계속 유효합니다."
+  },
+  "settings.api.environment": {
+    "es": "Clave de entorno",
+    "zh": "环境密钥",
+    "ja": "環境キー",
+    "pt": "Chave de ambiente",
+    "ko": "환경 키"
+  },
+  "settings.api.legacy": {
+    "es": "Clave heredada",
+    "zh": "旧版密钥",
+    "ja": "旧キー",
+    "pt": "Chave legada",
+    "ko": "레거시 키"
+  },
+  "settings.api.managed": {
+    "es": "Claves gestionadas",
+    "zh": "托管密钥",
+    "ja": "管理キー",
+    "pt": "Chaves gerenciadas",
+    "ko": "관리 키"
+  },
+  "settings.api.create": {
+    "es": "Crear clave",
+    "zh": "创建密钥",
+    "ja": "キーを作成",
+    "pt": "Criar chave",
+    "ko": "키 만들기"
+  },
+  "settings.api.creating": {
+    "es": "Creando…",
+    "zh": "正在创建…",
+    "ja": "作成中…",
+    "pt": "Criando…",
+    "ko": "만드는 중…"
+  },
+  "settings.api.label": {
+    "es": "Etiqueta",
+    "zh": "标签",
+    "ja": "ラベル",
+    "pt": "Rótulo",
+    "ko": "라벨"
+  },
+  "settings.api.labelPlaceholder": {
+    "es": "p. ej. portátil de casa",
+    "zh": "例如：我的笔记本",
+    "ja": "例：自分のノートパソコン",
+    "pt": "ex. portátil de casa",
+    "ko": "예: 내 노트북"
+  },
+  "settings.api.created": {
+    "es": "Clave API creada",
+    "zh": "API 密钥已创建",
+    "ja": "API キーを作成しました",
+    "pt": "Chave API criada",
+    "ko": "API 키 생성됨"
+  },
+  "settings.api.createdAt": {
+    "es": "Creada",
+    "zh": "创建时间",
+    "ja": "作成日時",
+    "pt": "Criada",
+    "ko": "생성"
+  },
+  "settings.api.lastUsed": {
+    "es": "Último uso",
+    "zh": "最后使用",
+    "ja": "最終使用",
+    "pt": "Último uso",
+    "ko": "마지막 사용"
+  },
+  "settings.api.revoke": {
+    "es": "Revocar",
+    "zh": "撤销",
+    "ja": "失効",
+    "pt": "Revogar",
+    "ko": "폐기"
+  },
+  "settings.api.revokeConfirm": {
+    "es": "¿Revocar esta clave API?",
+    "zh": "撤销此 API 密钥？",
+    "ja": "この API キーを失効しますか？",
+    "pt": "Revogar esta chave API?",
+    "ko": "이 API 키를 폐기할까요?"
+  },
+  "settings.api.currentWarning": {
+    "es": "Esta clave la usa el navegador actual. Necesitará otra clave tras revocarla.",
+    "zh": "当前浏览器正在使用此密钥。撤销后需要另一把密钥。",
+    "ja": "現在のブラウザがこのキーを使用しています。失効後は別のキーが必要です。",
+    "pt": "Esta chave é usada pelo navegador atual. Será necessária outra chave após revogar.",
+    "ko": "현재 브라우저가 이 키를 사용합니다. 폐기 후 다른 키가 필요합니다."
+  },
+  "settings.api.copy": {
+    "es": "Copiar",
+    "zh": "复制",
+    "ja": "コピー",
+    "pt": "Copiar",
+    "ko": "복사"
+  },
+  "settings.api.copied": {
+    "es": "Copiado",
+    "zh": "已复制",
+    "ja": "コピーしました",
+    "pt": "Copiado",
+    "ko": "복사됨"
+  },
+  "settings.api.useHere": {
+    "es": "Usar en este navegador",
+    "zh": "在此浏览器中使用",
+    "ja": "このブラウザで使用",
+    "pt": "Usar neste navegador",
+    "ko": "이 브라우저에서 사용"
+  },
+  "settings.api.onlyOnce": {
+    "es": "Esta clave solo se muestra una vez",
+    "zh": "此密钥只显示一次",
+    "ja": "このキーは一度だけ表示されます",
+    "pt": "Esta chave é mostrada apenas uma vez",
+    "ko": "이 키는 한 번만 표시됩니다"
+  },
+  "settings.api.onlyOnceHint": {
+    "es": "Cópiala ahora. El servidor solo guarda su hash y no puede volver a mostrarla.",
+    "zh": "请立即复制。服务器只保存哈希，无法再次显示。",
+    "ja": "今すぐコピーしてください。サーバーはハッシュのみ保存し、再表示できません。",
+    "pt": "Copie agora. O servidor guarda apenas o hash e não pode mostrá-la novamente.",
+    "ko": "지금 복사하세요. 서버는 해시만 저장하며 다시 표시할 수 없습니다."
+  },
+  "settings.api.empty": {
+    "es": "Aún no hay claves gestionadas.",
+    "zh": "暂无托管密钥。",
+    "ja": "管理キーはまだありません。",
+    "pt": "Ainda não há chaves gerenciadas.",
+    "ko": "아직 관리 키가 없습니다."
+  },
+  "settings.api.lastKeyBlocked": {
+    "es": "Esta es la última clave utilizable y no se puede revocar.",
+    "zh": "这是最后一把可用密钥，无法撤销。",
+    "ja": "これが最後の有効なキーであり、失効できません。",
+    "pt": "Esta é a última chave utilizável e não pode ser revogada.",
+    "ko": "마지막 사용 가능 키라 폐기할 수 없습니다."
+  },
+  "settings.api.duplicateLabel": {
+    "es": "Ya existe una clave con esta etiqueta.",
+    "zh": "此标签的密钥已存在。",
+    "ja": "このラベルのキーは既に存在します。",
+    "pt": "Já existe uma chave com este rótulo.",
+    "ko": "이 라벨의 키가 이미 있습니다."
+  },
+  "settings.api.error": {
+    "es": "No se pudieron actualizar las claves API.",
+    "zh": "无法更新 API 密钥。",
+    "ja": "API キーを更新できませんでした。",
+    "pt": "Não foi possível atualizar as chaves API.",
+    "ko": "API 키를 업데이트할 수 없습니다."
+  },
+  "settings.api.revoked": {
+    "es": "Clave API revocada.",
+    "zh": "API 密钥已撤销。",
+    "ja": "API キーを失効しました。",
+    "pt": "Chave API revogada.",
+    "ko": "API 키가 폐기되었습니다."
+  },
+  "settings.api.current": {
+    "es": "Este navegador",
+    "zh": "当前浏览器",
+    "ja": "このブラウザ",
+    "pt": "Este navegador",
+    "ko": "이 브라우저"
+  },
+  "settings.api.readOnly": {
+    "es": "Solo lectura",
+    "zh": "只读",
+    "ja": "読み取り専用",
+    "pt": "Somente leitura",
+    "ko": "읽기 전용"
+  },
+  "settings.api.absent": {
+    "es": "No definida",
+    "zh": "未设置",
+    "ja": "未設定",
+    "pt": "Não definida",
+    "ko": "설정 안 됨"
+  },
+  "settings.api.autoApplied": {
+    "es": "Esta clave se aplicó automáticamente a este navegador.",
+    "zh": "此密钥已自动应用到当前浏览器。",
+    "ja": "このキーは現在のブラウザに自動適用されました。",
+    "pt": "Esta chave foi aplicada automaticamente a este navegador.",
+    "ko": "이 키는 현재 브라우저에 자동 적용되었습니다."
+  },
+  "settings.api.connectionTitle": {
+    "es": "Conexión al backend",
+    "zh": "后端连接",
+    "ja": "バックエンド接続",
+    "pt": "Conexão com o backend",
+    "ko": "백엔드 연결"
+  },
+  "settings.api.connectionDesc": {
+    "es": "Elige el backend local o remoto y la clave API. Tailscale sigue siendo una capa de red; la clave API sigue siendo obligatoria.",
+    "zh": "选择本地或远程后端及 API 密钥。私有隧道仍是网络层，API 密钥仍然必需。",
+    "ja": "ローカルまたはリモートのバックエンドと API キーを選択します。私有トンネルはネットワーク層であり、API キーは引き続き必要です。",
+    "pt": "Escolha o backend local ou remoto e a chave API. O Tailscale continua sendo uma camada de rede; a chave API continua obrigatória.",
+    "ko": "로컬 또는 원격 백엔드와 API 키를 선택합니다. 사설 터널은 네트워크 계층이며 API 키는 계속 필요합니다."
+  },
+  "settings.api.currentBackend": {
+    "es": "Backend actual",
+    "zh": "当前后端",
+    "ja": "現在のバックエンド",
+    "pt": "Backend atual",
+    "ko": "현재 백엔드"
+  },
+  "settings.api.backendUrl": {
+    "es": "URL del backend",
+    "zh": "后端 URL",
+    "ja": "バックエンド URL",
+    "pt": "URL do backend",
+    "ko": "백엔드 URL"
+  },
+  "settings.api.backendUrlPlaceholder": {
+    "es": "Vide = local",
+    "zh": "留空 = 本地",
+    "ja": "空 = ローカル",
+    "pt": "Vide = local",
+    "ko": "비움 = 로컬"
+  },
+  "settings.api.keyField": {
+    "es": "Clave API",
+    "zh": "API 密钥",
+    "ja": "API キー",
+    "pt": "Chave API",
+    "ko": "API 키"
+  },
+  "settings.api.keyFieldPlaceholder": {
+    "es": "Pega la clave API",
+    "zh": "粘贴 API 密钥",
+    "ja": "API キーを貼り付け",
+    "pt": "Cole a chave API",
+    "ko": "API 키 붙여넣기"
+  },
+  "settings.api.test": {
+    "es": "Probar",
+    "zh": "测试",
+    "ja": "テスト",
+    "pt": "Testar",
+    "ko": "테스트"
+  },
+  "settings.api.testing": {
+    "es": "Probando…",
+    "zh": "测试中…",
+    "ja": "テスト中…",
+    "pt": "Testando…",
+    "ko": "테스트 중…"
+  },
+  "settings.api.testOk": {
+    "es": "Conexión correcta.",
+    "zh": "连接成功。",
+    "ja": "接続に成功しました。",
+    "pt": "Conexão bem-sucedida.",
+    "ko": "연결 성공."
+  },
+  "settings.api.testFailed": {
+    "es": "Error de conexión.",
+    "zh": "连接失败。",
+    "ja": "接続に失敗しました。",
+    "pt": "Falha na conexão.",
+    "ko": "연결 실패."
+  },
+  "settings.api.badKey": {
+    "es": "Clave API rechazada.",
+    "zh": "API 密钥被拒绝。",
+    "ja": "API キーが拒否されました。",
+    "pt": "Chave API rejeitada.",
+    "ko": "API 키가 거부되었습니다."
+  },
+  "settings.api.invalidUrl": {
+    "es": "URL inválida. Usa el esquema http o https.",
+    "zh": "URL 无效。请检查地址格式。",
+    "ja": "URL が無効です。アドレス形式を確認してください。",
+    "pt": "URL inválido. Use o esquema http ou https.",
+    "ko": "URL이 잘못되었습니다. 주소 형식을 확인하세요."
+  },
+  "settings.api.saveConnection": {
+    "es": "Guardar conexión",
+    "zh": "保存连接",
+    "ja": "接続を保存",
+    "pt": "Salvar conexão",
+    "ko": "연결 저장"
+  },
+  "settings.api.savedReload": {
+    "es": "Conexión guardada. Recargando…",
+    "zh": "连接已保存。正在重新加载…",
+    "ja": "接続を保存しました。再読み込み中…",
+    "pt": "Conexão salva. Recarregando…",
+    "ko": "연결 저장됨. 다시 불러오는 중…"
+  },
+  "settings.api.resetLocal": {
+    "es": "Volver a local",
+    "zh": "恢复本地",
+    "ja": "ローカルに戻す",
+    "pt": "Voltar ao local",
+    "ko": "로컬로 재설정"
+  },
+  "settings.api.storageError": {
+    "es": "No se pudo guardar la conexión.",
+    "zh": "无法保存连接。",
+    "ja": "接続を保存できませんでした。",
+    "pt": "Não foi possível salvar a conexão.",
+    "ko": "연결을 저장할 수 없습니다."
+  },
+  "settings.api.connectionHint": {
+    "es": "Tailscale: usa la URL HTTPS que muestra tailscale serve status o la IP Tailscale del Mac. La clave API sigue siendo necesaria.",
+    "zh": "私有隧道：使用隧道服务状态中显示的加密地址，或本机的私有网络地址。API 密钥仍然必需。",
+    "ja": "私有トンネル：トンネルサービスの状態に表示される暗号化アドレス、または本機の私有ネットワークアドレスを使用します。API キーは引き続き必要です。",
+    "pt": "Tailscale: use a URL HTTPS mostrada por tailscale serve status ou o IP Tailscale do Mac. A chave API continua necessária.",
+    "ko": "사설 터널: 터널 서비스 상태에 표시되는 암호화 주소 또는 이 컴퓨터의 사설 네트워크 주소를 사용합니다. API 키는 계속 필요합니다."
+  },
+  "settings.api.mode": {
+    "es": "Modo API",
+    "zh": "API 模式",
+    "ja": "API モード",
+    "pt": "Modo API",
+    "ko": "API 모드"
+  },
+  "settings.api.modeOn": {
+    "es": "Modo API activado.",
+    "zh": "API 模式已启用。",
+    "ja": "API モードを有効にしました。",
+    "pt": "Modo API ativado.",
+    "ko": "API 모드가 켜졌습니다."
+  },
+  "settings.api.modeOff": {
+    "es": "Modo API desactivado.",
+    "zh": "API 模式已停用。",
+    "ja": "API モードを無効にしました。",
+    "pt": "Modo API desativado.",
+    "ko": "API 모드가 꺼졌습니다."
+  },
+  "settings.api.modeOnHint": {
+    "es": "Las claves API están activas. Las conexiones externas siguen las reglas de clave y red.",
+    "zh": "API 密钥已启用。外部连接遵循密钥和网络规则。",
+    "ja": "API キーが有効です。外部接続はキーとネットワークの規則に従います。",
+    "pt": "As chaves API estão ativas. As conexões externas seguem as regras de chave e rede.",
+    "ko": "API 키가 활성화됩니다. 외부 연결은 키와 네트워크 규칙을 따릅니다."
+  },
+  "settings.api.modeOffHint": {
+    "es": "Solo modo local. Sin conexiones externas ni clave.",
+    "zh": "仅本地模式。无外部连接，无需密钥。",
+    "ja": "ローカルのみ。外部接続なし、キー不要。",
+    "pt": "Somente modo local. Sem conexões externas nem chave.",
+    "ko": "로컬 전용 모드입니다. 외부 연결과 키가 필요 없습니다."
+  },
+  "settings.api.keyRequired": {
+    "es": "Se requiere una clave API para un backend remoto.",
+    "zh": "远程后端需要 API 密钥。",
+    "ja": "リモートバックエンドには API キーが必要です。",
+    "pt": "É necessária uma chave API para um backend remoto.",
+    "ko": "원격 백엔드에는 API 키가 필요합니다."
+  },
+  "settings.api.modeHeroDesc": {
+    "es": "Interruptor principal. OFF: solo local, claves inactivas. ON: autenticación por clave y acceso remoto.",
+    "zh": "主开关。关：仅本地，密钥停用。开：密钥认证和远程访问。",
+    "ja": "メインスイッチ。オフ：ローカルのみ、キー無効。オン：キー認証とリモートアクセス。",
+    "pt": "Interruptor principal. OFF: somente local, chaves inativas. ON: autenticação por chave e acesso remoto.",
+    "ko": "주 스위치. 끄기: 로컬 전용, 키 비활성. 켜기: 키 인증 및 원격 접근."
+  },
+  "settings.api.on": {
+    "es": "ON",
+    "zh": "开",
+    "ja": "オン",
+    "pt": "ON",
+    "ko": "켜기"
+  },
+  "settings.api.off": {
+    "es": "OFF",
+    "zh": "关",
+    "ja": "オフ",
+    "pt": "OFF",
+    "ko": "끄기"
+  },
+  "settings.api.portTitle": {
+    "es": "Puerto del backend",
+    "zh": "后端端口",
+    "ja": "バックエンドポート",
+    "pt": "Porta do backend",
+    "ko": "백엔드 포트"
+  },
+  "settings.api.portDesc": {
+    "es": "Puerto de escucha local. Por defecto 8001. Reinicia el backend tras cambiarlo.",
+    "zh": "本地监听端口。默认 8001。修改后请重启后端。",
+    "ja": "ローカル待受ポート。既定値は 8001。変更後はバックエンドを再起動してください。",
+    "pt": "Porta de escuta local. Padrão 8001. Reinicie o backend após alterar.",
+    "ko": "로컬 수신 포트입니다. 기본값은 8001입니다. 변경 후 백엔드를 다시 시작하세요."
+  },
+  "settings.api.portLabel": {
+    "es": "Puerto",
+    "zh": "端口",
+    "ja": "ポート",
+    "pt": "Porta",
+    "ko": "포트"
+  },
+  "settings.api.portSave": {
+    "es": "Guardar puerto",
+    "zh": "保存端口",
+    "ja": "ポートを保存",
+    "pt": "Salvar porta",
+    "ko": "포트 저장"
+  },
+  "settings.api.portSaving": {
+    "es": "Guardando…",
+    "zh": "保存中…",
+    "ja": "保存中…",
+    "pt": "Salvando…",
+    "ko": "저장 중…"
+  },
+  "settings.api.portActive": {
+    "es": "Activo: {active}",
+    "zh": "活动端口：{active}",
+    "ja": "有効: {active}",
+    "pt": "Ativa: {active}",
+    "ko": "활성: {active}"
+  },
+  "settings.api.portConfigured": {
+    "es": "Configurado: {configured}",
+    "zh": "已配置：{configured}",
+    "ja": "設定値: {configured}",
+    "pt": "Configurada: {configured}",
+    "ko": "설정: {configured}"
+  },
+  "settings.api.portRestart": {
+    "es": "Puerto guardado. Reinicia el backend/app y abre {url}.",
+    "zh": "端口已保存。重启后端/应用后打开 {url}。",
+    "ja": "ポートを保存しました。バックエンド/アプリを再起動して {url} を開いてください。",
+    "pt": "Porta salva. Reinicie o backend/app e abra {url}.",
+    "ko": "포트가 저장되었습니다. 백엔드/앱을 다시 시작한 뒤 {url}을 여세요."
+  },
+  "settings.api.portSaved": {
+    "es": "Puerto ya activo.",
+    "zh": "端口已是活动端口。",
+    "ja": "ポートは既に有効です。",
+    "pt": "Porta já ativa.",
+    "ko": "포트가 이미 활성입니다."
+  },
+  "settings.api.portInvalid": {
+    "es": "Puerto inválido: 1024 a 65535.",
+    "zh": "端口无效：1024 到 65535。",
+    "ja": "ポートが無効です: 1024〜65535。",
+    "pt": "Porta inválida: 1024 a 65535.",
+    "ko": "잘못된 포트: 1024~65535."
+  },
+  "settings.api.authRequiredTitle": {
+    "es": "Se requiere una clave API para desbloquear este servidor",
+    "zh": "需要 API 密钥才能解锁此服务器",
+    "ja": "このサーバーを解除するには API キーが必要です",
+    "pt": "Chave API necessária para desbloquear este servidor",
+    "ko": "이 서버를 잠금 해제하려면 API 키가 필요합니다"
+  },
+  "settings.api.authRequiredBody": {
+    "es": "Este Mac exige una clave API. Si abriste su URL directamente en el navegador, deja vacía la URL del backend, pega tu clave abajo y pulsa Guardar conexión.",
+    "zh": "此主机需要 API 密钥。如果您在浏览器中直接打开了它的网址，请将“后端 URL”留空，在下方粘贴密钥后点击“保存连接”。",
+    "ja": "このホストは API キーが必要です。ブラウザで直接 URL を開いた場合は「バックエンド URL」を空のままにし、下にキーを貼り付けて「接続を保存」を押してください。",
+    "pt": "Este Mac exige uma chave de API. Se você abriu a URL diretamente no navegador, deixe a URL do backend vazia, cole sua chave abaixo e clique em Salvar conexão.",
+    "ko": "이 호스트는 API 키가 필요합니다. 브라우저에서 직접 URL을 열었다면 백엔드 URL을 비워 두고 아래에 키를 붙여넣은 뒤 연결 저장을 누르세요."
+  },
+  "settings.api.guide.title": {
+    "es": "Cómo funciona esta página — Ejemplos ({browsers} y Agentes)",
+    "zh": "本页使用说明 — 示例（{browsers} 与智能体）",
+    "ja": "このページの使い方 — 例（{browsers}・エージェント）",
+    "pt": "Como esta página funciona — Exemplos ({browsers} e Agentes)",
+    "ko": "이 페이지 사용법 — 예시 ({browsers} 및 에이전트)"
+  },
+  "settings.api.guide.subtitle": {
+    "es": "Genere de forma remota solo con un navegador o conecte un agente IA",
+    "zh": "仅用浏览器远程生图，或连接 AI 智能体",
+    "ja": "ブラウザだけでリモート生成、または AI エージェントを接続",
+    "pt": "Gere remotamente apenas com um navegador ou conecte um agente de IA",
+    "ko": "브라우저만으로 원격 생성하거나 AI 에이전트 연결"
+  },
+  "settings.api.guide.tabBrowsers": {
+    "es": "Navegadores ({browsers})",
+    "zh": "浏览器（{browsers}）",
+    "ja": "ブラウザ（{browsers}）",
+    "pt": "Navegadores ({browsers})",
+    "ko": "브라우저 ({browsers})"
+  },
+  "settings.api.guide.tabAgents": {
+    "es": "Agentes IA y {curl}",
+    "zh": "AI 智能体与 {curl}",
+    "ja": "AI エージェントと {curl}",
+    "pt": "Agentes de IA e {curl}",
+    "ko": "AI 에이전트 및 {curl}"
+  },
+  "settings.api.guide.tabBlocks": {
+    "es": "Qué hace cada bloque",
+    "zh": "各区块功能说明",
+    "ja": "各ブロックの役割",
+    "pt": "O que cada bloco faz",
+    "ko": "각 블록의 역할"
+  },
+  "settings.api.guide.browsersIntro": {
+    "es": "DiffusionBear sirve toda su interfaz web directamente desde el Mac. En otro PC, Mac, iPhone o iPad basta un navegador, sin instalar nada en el cliente.",
+    "zh": "DiffusionBear 直接从 macOS 主机提供完整的网页界面。在另一台电脑、手机或平板上只需一个浏览器即可生图，无需在客户端安装任何软件。",
+    "ja": "DiffusionBear は完全な Web UI をホストから直接配信します。別のパソコン・スマートフォン・タブレットではブラウザだけで生成でき、クライアント側のインストールは不要です。",
+    "pt": "O DiffusionBear serve toda a interface web diretamente do Mac. Em outro PC, Mac, iPhone ou iPad basta um navegador — nenhuma instalação local no cliente.",
+    "ko": "DiffusionBear는 호스트에서 전체 웹 UI를 직접 제공합니다. 다른 컴퓨터나 모바일 기기에서는 브라우저 하나만 있으면 되며 클라이언트 설치가 필요 없습니다."
+  },
+  "settings.api.guide.stepHostTitle": {
+    "es": "En el Mac anfitrión (una vez): crea una clave, activa el Modo API y expón la URL",
+    "zh": "在主控端（仅一次）：创建密钥、开启 API 模式并公开地址",
+    "ja": "ホスト側で（初回のみ）：キーを作成し、API モードをオンにして URL を公開",
+    "pt": "No Mac host (uma vez): crie uma chave, ative o Modo API e exponha a URL",
+    "ko": "호스트 기기에서(최초 1회): 키를 만들고 API 모드를 켠 뒤 URL 노출"
+  },
+  "settings.api.guide.stepHostBody": {
+    "es": "Crea una clave gestionada por dispositivo (p. ej. {sampleLabel}), pulsa Usar en este navegador, activa el Modo API y ejecuta {tailscale} para {app} ({loopback}) o inicia la CLI en LAN ({flag}).",
+    "zh": "为每台设备创建托管密钥（例如 {sampleLabel}），点击“在此浏览器中使用”，开启 API 模式，然后为 {app}（绑定 {loopback}）运行 {tailscale}，或在局域网启动命令行（{flag}）。",
+    "ja": "デバイスごとに管理キー（例: {sampleLabel}）を作成し、「このブラウザで使用」を押して API モードをオンにした後、{app}（{loopback}）向けに {tailscale} を実行するかコマンドラインをローカルネット起動（{flag}）します。",
+    "pt": "Crie uma chave gerenciada por dispositivo (ex. {sampleLabel}), clique em Usar neste navegador, ative o Modo API e execute o {tailscale} para {app} ({loopback}) ou inicie a CLI na LAN ({flag}).",
+    "ko": "기기마다 관리 키(예: {sampleLabel})를 만들고 '이 브라우저에서 사용'을 누른 뒤 API 모드를 켜고 {app}({loopback})용 {tailscale}을 실행하거나 로컬 네트워크에서 명령줄({flag})로 실행하세요."
+  },
+  "settings.api.guide.stepConnectTitle": {
+    "es": "En {browsers}: abre la URL y guarda tu clave",
+    "zh": "在 {browsers} 中：打开网址并保存密钥",
+    "ja": "{browsers} で URL を開きキーを保存",
+    "pt": "No {browsers}: abra a URL e salve a chave",
+    "ko": "{browsers}에서 URL을 열고 키 저장"
+  },
+  "settings.api.guide.stepConnectBody": {
+    "es": "Abre {httpsUrl} (o {lanUrl}), ve a Ajustes → API → Conexión del backend, deja «URL del backend» VACÍA (significa el servidor que sirve esta página), pega tu clave y pulsa Probar y luego Guardar conexión.",
+    "zh": "打开 {httpsUrl}（或 {lanUrl}），进入 设置 → API → 后端连接，将“后端 URL”保持为空（表示提供当前网页的主机），粘贴密钥后点击 测试 再点击 保存连接。",
+    "ja": "{httpsUrl}（または {lanUrl}）を開き、設定 → API → バックエンド接続で「バックエンド URL」を空のままにし（このページを配信するサーバーを指します）、キーを貼り付けて「テスト」→「接続を保存」をクリックします。",
+    "pt": "Abra {httpsUrl} (ou {lanUrl}), vá em Configurações → API → Conexão ao backend, deixe a URL do backend VAZIA (indica o servidor que hospeda esta página), cole sua chave, clique em Testar e depois em Salvar conexão.",
+    "ko": "{httpsUrl}(또는 {lanUrl})을 열고 설정 → API → 백엔드 연결에서 백엔드 URL을 비워 둔 채(이 페이지를 제공하는 서버를 의미) 키를 붙여넣고 테스트 후 연결 저장을 누르세요."
+  },
+  "settings.api.guide.browserChrome": {
+    "es": "Usa {httpsPrefix} con {tailscale} para evitar bloqueos {mixedContent}. En {lanUrl}, acepta el aviso de acceso a la red local. La clave se guarda por perfil en {localStorage} (se borra al cerrar Incógnito).",
+    "zh": "建议使用 {tailscale} 的 {httpsPrefix} 以避免 {mixedContent} 拦截。访问 {lanUrl} 若弹出“本地网络访问”请点击允许。密钥按配置文件保存在 {localStorage} 中（无痕窗口关闭后清除）。",
+    "ja": "{mixedContent} ブロックを避けるため {tailscale} の {httpsPrefix} を推奨します。{lanUrl} で「ローカルネットワークへのアクセス」が出たら許可してください。キーはプロファイル単位で {localStorage} に保存されます（シークレットでは閉じると消去）。",
+    "pt": "Prefira {httpsPrefix} via {tailscale} para evitar bloqueio {mixedContent}. Em {lanUrl}, permita o acesso à rede local se solicitado. A chave fica por perfil no {localStorage} (apagada ao fechar guia anônima).",
+    "ko": "{mixedContent} 차단을 피하려면 {tailscale}의 {httpsPrefix}를 사용하세요. {lanUrl}에서 로컬 네트워크 접근 프롬프트가 뜨면 허용을 누르세요. 키는 프로필별 {localStorage}에 저장됩니다(시크릿 창 종료 시 삭제)."
+  },
+  "settings.api.guide.browserFirefox": {
+    "es": "Usa {httpsUrl} o una IP ({ips}): con {doh} activado, los nombres {dotLocal} pueden fallar. Mantén permitido el almacenamiento del sitio para conservar la clave.",
+    "zh": "请使用 {httpsUrl} 或数字地址（{ips}）：启用 {doh} 时 {dotLocal} 域名可能无法解析。请勿阻止该站点存储数据，以便保留密钥。",
+    "ja": "{httpsUrl} または数値アドレス（{ips}）を使ってください。{doh} が有効だと {dotLocal} 名は解決できない場合があります。キー保持のためサイトストレージを許可してください。",
+    "pt": "Use {httpsUrl} ou um IP ({ips}): com {doh} ativo, nomes {dotLocal} podem falhar. Mantenha o armazenamento do site permitido para preservar a chave.",
+    "ko": "{httpsUrl} 또는 숫자 주소({ips})를 사용하세요. {doh}가 켜져 있으면 {dotLocal} 이름이 해석되지 않을 수 있습니다. 키 유지를 위해 사이트 저장소를 허용하세요."
+  },
+  "settings.api.guide.browserOpera": {
+    "es": "Desactiva {vpn} antes de abrir URLs de LAN o {tailscale}: la VPN enruta el tráfico fuera de tu red privada y corta la conexión. Se aplican las mismas reglas {mixedContent} que en {chrome}.",
+    "zh": "访问局域网或 {tailscale} 地址前请关闭 {vpn}：开启后会路由到私有网络之外导致连接失败。其余 {mixedContent} 规则与 {chrome} 相同。",
+    "ja": "ローカルネットや {tailscale} の URL を開く前に {vpn} をオフにしてください。プライベートネットワーク外へ迂回するため接続できません。{mixedContent} 仕様は {chrome} と同じです。",
+    "pt": "Desative {vpn} antes de acessar URLs de LAN ou {tailscale}: ela roteia o tráfego para fora da rede privada e derruba a conexão. Segue as mesmas regras {mixedContent} do {chrome}.",
+    "ko": "로컬 네트워크 또는 {tailscale} URL에 연결하기 전에 {vpn}을 끄세요. 트래픽이 사설망 밖으로 우회되어 연결이 끊깁니다. {mixedContent} 규칙은 {chrome}과 같습니다."
+  },
+  "settings.api.guide.browserSafari": {
+    "es": "En iPhone/iPad, abre {httpsUrl} con {tailscale} (o LAN) y deja vacía la URL del backend para mantener todo en el mismo origen con «Evitar rastreo entre sitios»; pega la clave y pulsa Probar → Guardar. «Compartir → Añadir a pantalla de inicio» usa su propio {localStorage} (pega la clave allí también una vez).",
+    "zh": "在手机或平板上通过 {tailscale}（或局域网）打开 {httpsUrl} 并将“后端地址”留空，可保持同源并兼容“防止跨站跟踪”；粘贴密钥后点击测试并保存。“分享 → 添加到主屏幕”拥有独立的 {localStorage}，请在其内也粘贴一次密钥。",
+    "ja": "スマートフォンやタブレットでは {tailscale}（または家庭内ネットワーク）経由で {httpsUrl} を開き、「バックエンド URL」を空のままにしてキーを貼り付け、テスト→保存を実行します。「共有 → ホーム画面に追加」は独立した {localStorage} を持つため、追加後のアプリ内でも一度キーを貼り付けてください。",
+    "pt": "No iPhone/iPad, abra {httpsUrl} via {tailscale} (ou LAN) com a URL do backend vazia para manter tudo na mesma origem com «Prevenir rastreamento entre sites», cole a chave e toque em Testar → Salvar. «Compartilhar → Adicionar à Tela de Início» tem seu próprio {localStorage} (cole a chave lá também).",
+    "ko": "모바일에서는 {tailscale}(또는 로컬 네트워크)로 {httpsUrl}을 열고 백엔드 주소를 비워 둔 채 키를 붙여넣고 테스트 후 저장하세요. 공유 → 홈 화면에 추가 앱은 별도의 {localStorage}를 사용하므로 해당 앱 안에서도 키를 한 번 붙여넣어야 합니다."
+  },
+  "settings.api.guide.agentsIntro": {
+    "es": "Con Modo API activado, cada ruta {apiWildcard} salvo {versionRoute} requiere {header1} o {header2}. Solo las rutas de medios aceptan también {query} para etiquetas {imgTag}.",
+    "zh": "开启 API 模式后，除 {versionRoute} 外所有 {apiWildcard} 路由都需要 {header1} 或 {header2}。仅媒体读取路由支持为 {imgTag} 标签传入 {query}。",
+    "ja": "API モードがオンの場合、{versionRoute} 以外のすべての {apiWildcard} に {header1} または {header2} が必要です。{imgTag} タグ用の {query} はメディア取得経路でのみ許可されます。",
+    "pt": "Com o Modo API ativado, todas as rotas {apiWildcard} exceto {versionRoute} exigem {header1} ou {header2}. Apenas rotas de mídia aceitam {query} para tags {imgTag}.",
+    "ko": "API 모드가 켜지면 {versionRoute}을 제외한 모든 {apiWildcard} 경로에 {header1} 또는 {header2}가 필요합니다. {imgTag} 태그용 {query}는 미디어 조회 경로에서만 허용됩니다."
+  },
+  "settings.api.guide.agentsNote": {
+    "es": "Las tareas se ejecutan de una en una en la GPU Apple Silicon; {genRoute} limita a 30 req/min, ráfaga 4 y 64 en cola, devolviendo 429 con {retryAfter} si se supera.",
+    "zh": "Apple Silicon GPU 每次顺序执行一个任务；{genRoute} 默认限制每分钟 30 次、突发 4 次、排队上限 64，超出时返回 429 与 {retryAfter}。",
+    "ja": "Apple Silicon GPU は一度に1ジョブを処理します。{genRoute} は毎分 30 リクエスト・バースト 4・キュー上限 64 に制限され、超過時は 429 と {retryAfter} を返します。",
+    "pt": "Os jobs rodam um por vez na GPU Apple Silicon; {genRoute} limita a 30 req/min, rajada 4 e 64 na fila, retornando 429 com {retryAfter} ao exceder.",
+    "ko": "Apple Silicon GPU는 한 번에 하나의 작업만 처리합니다. {genRoute}는 분당 30회, 버스트 4, 대기열 64개로 제한되며 초과 시 429와 {retryAfter}를 반환합니다."
+  },
+  "settings.api.guide.blockMode": {
+    "es": "{off} solo acepta loopback ({loopback}) sin clave. {on} exige autenticación en {apiWildcard} y habilita acceso remoto (requiere al menos una clave de >= 16 caracteres).",
+    "zh": "关闭（{off}）仅允许本机回环（{loopback}）免密钥访问。开启（{on}）对所有 {apiWildcard} 强制验证并允许远程连接（需至少一把 >= 16 字符的密钥）。",
+    "ja": "{off} はループバック（{loopback}）のみキー不要。{on} は {apiWildcard} 全体でキー認証とリモート接続を有効化（16文字以上のキーが1つ以上必要）。",
+    "pt": "{off} aceita apenas loopback ({loopback}) sem chave. {on} exige chave em {apiWildcard} e libera acesso remoto (requer ao menos uma chave com >= 16 caracteres).",
+    "ko": "{off}는 키 없이 루프백({loopback})만 허용합니다. {on}은 {apiWildcard} 전체에 키 인증을 적용하고 원격 접속을 켭니다(16자 이상 키 1개 이상 필요)."
+  },
+  "settings.api.guide.blockPort": {
+    "es": "Puerto de escucha (8001 por defecto), editable solo con Modo API {on}. Reinicie la app o el backend tras guardar.",
+    "zh": "监听端口（默认 8001），仅在开启 API 模式（{on}）时可修改。保存后需重启应用或后端生效。",
+    "ja": "待受ポート（既定 8001）。API モードが {on} の時のみ変更でき、保存後はアプリまたはバックエンドの再起動が必要です。",
+    "pt": "Porta de escuta (padrão 8001), editável apenas com Modo API {on}. Reinicie o app ou backend após salvar.",
+    "ko": "수신 포트(기본 8001)는 API 모드가 {on}일 때만 수정할 수 있으며, 저장 후 앱 또는 백엔드를 다시 시작해야 합니다."
+  },
+  "settings.api.guide.blockConnection": {
+    "es": "Guarda URL y clave solo en el {localStorage} de ESTE navegador. Deja «URL del backend» vacía en local o al abrir un Mac remoto directamente; rellénala solo para dirigir tu app local hacia otro Mac (modo {client}).",
+    "zh": "仅将地址和密钥保存在当前浏览器的 {localStorage}。无论本机使用还是浏览器直接打开远程主机网页，“后端 URL”均留空；仅当让本机应用连接另一台主机时填写（{client} 模式）。",
+    "ja": "接続先とキーはこのブラウザの {localStorage} のみに保存されます。ローカル利用時やリモートホストの URL を直接開いた時は「バックエンド URL」を空にし、ローカルアプリから別ホストへ繋ぐ場合（{client} モード）のみ入力してください。",
+    "pt": "Salva URL e chave apenas no {localStorage} DESTE navegador. Deixe a URL do backend vazia localmente ou ao abrir um Mac remoto direto; preencha apenas para apontar o app local a outro Mac (modo {client}).",
+    "ko": "URL과 키는 이 브라우저의 {localStorage}에만 저장됩니다. 로컬 또는 원격 호스트 URL을 직접 연 경우 백엔드 URL을 비워 두고, 로컬 앱을 다른 호스트에 연결할 때만 입력하세요({client} 모드)."
+  },
+  "settings.api.guide.blockKeys": {
+    "es": "La clave de entorno ({envVar}) y la legacy son de solo lectura. Las claves gestionadas ({prefix}) se muestran una sola vez y se guardan en {sha256}: crea una por navegador o agente para revocarlas por separado.",
+    "zh": "环境变量密钥（{envVar}）与旧版密钥为只读。托管密钥（{prefix}）仅显示一次并以 {sha256} 哈希保存——请为每个浏览器或智能体单独创建，以便独立撤销。",
+    "ja": "環境変数キー（{envVar}）とレガシーキーは読み取り専用です。管理キー（{prefix}）は一度だけ表示され {sha256} で保存されるため、端末やエージェントごとに分けて作成すると個別に失効できます。",
+    "pt": "A chave de ambiente ({envVar}) e a legacy são somente leitura. Chaves gerenciadas ({prefix}) aparecem uma única vez e ficam salvas como hash {sha256}: crie uma por navegador ou agente para revogar separadamente.",
+    "ko": "환경 변수 키({envVar})와 레거시 키는 읽기 전용입니다. 관리 키({prefix})는 한 번만 표시되며 {sha256} 해시로 저장되므로, 브라우저나 에이전트별로 생성해야 개별 폐기가 가능합니다."
+  },
+  "settings.api.guide.recoveryTitle": {
+    "es": "Evitar bloqueos y recuperación",
+    "zh": "避免锁定与恢复方法",
+    "ja": "ロックアウト防止と復旧方法",
+    "pt": "Evitar bloqueio e recuperação",
+    "ko": "잠금 방지 및 복구 방법"
+  },
+  "settings.api.guide.blockRecovery": {
+    "es": "Cada navegador y app guarda su propio {localStorage}. Guarda tu clave {prefix} antes de activar el modo API. Si te quedas bloqueado en tu Mac, edita {securityJson} y pon {enabledFalse}: tus claves seguirán intactas.",
+    "zh": "每个浏览器和独立应用都使用各自的 {localStorage}。开启接口模式前请先保存 {prefix} 密钥。若在本机被锁定，请编辑 {securityJson} 并设为 {enabledFalse}，已保存的密钥不会丢失。",
+    "ja": "各ブラウザとアプリはそれぞれ独立した {localStorage} を持ちます。APIモードをオンにする前に {prefix} キーを保存してください。お使いの端末でロックアウトされた場合は {securityJson} を編集して {enabledFalse} にすると、キーを消さずに復旧できます。",
+    "pt": "Cada navegador e app mantém seu próprio {localStorage}. Salve sua chave {prefix} antes de ligar o modo API. Se ficar bloqueado no seu Mac, edite {securityJson} e defina {enabledFalse} — suas chaves continuam intactas.",
+    "ko": "각 브라우저와 앱은 독립된 {localStorage}를 사용합니다. API 모드를 켜기 전에 {prefix} 키를 저장하세요. 사용 중인 기기에서 잠겼다면 {securityJson} 파일을 열어 {enabledFalse}로 수정하면 기존 키를 유지한 채 복구됩니다."
+  },
+  "settings.autosave.hint": {
+    "es": "Los cambios se guardan automáticamente.",
+    "zh": "更改会自动保存。",
+    "ja": "変更は自動的に保存されます。",
+    "pt": "As alterações são salvas automaticamente.",
+    "ko": "변경 사항은 자동으로 저장됩니다."
+  },
+  "settings.autosave.saved": {
+    "es": "Guardado",
+    "zh": "已保存",
+    "ja": "保存しました",
+    "pt": "Salvo",
+    "ko": "저장됨"
+  },
+  "settings.jump.label": {
+    "es": "Secciones de ajustes",
+    "zh": "设置分区",
+    "ja": "設定セクション",
+    "pt": "Seções de configurações",
+    "ko": "설정 섹션"
+  }
+}

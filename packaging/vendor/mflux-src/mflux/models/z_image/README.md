@@ -1,0 +1,308 @@
+# Z-Image
+This directory contains MFLUX’s MLX implementation of **Z-Image** and **Z-Image-Turbo**.
+
+MFLUX supports [Z-Image](https://huggingface.co/Tongyi-MAI/Z-Image) and [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) from Tongyi Lab (Alibaba). Z-Image is an efficient 6B-parameter image generation model with a single-stream DiT architecture. Z-Image-Turbo delivers high-quality images in just 9 steps, making it one of the fastest open-source models available.
+
+All the standard modes such as img2img, LoRA and quantizations are supported for this model. See the [technical paper](https://arxiv.org/abs/2511.22699) for more details.
+
+ComfyUI LoRAs with fused QKV projections and normalization/bias deltas (`.diff`/`.diff_b`) are supported. Direct deltas require the default baked inference mode; they cannot be used with `--no-bake-lora` or role-controlled training adapters.
+
+![Z-Image-Turbo Example](../../assets/z_image_turbo_example.jpg)
+
+## Z-Image (Base) Example
+The following generates with the base Z-Image model. Base (non-distilled) Z-Image uses more steps than the turbo model:
+
+> [!WARNING]
+> Base (non-distilled) Z-Image is typically slower and worse for general image editing, but can be successfully used for training.
+
+```sh
+mflux-generate-z-image \
+  --prompt "A red fox resting in fresh snow under soft winter light, detailed fur, gentle bokeh, natural color grading." \
+  --width 720 \
+  --height 1280 \
+  --seed 42 \
+  --steps 50 \
+  --guidance 4
+```
+
+<details>
+<summary>Python API (Base)</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImage
+
+model = ZImage(
+    model_config=ModelConfig.z_image(),
+    model_path="Tongyi-MAI/Z-Image",
+)
+image = model.generate_image(
+    seed=42,
+    prompt="Two smiling friends posing for a casual indoor portrait, soft natural light, shallow depth of field.",
+    num_inference_steps=50,
+    width=720,
+    height=1280,
+    guidance=4.0,
+    negative_prompt="",
+)
+image.save("z_image_base.png")
+```
+</details>
+
+## Z-Image Turbo Example
+The following uses the pre-quantized 4-bit model from [filipstrand/Z-Image-Turbo-mflux-4bit](https://huggingface.co/filipstrand/Z-Image-Turbo-mflux-4bit) to generate a vibrant 1960s style image with a LoRA adapter [Technically Color](https://huggingface.co/renderartist/Technically-Color-Z-Image-Turbo) for enhanced film color:
+
+```sh
+mflux-generate-z-image-turbo \
+  --model filipstrand/Z-Image-Turbo-mflux-4bit \
+  --prompt "t3chnic4lly vibrant 1960s close-up of a woman sitting under a tree in a blue skirt and white blouse, she has blonde wavy short hair and a smile with green eyes lake scene by a garden with flowers in the foreground 1960s style film She's holding her hand out there is a small smooth frog in her palm, she's making eye contact with the toad." \
+  --width 1280 \
+  --height 720 \
+  --seed 456 \
+  --steps 9 \
+  --lora-paths renderartist/Technically-Color-Z-Image-Turbo \
+  --lora-scales 0.5
+```
+
+<details>
+<summary>Python API (Turbo)</summary>
+
+```python
+from mflux.models.common.config import ModelConfig
+from mflux.models.z_image import ZImage
+
+model = ZImage(
+    model_config=ModelConfig.z_image_turbo(),
+    model_path="filipstrand/Z-Image-Turbo-mflux-4bit",
+    lora_paths=["renderartist/Technically-Color-Z-Image-Turbo"],
+    lora_scales=[0.5],
+)
+image = model.generate_image(
+    seed=456,
+    prompt="t3chnic4lly vibrant 1960s close-up of a woman sitting under a tree in a blue skirt and white blouse, she has blonde wavy short hair and a smile with green eyes lake scene by a garden with flowers in the foreground 1960s style film She's holding her hand out there is a small smooth frog in her palm, she's making eye contact with the toad.",
+    num_inference_steps=9,
+    width=1280,
+    height=720,
+)
+image.save("z_image_turbo.png")
+```
+
+You can also call the steps of `mflux-generate-z-image-turbo` from Python. `ZImageTurboCommand.load(args)` builds the model; `ZImageTurboCommand.generate(model, args, seed, prompt)` makes one image and returns it unsaved. A script or a UI reuses the command's flag handling (the `--model` check, LoRA options, sizes like `2x`) without copying it. `ZImageTurboCommand.validate(args)` checks a request without loading weights (it runs the `--model` check) and returns the model config; `load()` runs it too. `validate()` reads no files. LoRA names are resolved earlier, when the flags are parsed, so parsing can download a LoRA. The script below takes the command's own flags:
+
+```python
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["mflux"]
+# ///
+# Takes the same flags as mflux-generate-z-image-turbo, for example:
+#   uv run generate_turbo.py --prompt "A puffin standing on a cliff" --seed 42 43 -q 8
+import gc
+
+import mlx.core as mx
+
+from mflux.models.z_image.cli.z_image_turbo_generate import ZImageTurboCommand, build_parser
+from mflux.utils.prompt_util import PromptUtil
+
+
+class PrintProgress:
+    def call_in_loop(self, t, seed, prompt, latents, config, time_steps):
+        print(f"seed {seed}: step {t + 1}/{config.num_inference_steps}")
+
+
+args = build_parser().parse_args()
+model = ZImageTurboCommand.load(args)  # once per process
+model.callbacks.register(PrintProgress())  # once per loaded model
+for seed in args.seed:
+    prompt = PromptUtil.read_prompt(args)  # read per seed, as the command does
+    image = ZImageTurboCommand.generate(model, args, seed, prompt)
+    image.save(path=args.output.format(seed=seed), export_json_metadata=args.metadata)
+    gc.collect()
+    mx.clear_cache()
+```
+
+If you keep the model loaded, as a UI or a server does:
+
+- Register your callbacks once per loaded model; there is no unregister call.
+- Leave `CallbackManager.register_callbacks` to the command line. The memory saver it adds frees the text encoder during a single-seed run, and the transformer too when that run uses `--low-ram` or `--pid-decode`, so the model cannot be reused after it. Without it the text encoder stays loaded while the image is made, so memory peaks higher than with the command.
+- Flags that only `register_callbacks` applies do nothing in this script: `--low-ram`, `--mlx-cache-limit-gb`, `--vae-tiling`, `--vae-tile-size`, `--stepwise-image-output-dir` and `--battery-percentage-stop-limit`.
+- A new `--model`, `-q`, `--compute-precision` or LoRA needs a new `load()`. Drop the old model and any of your objects that hold it first (`del model`, then `gc.collect()` and `mx.clear_cache()`), so two sets of weights are never in memory at once.
+- Handle one request at a time. The parser reads `sys.argv`, so set it to the request's flags before you call `parse_args()`.
+- Save each image before you parse the next request: parsing sets process-wide metadata state, and `--no-exif` stays in effect for the rest of the process.
+
+The other two Z-Image commands have the same steps. `mflux-generate-z-image` is `ZImageCommand` in `mflux.models.z_image.cli.z_image_generate`, and `mflux-generate-z-image-controlnet` is `ZImageTurboControlnetCommand` in `mflux.models.z_image.cli.z_image_turbo_generate_controlnet`. The rules above apply to both, with three differences:
+
+- The base command runs `flow_match_euler_discrete` unless you pass `--scheduler`.
+- The controlnet command's `validate()` also checks the `--control` specs. It raises `ValueError` for a bad spec or for a `--model` without a ControlNet, and `ModelConfigError` (a `ValueError` too) for a `--model` it cannot place.
+- The controlnet command keeps the depth, HED and pose detectors loaded for the rest of the process once a control of that type has run. Dropping the model does not free them.
+</details>
+
+> [!WARNING]
+> Note: Z-Image weights are large (~31GB). Use quantization for smaller sizes.
+
+> [!NOTE]
+> The transformer runs in bfloat16, the precision of the loaded weights. mflux 0.20 and earlier ran it in float32. On an M5, bfloat16 cuts the denoising time by about 30%. The two streams give slightly different images for the same seed. To reproduce an image from an older release, add `--float32` to any of the three Z-Image commands. An image made with `--float32` records it in its metadata. With `mflux-generate-z-image` and `mflux-generate-z-image-turbo`, `--config-from-metadata` replays that image with the same stream. The ControlNet command does not read metadata, so give it `--float32` yourself.
+
+## Z-Image Turbo ControlNet (Union 2.1)
+
+`mflux-generate-z-image-controlnet` runs Z-Image-Turbo with the [Fun ControlNet Union 2.1](https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.1) from Alibaba PAI. One checkpoint takes five kinds of hint, and every hint is computed locally from an ordinary picture: `canny` and `mlsd` with OpenCV, `depth` with DepthPro, `hed` and `pose` with native MLX detectors (the detector weights download on first use). Give the picture, not a pre-drawn edge map:
+
+```sh
+mflux-generate-z-image-controlnet \
+  --prompt "a white marble statue of a girl holding a frog, museum lighting" \
+  --control "canny:photo.png:0.85" \
+  --width 640 \
+  --height 368 \
+  --steps 20 \
+  --seed 3 \
+  -q 8
+```
+
+- `--control type:path[:strength]`, repeatable, so `--control "pose:a.png:0.8" --control "depth:b.png:0.6"` stacks two hints. The strength is the model card's `control_context_scale`: 0.65 to 1.0 is the range where the picture follows the hint, and 1.0 is the default. `--controlnet-strength` is a global multiplier over every control, 1.0 by default; at 0.4 (the FLUX ControlNet's default, and this command's until 0.19.3) a `0.85` control came out at 0.34 and the composition ignored the hint.
+- Width and height are rounded down to multiples of 16, and the control picture is resized to that size, so ask for 640 x 368 rather than 638 x 367 and the hint lines up with the output.
+- The 2.1 checkpoint lost part of Turbo's distillation in training, which the model card says outright: at 6 steps the result is soft, at about 20 it is clean. The card also lists 8-step distilled variants of the same ControlNet (`...-Union-2.1-8steps`, `...-2601-8steps`); this command loads the 2.1 file, and the only way to run another one today is a model directory saved with `mflux-save` whose `controlnet/` holds that file and its config.
+- `--model` defaults to `z-image-controlnet`, the Turbo transformer plus the Union checkpoint; a local directory saved with `mflux-save` from that model works the same.
+
+<details>
+<summary>Python API (ControlNet)</summary>
+
+```python
+from mflux.models.z_image.variants.controlnet.control_types import ControlSpec, ControlType
+from mflux.models.z_image.variants.controlnet.z_image_turbo_controlnet import ZImageTurboControlnet
+
+model = ZImageTurboControlnet(quantize=8)
+image = model.generate_image(
+    seed=3,
+    prompt="a white marble statue of a girl holding a frog, museum lighting",
+    controls=[ControlSpec(type=ControlType.canny, image_path="photo.png", strength=0.85)],
+    controlnet_strength=1.0,  # the API's own default is 0.8
+    num_inference_steps=20,
+    width=640,
+    height=368,
+)
+image.save("statue.png")
+```
+</details>
+
+## Small text encoder
+`--small-text-encoder` replaces Z-Image-Turbo's Qwen3-4B text encoder with a distilled Qwen3-1.7B student plus a 39M-parameter adapter from [SearchingMan/Z-Image-Turbo-student-adapter](https://huggingface.co/SearchingMan/Z-Image-Turbo-student-adapter). The adapter outputs 2560-wide vectors that imitate the 4B encoder's second-to-last hidden state. The transformer, VAE and tokenizer stay Z-Image-Turbo's, so the `text_encoder` weights of `Tongyi-MAI/Z-Image-Turbo` are never downloaded.
+
+```sh
+mflux-generate-z-image-turbo \
+  --small-text-encoder \
+  --prompt "A red fox walks through a snowy forest at dusk." \
+  --steps 9 \
+  -q 8
+```
+
+- Works with `mflux-generate-z-image-turbo` only (not `mflux-generate-z-image` or the ControlNet command). The flag is recorded in the image metadata, so `--config-from-metadata` replays it.
+- Plain scene prompts come out close to the native encoder. Three kinds of prompt come out worse: text drawn in the image ("OPEN 24 HOURS" became "OPEN 20 HOUTS"), attribute binding ("long hair, blue eyes" gave blue hair) and non-English prompts (a German prompt lost the river and the fog). Per token, the adapter's output is 0.78–0.95 cosine to the 4B encoder's.
+- `-q` quantizes the 1.7B student like the rest of the model; the adapter always stays float32.
+- `mflux-save` and `save_model()` refuse a model built with the flag.
+- The first run downloads about 3.6 GB instead of the 8.0 GB Qwen3-4B `text_encoder`.
+
+The encoder is smaller, but a single CLI image does not need less memory: the CLI frees the text encoder before the denoising, and the denoising sets the peak. The saving shows when the encoder stays loaded, as with several `--seed` values, the Python API or a server. Test setup: Apple Silicon Mac, 64 GB, MLX 0.32.0, Z-Image-Turbo `-q 8` saved with `mflux-save`, 1024×1024, 9 steps.
+
+| | Qwen3-4B | `--small-text-encoder` |
+|---|---|---|
+| Peak, one image | 7.5 GB | 7.5 GB |
+| Peak, two seeds | 11.8 GB | 9.6 GB |
+| Weights loaded, bf16 / `-q 8` | 20.5 / 11.0 GB | 16.1 / 8.7 GB |
+| Download of the text encoder | 8.0 GB | 3.6 GB |
+
+Loaded from the Hub instead of a saved model, the peak is about 26 GB either way, because the transformer weights there are float32.
+
+## VAE decode
+The VAE decodes the image in bf16 row strips of 128 rows. Each GroupNorm uses statistics from the full image, so the strips do not change the colours, and the image has no seams. The decoder releases the temporary data of each block before the next block starts, and the attention runs in chunks of 4096 queries.
+
+- `--vae-full-precision` decodes each block on the full image, as the earlier decode did. The metadata records the flag, so `--config-from-metadata` uses it again.
+- `--vae-tiling` and `--vae-tile-size` do not change the decode, and the CLI shows a warning. They still tile the encode of an input image.
+- `--low-ram` still releases the text encoder and the transformer before the decode. It does not change the decode.
+
+Measured as a decode of saved latents, with only the VAE loaded. Test setup: Apple Silicon Mac, 36 GB, MLX 0.32.0, Z-Image Turbo `-q 8`, 1024×1024, seed 42, 14 prompts.
+
+| Decode | Peak | Time | PSNR vs earlier decode |
+|---|---|---|---|
+| Earlier full-image decode | 7.3 GB | 0.65 s | – |
+| Earlier `--vae-tiling` | 2.9 GB | 0.78 s | 37–47 dB (faint tile bands) |
+| Default (strips) | 1.6 GB | 1.29 s | 47–52 dB |
+| `--vae-full-precision` | 4.6 GB | 0.85 s | identical on the test Mac |
+
+Before this change, `--low-ram` selected the tiled decode for Z-Image without a flag.
+
+## Streaming from the SSD (`--ssd-stream`)
+
+The bf16 Z-Image Turbo model is 20.5 GB, more than the RAM of many Macs. With `mflux-generate-z-image-turbo --ssd-stream`, the 36 text-encoder layers and the 34 transformer blocks (2 noise refiner, 2 context refiner, 30 main) run one at a time from the SSD. See [SSD streaming](../common/README.md#ssd-streaming---ssd-stream) for how it works and how to check that a run does not write to the SSD.
+
+Get the files. The model must be a `mflux-community` repo (or an `mflux-save` folder), because the streamer reads the saved layers by name:
+
+```sh
+hf download mflux-community/z-image-turbo-mflux-bf16   # 20.5 GB: text encoder 8.0, transformer 12.3, VAE 0.2
+```
+
+Run it:
+
+```sh
+mflux-generate-z-image-turbo \
+  --model mflux-community/z-image-turbo-mflux-bf16 \
+  --steps 8 --width 768 --height 1024 --seed 42 \
+  --ssd-stream --mlx-cache-limit-gb 0.256 \
+  --prompt "a fisherman mending a net on a foggy pier, a lighthouse behind him"
+```
+
+- `--ssd-stream` stops with an error, before it reads any weight, in these cases, because each one would otherwise give a wrong image without a message:
+  - with `-q`: the streamer installs the saved weights over the layers, and layers that `-q` has quantized need packed weights. To stream a quantized model, use one that is already quantized and do not add `-q`. Streaming a quantized model has not been run.
+  - with `--bake-lora` and a `--lora`: the streamer would install the saved weights over the baked ones and drop the LoRA. Z-Image bakes by default, so pass `--no-bake-lora` with a LoRA. A LoRA run this way stays in memory; it has not been run.
+  - with `--compute-precision`: the cast is applied to the layers at load, and the streamer then installs the saved weights uncast.
+- A model that was loaded with `ssd_stream=True` cannot be saved: `save_model` raises an error, because the idle layers are placeholders.
+- With `--small-text-encoder` the student encoder is loaded as usual and is not streamed; the transformer is.
+- The step is not compiled with `mx.compile` while streaming, because the streamer installs and removes each block's weights around the call.
+- Measured on an Apple M1 with 8 GiB and macOS 14.6.1, MLX 0.32.0, bf16, 768x1024, 8 steps, seed 42, no LoRA, two runs from the same command:
+
+  | Run | Time | SSD writes | Swap-outs | Peak footprint |
+  |---|---|---|---|---|
+  | 1 | 224.5 s | 19.5 MB | 0 | 2.22 GB |
+  | 2 | 220.4 s | 15.6 MB | 0 | 2.22 GB |
+
+  The SSD writes are about the idle level for a run of this length. The two images are identical pixel for pixel.
+- Not measured: a LoRA, a pre-quantized repo, other sizes, and chips newer than the M1.
+
+## Training
+
+Use `mflux-train` with a training config that targets `z-image` or `z-image-turbo`. We automatically load the Z-Image Turbo training adapter ([ostris/zimage_turbo_training_adapter](https://huggingface.co/ostris/zimage_turbo_training_adapter)) only when training the turbo model; base Z-Image training does not use the assistant LoRA. You can start from the [example config](../common/training/_example/train.json). For the data/images folder layout, see the common training docs ([Training (LoRA)](../common/README.md#training-lora)).
+
+Example:
+
+```json
+{
+  "model": "z-image-turbo",
+  "data": "images/",
+  "seed": 4,
+  "steps": 9,
+  "guidance": 0.0,
+  "quantize": 8,
+  "training_loop": { "num_epochs": 1, "batch_size": 1, "timestep_low": 4, "timestep_high": 9 },
+  "optimizer": { "name": "AdamW", "learning_rate": 1e-4 },
+  "checkpoint": { "output_path": "training", "save_frequency": 30 },
+  "monitoring": {
+    "plot_frequency": 20,
+    "generate_image_frequency": 30
+  },
+  "lora_layers": {
+    "targets": [
+      { "module_path": "layers.{block}.attention.to_q", "blocks": { "start": 15, "end": 30 }, "rank": 8 },
+      { "module_path": "layers.{block}.attention.to_k", "blocks": { "start": 15, "end": 30 }, "rank": 8 },
+      { "module_path": "layers.{block}.attention.to_v", "blocks": { "start": 15, "end": 30 }, "rank": 8 }
+    ]
+  }
+}
+```
+
+Run training:
+
+```sh
+mflux-train --config /path/to/train_z_image.json
+```
+
+*For a Swift MLX implementation of Z-Image, see [zimage.swift](https://github.com/mzbac/zimage.swift) by [@mzbac](https://github.com/mzbac).*
+
